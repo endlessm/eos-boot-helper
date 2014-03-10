@@ -1,0 +1,6 @@
+#!/bin/bash
+
+resize2fs "$(findmnt -rvnf -o SOURCE /)"
+
+> /var/eos-booted
+exit 0
