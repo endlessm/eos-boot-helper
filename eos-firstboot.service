@@ -1,0 +1,15 @@
+# Run eos-firstboot early during boot
+
+[Unit]
+Description=Endless Boot Helper
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+Before=basic.target
+ConditionPathExists=!/var/eos-booted
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-firstboot
+
+[Install]
+WantedBy=basic.target

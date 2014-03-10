@@ -1,0 +1,8 @@
+#!/bin/bash
+# Copyright (C) 2014 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+resize2fs "$(findmnt -rvnf -o SOURCE /)"
+
+> /var/eos-booted
+exit 0
