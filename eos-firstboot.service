@@ -1,4 +1,4 @@
-# Run olpc-configure early during boot
+# Run eos-firstboot early during boot
 
 [Unit]
 Description=Endless Boot Helper
