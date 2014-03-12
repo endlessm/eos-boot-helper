@@ -1,1 +1,2 @@
+#DEBHELPER#
 update-initramfs -u
