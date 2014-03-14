@@ -52,8 +52,16 @@ part_end=$(( part_start + part_size ))
 echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
 [ "$part_end" = "$disk_size" ] && exit 0
 
+# We should also check that we are working with a MBR partition table, to
+# avoid destroying any non-Endless GPT setup.
+# This is implicit below: a GPT setup will have a protective MBR with a single
+# partition entry, it will not have the marker partition.
+# There is still a chance that a secondary GPT header can be found on the last
+# sector of the disk, so we must also use "--force" so that sfdisk doesn't
+# bail out in such situations.
+
 # Check for our magic "this is Endless" marker
-marker=$(sfdisk --print-id $root_disk 4)
+marker=$(sfdisk --force --print-id $root_disk 4)
 if [ "$marker" != "dd" ]; then
   echo "resize: marker not found"
   exit 0
@@ -64,11 +72,11 @@ fi
 udevadm settle
 
 echo "Try to resize $root_disk"
-echo ",+,," | sfdisk --no-reread -N2 -uS -S 32 -H 32 $root_disk
+echo ",+,," | sfdisk --force --no-reread -N2 -uS -S 32 -H 32 $root_disk
 echo "sfdisk returned $?"
 
 # Remove marker
-sfdisk --change-id $root_disk 4 0
+sfdisk --force --change-id $root_disk 4 0
 
 # Partition nodes are removed and recreated now - wait for udev to finish
 # recreating them before trying to mount the disk.
