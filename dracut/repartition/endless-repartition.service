@@ -1,0 +1,16 @@
+[Unit]
+Description=EOS repartitioning
+
+# Dependencies based around dracut-pre-mount.service
+DefaultDependencies=no
+Before=initrd-root-fs.target sysroot.mount
+After=dracut-pre-mount.service
+ConditionPathExists=/etc/initrd-release
+
+# fsck might be using the disk - avoid running at the same time
+Before=systemd-fsck@dev-disk-by\x2dlabel-ostree.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/endless-repartition
+RemainAfterExit=yes

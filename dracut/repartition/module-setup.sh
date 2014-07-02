@@ -6,7 +6,7 @@ check() {
 }
 
 depends() {
-  echo fs-lib
+  echo fs-lib systemd
 }
 
 install() {
@@ -14,5 +14,10 @@ install() {
   dracut_install basename
   dracut_install readlink
   dracut_install mkswap
-  inst_hook pre-mount 50 "$moddir/endless-repartition.sh"
+  inst_script "$moddir/endless-repartition.sh" /bin/endless-repartition
+  inst_simple "$moddir/endless-repartition.service" \
+	"$systemdsystemunitdir/endless-repartition.service"
+  mkdir -p "${initdir}/$systemdsystemunitdir/initrd.target.wants"
+  ln_r "$systemdsystemunitdir/endless-repartition.service" \
+	"$systemdsystemunitdir/initrd.target.wants/endless-repartition.service"
 }
