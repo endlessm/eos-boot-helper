@@ -6,12 +6,11 @@ check() {
 }
 
 depends() {
-  echo fs-lib systemd
+  echo systemd
 }
 
 install() {
   dracut_install sfdisk
-  dracut_install basename
   dracut_install readlink
   dracut_install mkswap
   inst_script "$moddir/endless-repartition.sh" /bin/endless-repartition

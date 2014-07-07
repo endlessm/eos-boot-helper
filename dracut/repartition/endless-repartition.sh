@@ -32,12 +32,8 @@
 exec > /dev/kmsg
 exec 2>&1
 
-if [ -f /dracut-state.sh ]; then
-    . /dracut-state.sh 2>/dev/null
-fi
-
 # Identify root partition device node and parent disk
-root_part=$(readlink -f ${root#block:})
+root_part=$(readlink -f /dev/disk/by-label/ostree)
 if [ -z ${root_part} ]; then
   echo "repartition: no root found"
   exit 0
