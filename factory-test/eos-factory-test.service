@@ -1,0 +1,12 @@
+[Unit]
+Description=Endless factory test
+Conflicts=getty@tty7.service gdm.service plymouth-start.service
+After=systemd-user-sessions.service getty@tty7.service plymouth-quit.service gdm.service
+
+[Service]
+ExecStart=/usr/bin/xinit /usr/bin/xterm -e /var/wistron/start.sh
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=eos-factory-test.target

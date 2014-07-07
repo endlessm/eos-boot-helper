@@ -1,0 +1,9 @@
+[Unit]
+Description=Endless factory test helper
+ConditionDirectoryNotEmpty=!/home
+
+[Service]
+ExecStart=/usr/sbin/eos-factory-test-helper
+
+[Install]
+WantedBy=multi-user.target

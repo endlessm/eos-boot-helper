@@ -1,0 +1,5 @@
+[Unit]
+Description=Endless factory test target
+AllowIsolate=yes
+Requires=multi-user.target
+After=multi-user.target
