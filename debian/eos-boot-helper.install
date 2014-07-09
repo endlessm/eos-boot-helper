@@ -1,4 +1,0 @@
-dracut/endless.conf etc/dracut.conf.d
-dracut/repartition/* usr/lib/dracut/modules.d/50eos-repartition
-eos-firstboot usr/sbin
-eos-firstboot.service lib/systemd/system
