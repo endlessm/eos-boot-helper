@@ -9,4 +9,4 @@ Homepage: https://endlessm.com
 Package: eos-boot-helper
 Architecture: all
 Description: Endless boot helper
-Depends: ${misc:Depends}, dracut
+Depends: ${misc:Depends}, dracut, xinit, xterm
