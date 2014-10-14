@@ -202,6 +202,11 @@ check_mount(UDisksFilesystem *fs, const char *mount_path)
 	char *checksum = NULL;
 	GVariant *opts;
 	GVariantDict dict;
+	gboolean unmounted = FALSE;
+
+	/* opts for unmount */
+	g_variant_dict_init(&dict, NULL);
+	opts = g_variant_dict_end(&dict);
 
 	if (!read_checksum(mount, &checksum))
 		goto out;
@@ -211,9 +216,8 @@ check_mount(UDisksFilesystem *fs, const char *mount_path)
 		goto out;
 
 	/* Won't be using the mount any more. */
-	g_variant_dict_init(&dict, NULL);
-	opts = g_variant_dict_end(&dict);
 	udisks_filesystem_call_unmount_sync(fs, opts, NULL, NULL);
+	unmounted = TRUE;
 
 	if (!verify_checksum(test_suite, checksum))
 		goto out;
@@ -227,6 +231,8 @@ check_mount(UDisksFilesystem *fs, const char *mount_path)
 	try_exec_test_suite();
 
 out:
+	if (!unmounted)
+		udisks_filesystem_call_unmount_sync(fs, opts, NULL, NULL);
 	if (test_suite)
 		g_object_unref(test_suite);
 	g_object_unref(mount);
