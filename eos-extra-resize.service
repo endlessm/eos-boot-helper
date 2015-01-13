@@ -1,0 +1,18 @@
+# Run eos-extra-resize before /var/endless-extra is mounted.
+
+[Unit]
+Description=Endless extra storage resizing
+DefaultDependencies=no
+After=-.mount
+After=systemd-remount-fs.service
+After=ostree-remount.service
+Before=var-endless\x2dextra.mount
+Before=local-fs.target
+ConditionPathExists=!/var/eos-extra-resize
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-extra-resize
+
+[Install]
+WantedBy=local-fs.target
