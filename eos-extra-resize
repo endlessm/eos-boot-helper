@@ -1,0 +1,56 @@
+#!/bin/bash -e
+
+# Detect if we're on Endless hardware with the extra storage disk. If
+# so, repartition the disk so that the filesystem can fill the whole
+# disk. Then resize the existing filesystem.
+
+# Exit if the stamp file exists. The service file checks for this, but
+# also guard against an accidental execution.
+stamp_file=/var/eos-extra-resize
+[ -e $stamp_file ] && exit 0
+
+# Identify extra partition device node and parent disk
+extra_part=$(readlink -f /dev/disk/by-label/extra)
+if [ -z $extra_part ]; then
+    echo "repartition: no extra storage found"
+    exit 0
+fi
+
+case ${extra_part} in
+    /dev/mmcblk?p1)
+        extra_disk=${extra_part%p1}
+        ;;
+    /dev/sd?1)
+        extra_disk=${extra_part%1}
+        ;;
+esac
+
+if [ -z "$extra_disk" ]; then
+    echo "repartition: no extra disk found for $extra_part"
+    exit 0
+fi
+
+# Check for our magic "this is Endless" marker
+marker=$(sfdisk --force --print-id $extra_disk 4)
+if [ "$marker" != "dd" ]; then
+    echo "repartition: marker not found"
+    exit 0
+fi
+
+# udev might still be busy probing the disk, meaning that it will be in use.
+udevadm settle
+echo "Try to resize $extra_part to fill $extra_disk"
+echo ";" | sfdisk --force --no-reread -S 32 -H 32 $extra_disk
+echo "sfdisk returned $?"
+
+# Remove marker - must be done last, prevents this script from running again
+udevadm settle
+sfdisk --force --change-id $extra_disk 4 0
+
+# Resize the filesystem to fill all available space.
+udevadm settle
+resize2fs $extra_part
+
+# Create the stamp file and exit.
+touch $stamp_file
+exit 0
