@@ -7,6 +7,7 @@ After=-.mount
 After=systemd-remount-fs.service
 After=ostree-remount.service
 Before=var-endless\x2dextra.mount
+ConditionPathExists=/dev/disk/by-label/extra
 ConditionPathExists=!/var/eos-extra-resize
 
 [Service]
