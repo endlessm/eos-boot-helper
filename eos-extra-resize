@@ -47,8 +47,9 @@ echo "sfdisk returned $?"
 udevadm settle
 sfdisk --force --change-id $extra_disk 4 0
 
-# Resize the filesystem to fill all available space.
+# Force a filesystem check then resize it to fill all available space.
 udevadm settle
+e2fsck -f -p $extra_part
 resize2fs $extra_part
 
 # Create the stamp file and exit.
