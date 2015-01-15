@@ -7,6 +7,7 @@ After=-.mount
 After=systemd-remount-fs.service
 After=ostree-remount.service
 Before=var-endless\x2dextra.mount
+Before=systemd-fsck@dev-disk-by\x2dlabel-extra.service
 ConditionPathExists=/dev/disk/by-label/extra
 ConditionPathExists=!/var/eos-extra-resize
 
@@ -16,3 +17,4 @@ ExecStart=/usr/sbin/eos-extra-resize
 
 [Install]
 WantedBy=local-fs.target
+WantedBy=systemd-fsck@dev-disk-by\x2dlabel-extra.service
