@@ -14,6 +14,7 @@ ConditionPathExists=!/var/eos-extra-resize
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/eos-extra-resize
+StandardOutput=journal+console
 
 [Install]
 WantedBy=local-fs.target

@@ -10,6 +10,7 @@ ConditionPathExists=!/var/eos-booted
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/eos-firstboot
+StandardOutput=journal+console
 
 [Install]
 WantedBy=basic.target
