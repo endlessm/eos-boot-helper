@@ -37,10 +37,14 @@ if [ "$marker" != "dd" ]; then
     exit 0
 fi
 
+# Figure out the start sector.
+extra_part_name=${extra_part#/dev/}
+part_start=$(< /sys/class/block/$extra_part_name/start)
+
 # udev might still be busy probing the disk, meaning that it will be in use.
 udevadm settle
-echo "Try to resize $extra_part to fill $extra_disk"
-echo ";" | sfdisk --force --no-reread -S 32 -H 32 -uS $extra_disk
+echo "Try to resize $extra_part at sector $part_start to fill $extra_disk"
+echo "$part_start" | sfdisk --force --no-reread -S 32 -H 32 -uS $extra_disk
 echo "sfdisk returned $?"
 
 # Remove marker - must be done last, prevents this script from running again
