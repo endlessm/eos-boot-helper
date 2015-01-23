@@ -42,7 +42,7 @@ fi
 # udev might still be busy probing the disk, meaning that it will be in use.
 udevadm settle
 echo "Try to resize $extra_part to fill $extra_disk"
-echo ";" | sfdisk --force --no-reread -S 32 -H 32 $extra_disk
+echo ";" | sfdisk --force --no-reread -S 32 -H 32 -uS $extra_disk
 echo "sfdisk returned $?"
 
 # Remove marker - must be done last, prevents this script from running again
