@@ -4,7 +4,14 @@ After=local-fs-pre.target
 Conflicts=umount.target
 Before=umount.target
 Before=local-fs.target
-RequiresMountsFor=/var/endless /var/endless-extra
+
+# Overlay mount dependencies. It would be nice to use RequiresMountsFor
+# for both the directories, but we want to continue if the extra storage
+# mount at /var/endless-extra fails (SD card missing or has failed).
+# Manually add After and Wants for that unit.
+After=var-endless\x2dextra.mount
+Wants=var-endless\x2dextra.mount
+RequiresMountsFor=/var/endless
 
 [Mount]
 What=endless
