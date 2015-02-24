@@ -6,9 +6,10 @@ DefaultDependencies=no
 After=-.mount
 After=systemd-remount-fs.service
 After=ostree-remount.service
+After=dev-disk-by\x2dlabel-extra.device
+Requires=dev-disk-by\x2dlabel-extra.device
 Before=var-endless\x2dextra.mount
 Before=systemd-fsck@dev-disk-by\x2dlabel-extra.service
-ConditionPathExists=/dev/disk/by-label/extra
 ConditionPathIsDirectory=/var/endless-extra
 ConditionPathExists=!/var/eos-extra-resize
 
