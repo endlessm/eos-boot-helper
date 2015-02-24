@@ -19,5 +19,4 @@ StandardOutput=journal+console
 TimeoutSec=0
 
 [Install]
-WantedBy=local-fs.target
 WantedBy=systemd-fsck@dev-disk-by\x2dlabel-extra.service
