@@ -4,6 +4,7 @@ After=local-fs-pre.target
 Conflicts=umount.target
 Before=umount.target
 Before=local-fs.target
+ConditionPathIsDirectory=/var/endless-extra
 
 [Mount]
 What=/dev/disk/by-label/extra

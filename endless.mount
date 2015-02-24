@@ -4,6 +4,9 @@ After=local-fs-pre.target
 Conflicts=umount.target
 Before=umount.target
 Before=local-fs.target
+ConditionPathIsDirectory=/var/endless-extra
+ConditionPathIsDirectory=/endless
+ConditionPathIsSymbolicLink=!/endless
 
 # Overlay mount dependencies. It would be nice to use RequiresMountsFor
 # for both the directories, but we want to continue if the extra storage
