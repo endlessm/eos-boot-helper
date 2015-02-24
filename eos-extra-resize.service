@@ -18,6 +18,3 @@ Type=oneshot
 ExecStart=/usr/sbin/eos-extra-resize
 StandardOutput=journal+console
 TimeoutSec=0
-
-[Install]
-WantedBy=systemd-fsck@dev-disk-by\x2dlabel-extra.service
