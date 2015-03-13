@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with systemd
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-systemd
+
+override_dh_systemd_start:
+	dh_systemd_start --no-start

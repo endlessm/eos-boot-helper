@@ -1,0 +1,5 @@
+eos-boot-helper (1) eos; urgency=low
+
+  * Initial release.
+
+ -- Daniel Drake <drake@endlessm.com>  Thu, 12 Mar 2015 19:50:46 -0600

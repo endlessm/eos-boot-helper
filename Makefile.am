@@ -1,4 +1,5 @@
 SUBDIRS = dracut
+EXTRA_DIST = debian
 
 if ENABLE_SYSTEMD
 systemdunitdir=/lib/systemd/system
@@ -14,6 +15,6 @@ systemdunit_DATA = var-endless\\x2dextra.mount
 endif
 
 # Needs to be outside systemd conditional or it won't be included.
-EXTRA_DIST = var-endless\x2dextra.mount
+EXTRA_DIST += var-endless\x2dextra.mount
 
 dist_sbin_SCRIPTS = eos-firstboot eos-extra-resize
