@@ -64,7 +64,7 @@ fi
 # bail out in such situations.
 
 # Check for our magic "this is Endless" marker
-marker=$(sfdisk --force --print-id $root_disk 4)
+marker=$(sfdisk -n --force --print-id $root_disk 4)
 if [ "$marker" != "dd" ]; then
   echo "repartition: marker not found"
   exit 0
