@@ -1,0 +1,5 @@
+[Swap]
+What=/dev/disk/by-label/eos-swap
+
+[Install]
+WantedBy=dev-disk-by\x2dlabel-eos\x2dswap.device

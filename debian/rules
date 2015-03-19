@@ -8,3 +8,8 @@ override_dh_auto_configure:
 
 override_dh_systemd_start:
 	dh_systemd_start --no-start
+
+override_dh_systemd_enable:
+	# Only enable firstboot here, not swap, since dh-systemd doesn't
+	# get the escaping right. We enable swap manually in postinst.
+	dh_systemd_enable eos-firstboot.service
