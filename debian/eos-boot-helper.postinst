@@ -1,2 +1,9 @@
 #DEBHELPER#
+
+# dh-systemd and systemctl-204 both get escaping wrong when enabling this
+# unit, so we do it manually
+mkdir -p /etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
+ln -sf /lib/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.swap" \
+	/etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
+
 update-initramfs -u
