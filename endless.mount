@@ -6,7 +6,6 @@ Conflicts=umount.target
 Before=umount.target
 Before=local-fs.target
 ConditionPathIsDirectory=/var/endless-extra
-ConditionPathIsDirectory=/endless
 ConditionPathIsSymbolicLink=!/endless
 
 # Overlay mount dependencies. It would be nice to use RequiresMountsFor
