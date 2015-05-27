@@ -55,7 +55,9 @@ fi
 # Force a filesystem check then resize it to fill all available space.
 udevadm settle
 e2fsck -f -p $extra_part
+udevadm settle
 resize2fs $extra_part
+udevadm settle
 
 # Create the stamp file and exit.
 touch $stamp_file
