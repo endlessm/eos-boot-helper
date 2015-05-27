@@ -33,7 +33,7 @@ if [ -z "$extra_disk" ]; then
 fi
 
 # Check for our magic "this is Endless" marker to trigger repartitioning.
-marker=$(sfdisk --force --print-id $extra_disk 4)
+marker=$(sfdisk -n --force --print-id $extra_disk 4)
 if [ "$marker" = "dd" ]; then
     # udev might still be busy probing the disk, meaning that it will be
     # in use.
