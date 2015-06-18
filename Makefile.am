@@ -7,6 +7,7 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-extra-resize.service \
 	endless.mount \
+	endless-mount-dirs.service \
 	$(NULL)
 
 # Unfortunately, dist chokes on the escaped \x2d, so we need to

@@ -6,6 +6,11 @@ ConditionPathIsDirectory=/var/endless-extra
 # Don't break existing systems with the old symlink setup
 ConditionPathIsSymbolicLink=!/endless
 
+# Ensure mounted directories exist. Systemd won't handle this for us
+# since it doesn't understand the overlay.
+After=endless-mount-dirs.service
+Wants=endless-mount-dirs.service
+
 # Overlay mount dependencies. Only After is specified for
 # /var/endless-extra so that single disk units don't wait for a device
 # that doesn't exist.
