@@ -20,5 +20,4 @@ RequiresMountsFor=/var/endless
 What=endless
 Where=/endless
 Type=overlayfs
-FsckPassNo=2
 Options=rw,lowerdir=/var/endless-extra,upperdir=/var/endless
