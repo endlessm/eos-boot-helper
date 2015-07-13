@@ -44,7 +44,7 @@ if [ "$marker" = "dd" ]; then
     part_start=$(< /sys/class/block/$extra_part_name/start)
 
     echo "Try to resize $extra_part at sector $part_start to fill $extra_disk"
-    echo "$part_start" | sfdisk --force --no-reread -S 32 -H 32 -uS $extra_disk
+    echo "$part_start" | sfdisk --force --no-reread $extra_disk
     echo "sfdisk returned $?"
 
     # Remove the marker so that repartitioning does not run again.

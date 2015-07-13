@@ -100,7 +100,7 @@ if [ $new_size -gt $part_size ]; then
   udevadm settle
 
   echo "Try to resize $root_part to fill $new_size sectors"
-  echo ",$new_size,," | sfdisk --force --no-reread -N2 -uS -S 32 -H 32 $root_disk
+  echo ",$new_size,," | sfdisk --force --no-reread -N2 $root_disk
   echo "sfdisk returned $?"
   udevadm settle
 fi
@@ -108,7 +108,7 @@ fi
 if [ -n "$swap_start" ]; then
   # Create swap partition
   echo "Create swap partition at $swap_start"
-  echo "$swap_start,+,S," | sfdisk --force --no-reread -N3 -uS -S 32 -H 32 $root_disk
+  echo "$swap_start,+,S," | sfdisk --force --no-reread -N3 $root_disk
   echo "sfdisk returned $?"
   udevadm settle
 fi
