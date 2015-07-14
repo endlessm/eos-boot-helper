@@ -1,0 +1,77 @@
+#!/bin/bash -e
+# Copyright (C) 2015 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+# Enable the /var/endless-extra mount for systems upgrading from an
+# ostree without the statically enabled unit file.
+
+# Safely read and match the content of a file.
+match_file_content()
+{
+    local file=$1
+    local value=$2
+    local content
+
+    [ -f "$file" ] || return 1
+    content=$(<"$file") || return $?
+
+    # Return the comparison result
+    [ "$content" = "$value" ]
+}
+
+# Determine if this is a unit with separate SD card. Currently this is
+# the eMMC Sqwerty unit. Need to catch errors and return since this is
+# used in a conditional below. Thanks, POSIX.
+is_split_unit()
+{
+    local rootdev
+
+    match_file_content /sys/class/dmi/id/sys_vendor Endless || return $?
+    match_file_content /sys/class/dmi/id/product_name EC-200 || return $?
+    rootdev=$(findmnt -rvnf -o SOURCE /)
+    case "$rootdev" in
+	/dev/mmcblk*)
+	    return 0
+	    ;;
+	*)
+	    return 1
+	    ;;
+    esac
+}
+
+# Exit if the stamp file exists. The service file checks for this, but
+# also guard against an accidental execution.
+stamp_dir=/var/lib/eos-boot-helper
+stamp_file="$stamp_dir/eos-enable-extra-compat"
+[ -f "$stamp_file" ] && exit 0
+
+mkdir -p "$stamp_dir"
+
+# Create the stamp file and exit if this is not a split unit
+if ! is_split_unit; then
+    touch "$stamp_file"
+    echo "Not split disk unit, exiting"
+    exit 0
+fi
+
+# Exit if the the wants symlink is already created
+wants_dir=/etc/systemd/system/local-fs.target.wants
+wants_link="$wants_dir/var-endless\x2dextra.mount"
+if [ -e "$wants_link" ]; then
+    touch "$stamp_file"
+    echo "Mount unit already enabled or masked at $wants_link, exiting"
+    exit 0
+fi
+
+# Create the wants symlink
+mount_unit="var-endless\x2dextra.mount"
+mount_unit_path="/etc/systemd/system/$mount_unit"
+if [ ! -f "$mount_unit_path" ]; then
+    mount_unit_path="/lib/systemd/system/$mount_unit"
+fi
+echo "Statically enabling mount unit at $wants_link"
+mkdir -p "$wants_dir"
+ln -sf "$mount_unit_path" "$wants_link"
+
+# Done, create the stamp file
+touch "$stamp_file"

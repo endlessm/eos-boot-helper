@@ -9,7 +9,9 @@ override_dh_auto_configure:
 override_dh_systemd_start:
 	dh_systemd_start --no-start
 
+# Only enable firstboot and endless.mount here, not swap, since
+# dh-systemd doesn't get the escaping right. We enable swap manually in
+# postinst.
 override_dh_systemd_enable:
-	# Only enable firstboot here, not swap, since dh-systemd doesn't
-	# get the escaping right. We enable swap manually in postinst.
 	dh_systemd_enable eos-firstboot.service
+	dh_systemd_enable endless.mount

@@ -1,0 +1,33 @@
+# Ensure /var/endless and /var/endless-extra exist prior to mounting
+# /var/endless-extra or the overlay at /endless. This is required for
+# single disk unit upgrades where /var/endless-extra doesn't exist. It's
+# also good practice to ensure the mount points exist like systemd would
+# do if /endless was a non-overlayfs mount.
+#
+# This would best be done with tmpfiles.d, but that runs too late after
+# local-fs.target.
+
+[Unit]
+Description=Create directories for /endless overlay mount
+# Need DefaultDependencies=no so basic.target is not required
+DefaultDependencies=no
+Requires=-.mount
+After=-.mount
+After=local-fs-pre.target
+After=ostree-remount.service
+After=var-endless\x2dextra.mount
+Before=local-fs.target
+Before=endless.mount
+Before=shutdown.target
+Conflicts=shutdown.target
+RequiresMountsFor=/var
+
+# Only run if the directories don't exist
+ConditionPathIsDirectory=|!/var/endless
+ConditionPathIsDirectory=|!/var/endless-extra
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /var/endless /var/endless-extra
+ExecStart=-/bin/chown app-manager:app-manager /var/endless /var/endless-extra
