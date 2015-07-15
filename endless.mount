@@ -24,8 +24,8 @@ RequiresMountsFor=/var/endless
 [Mount]
 What=endless
 Where=/endless
-Type=overlayfs
-Options=rw,lowerdir=/var/endless-extra,upperdir=/var/endless
+Type=overlay
+Options=rw,lowerdir=/var/endless-extra,upperdir=/var/endless,workdir=/var/endless-workdir
 
 [Install]
 WantedBy=local-fs.target
