@@ -39,14 +39,28 @@ if [ -z ${root_part} ]; then
   exit 0
 fi
 
+get_last_char() {
+	ret=$1
+	while [ "${#ret}" != "1" ]; do
+		ret=${ret#?}
+	done
+	echo $ret
+}
+
+# We have to work with a variety of setups here:
+# - Either SCSI or MMC block devices with different naming conventions
+# - A different partition numbering scheme as not all configurations have
+#   a ESP and a BIOS boot partition.
+partno=$(get_last_char ${root_part})
+swap_partno=$((partno + 1))
 case ${root_part} in
-  /dev/mmcblk?p2)
-    root_disk=${root_part%p2}
-    swap_part=${root_part%?}3
+  /dev/mmcblk?p?)
+    root_disk=${root_part%p?}
+    swap_part=${root_disk}p${swap_partno}
     ;;
-  /dev/sd?2)
-    root_disk=${root_part%2}
-    swap_part=${root_part%?}3
+  /dev/sd??)
+    root_disk=${root_part%?}
+    swap_part=${root_disk}${swap_partno}
     ;;
 esac
 
@@ -55,17 +69,9 @@ if [ -z "${root_disk}" ]; then
   exit 0
 fi
 
-# We should also check that we are working with a MBR partition table, to
-# avoid destroying any non-Endless GPT setup.
-# This is implicit below: a GPT setup will have a protective MBR with a single
-# partition entry, it will not have the marker partition.
-# There is still a chance that a secondary GPT header can be found on the last
-# sector of the disk, so we must also use "--force" so that sfdisk doesn't
-# bail out in such situations.
-
 # Check for our magic "this is Endless" marker
-marker=$(sfdisk -n --force --print-id $root_disk 4)
-if [ "$marker" != "dd" ]; then
+marker=$(sfdisk --force --part-attrs $root_disk $partno)
+if [ "$marker" != "GUID:55" ]; then
   echo "repartition: marker not found"
   exit 0
 fi
@@ -78,9 +84,15 @@ part_start=$(cat /sys/class/block/$root_part_name/start)
 part_end=$(( part_start + part_size ))
 echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
 
+# Calculate the new root partition size, assuming that it will expand to fill
+# the remainder of the disk
+new_size=$(( disk_size - part_start ))
+
+# Subtract the size of the secondary GPT header at the end of the disk
+new_size=$(( new_size - 33 ))
+
 # If we find ourselves with >100GB free space, we'll use the final 4GB as
 # a swap partition
-new_size=$(( disk_size - part_start ))
 added_space=$(( new_size - part_size ))
 if [ $added_space -gt 209715200 ]; then
   new_size=$(( new_size - 8388608 ))
@@ -95,26 +107,48 @@ if [ $added_space -gt 209715200 ]; then
   fi
 fi
 
-if [ $new_size -gt $part_size ]; then
-  # udev might still be busy probing the disk, meaning that it will be in use.
-  udevadm settle
+# udev might still be busy probing the disk, meaning that it will be in use.
+udevadm settle
 
+# take current partition table
+parts=$(sfdisk -d $root_disk)
+
+# check the last partition on the disk
+lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
+
+if [ $lastpart -eq $swap_partno ]; then
+  # already have an extra partition, perhaps we were halfway through creating
+  # a swap partition but didn't finish. Remove it to try again below.
+  parts=$(echo "$parts" | sed '$d')
+elif [ $lastpart -gt $swap_partno ]; then
+  echo "repartition: found $lastpart partitions?"
+  exit 0
+fi
+
+# remove the last-lba line so that we fill the disk
+parts=$(echo "$parts" | sed -e '/^last-lba:/d')
+
+if [ $new_size -gt $part_size ]; then
   echo "Try to resize $root_part to fill $new_size sectors"
-  echo ",$new_size,," | sfdisk --force --no-reread -N2 $root_disk
-  echo "sfdisk returned $?"
-  udevadm settle
+  parts=$(echo "$parts" | sed -e "$ s/size=[0-9\t ]*,/size=$new_size,/")
 fi
 
 if [ -n "$swap_start" ]; then
   # Create swap partition
   echo "Create swap partition at $swap_start"
-  echo "$swap_start,+,S," | sfdisk --force --no-reread -N3 $root_disk
-  echo "sfdisk returned $?"
-  udevadm settle
+  parts="$parts
+start=$swap_start, type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
 fi
+
+echo "$parts"
+echo "$parts" | sfdisk --force --no-reread $root_disk
+ret=$?
+echo "sfdisk returned $ret"
+udevadm settle
+[ "$ret" != "0" ] && exit 0
 
 [ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
 
 # Remove marker - must be done last, prevents this script from running again
-sfdisk --force --change-id $root_disk 4 0
+sfdisk --force --part-attrs $root_disk $partno ''
 udevadm settle

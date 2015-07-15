@@ -33,8 +33,8 @@ if [ -z "$extra_disk" ]; then
 fi
 
 # Check for our magic "this is Endless" marker to trigger repartitioning.
-marker=$(sfdisk -n --force --print-id $extra_disk 4)
-if [ "$marker" = "dd" ]; then
+marker=$(sfdisk --force --part-attrs $extra_disk 1)
+if [ "$marker" = "GUID:55" ]; then
     # udev might still be busy probing the disk, meaning that it will be
     # in use.
     udevadm settle
@@ -43,13 +43,11 @@ if [ "$marker" = "dd" ]; then
     extra_part_name=${extra_part#/dev/}
     part_start=$(< /sys/class/block/$extra_part_name/start)
 
+    # The partition table is recreated below, which also includes the
+    # magic 55 attribute being dropped.
     echo "Try to resize $extra_part at sector $part_start to fill $extra_disk"
-    echo "$part_start" | sfdisk --force --no-reread $extra_disk
+    echo "$part_start" | sfdisk --force --label gpt $extra_disk
     echo "sfdisk returned $?"
-
-    # Remove the marker so that repartitioning does not run again.
-    udevadm settle
-    sfdisk --force --change-id $extra_disk 4 0
 fi
 
 # Force a filesystem check then resize it to fill all available space.

@@ -13,6 +13,7 @@ install() {
   dracut_install sfdisk
   dracut_install readlink
   dracut_install mkswap
+  dracut_install sed
   inst_script "$moddir/endless-repartition.sh" /bin/endless-repartition
   inst_simple "$moddir/endless-repartition.service" \
 	"$systemdsystemunitdir/endless-repartition.service"
