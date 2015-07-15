@@ -11,10 +11,6 @@ ConditionPathIsSymbolicLink=!/endless
 After=endless-mount-dirs.service
 Wants=endless-mount-dirs.service
 
-# Ensure var-endless\x2dextra.mount is enabled on upgrades
-After=eos-enable-extra-upgrade.service
-Wants=eos-enable-extra-upgrade.service
-
 # Overlay mount dependencies. Only After is specified for
 # /var/endless-extra so that single disk units don't wait for a device
 # that doesn't exist.
