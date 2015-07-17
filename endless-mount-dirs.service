@@ -1,8 +1,8 @@
-# Ensure /var/endless and /var/endless-extra exist prior to mounting
-# /var/endless-extra or the overlay at /endless. This is required for
-# single disk unit upgrades where /var/endless-extra doesn't exist. It's
-# also good practice to ensure the mount points exist like systemd would
-# do if /endless was a non-overlayfs mount.
+# Ensure /var/endless, /var/endless-extra and /var/endless-workdir exist prior
+# to mounting /var/endless-extra or the overlay at /endless. This is required
+# for single disk unit upgrades where /var/endless-extra doesn't exist. It's
+# also good practice to ensure the mount points exist like systemd would do if
+# /endless was a non-overlayfs mount.
 #
 # This would best be done with tmpfiles.d, but that runs too late after
 # local-fs.target.
@@ -25,9 +25,10 @@ RequiresMountsFor=/var
 # Only run if the directories don't exist
 ConditionPathIsDirectory=|!/var/endless
 ConditionPathIsDirectory=|!/var/endless-extra
+ConditionPathIsDirectory=|!/var/endless-workdir
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/mkdir -p /var/endless /var/endless-extra
+ExecStart=/bin/mkdir -p /var/endless /var/endless-extra /var/endless-workdir
 ExecStart=-/bin/chown app-manager:app-manager /var/endless /var/endless-extra
