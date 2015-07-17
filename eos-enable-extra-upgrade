@@ -42,7 +42,7 @@ is_split_unit()
 # Exit if the stamp file exists. The service file checks for this, but
 # also guard against an accidental execution.
 stamp_dir=/var/lib/eos-boot-helper
-stamp_file="$stamp_dir/eos-enable-extra-compat"
+stamp_file="$stamp_dir/eos-enable-extra-upgrade"
 [ -f "$stamp_file" ] && exit 0
 
 mkdir -p "$stamp_dir"
@@ -75,3 +75,10 @@ ln -sf "$mount_unit_path" "$wants_link"
 
 # Done, create the stamp file
 touch "$stamp_file"
+
+# Reload systemd so that the new unit is seen to be enabled
+systemctl daemon-reload
+
+# Restart endless.mount so it uses the now (hopefully) mounted SD card
+systemctl start "$mount_unit"
+systemctl restart endless.mount

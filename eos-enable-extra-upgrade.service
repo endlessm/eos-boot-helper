@@ -5,22 +5,18 @@
 Description=Enable Endless extra storage mount on upgrade
 # Need DefaultDependencies=no so basic.target is not required
 DefaultDependencies=no
-Requires=-.mount
-After=-.mount
-After=local-fs-pre.target
-After=ostree-remount.service
-Before=local-fs.target
-Before=var-endless\x2dextra.mount
-Before=endless.mount
-Before=shutdown.target
-Conflicts=shutdown.target
+After=sysinit.target local-fs.target
+Before=basic.target
 
 # Skip if this has already been run
 RequiresMountsFor=/var/lib/eos-boot-helper
-ConditionPathExists=!/var/lib/eos-boot-helper/eos-enable-extra-compat
+ConditionPathExists=!/var/lib/eos-boot-helper/eos-enable-extra-upgrade
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 StandardOutput=journal+console
-ExecStart=/usr/sbin/eos-enable-extra-compat
+ExecStart=/usr/sbin/eos-enable-extra-upgrade
+
+[Install]
+WantedBy=basic.target
