@@ -29,9 +29,6 @@
 #
 # Based on code from dracut-modules-olpc.
 
-exec > /dev/kmsg
-exec 2>&1
-
 # Identify root partition device node and parent disk
 root_part=$(readlink -f /dev/disk/by-label/ostree)
 if [ -z ${root_part} ]; then
