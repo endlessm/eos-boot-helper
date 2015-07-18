@@ -142,6 +142,14 @@ echo "$parts" | sfdisk --force --no-reread $root_disk
 ret=$?
 echo "sfdisk returned $ret"
 udevadm settle
+
+# Update SPL checksum right away, minimizing the time during which it is
+# invalid
+if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
+  /usr/sbin/amlogic-fix-spl-checksum $root_disk
+  udevadm settle
+fi
+
 [ "$ret" != "0" ] && exit 0
 
 [ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
@@ -149,3 +157,9 @@ udevadm settle
 # Remove marker - must be done last, prevents this script from running again
 sfdisk --force --part-attrs $root_disk $partno ''
 udevadm settle
+
+# Final update to SPL checksum
+if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
+  /usr/sbin/amlogic-fix-spl-checksum $root_disk
+  udevadm settle
+fi
