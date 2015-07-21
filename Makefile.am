@@ -17,6 +17,9 @@ dist_systemdunit_DATA = \
 systemdunit_DATA = \
 	dev-disk-by\\x2dlabel-eos\\x2dswap.swap \
 	var-endless\\x2dextra.mount
+
+udevrulesdir=/lib/udev/rules.d
+dist_udevrules_DATA = 50-meson-vdec.rules
 endif
 
 # Needs to be outside systemd conditional or it won't be included.

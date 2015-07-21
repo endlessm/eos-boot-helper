@@ -1,0 +1,1 @@
+SUBSYSTEM=="video4linux", ATTR{name}=="meson-vdec", SYMLINK+="mfc-dec meson-vdec"
