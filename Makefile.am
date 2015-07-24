@@ -7,8 +7,6 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-extra-resize.service \
 	boot.mount \
-	endless.mount \
-	endless-mount-dirs.service \
 	eos-enable-extra-upgrade.service \
 	$(NULL)
 
