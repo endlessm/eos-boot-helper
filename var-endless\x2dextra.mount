@@ -9,4 +9,3 @@ ConditionPathIsDirectory=/var/endless-extra
 What=/dev/disk/by-label/extra
 Where=/var/endless-extra
 Type=ext4
-Options=ro
