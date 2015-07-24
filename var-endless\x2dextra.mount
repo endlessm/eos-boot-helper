@@ -3,7 +3,6 @@ After=ostree-remount.service
 After=eos-extra-resize.service
 Wants=eos-extra-resize.service
 Before=local-fs.target
-ConditionPathIsDirectory=/var/endless-extra
 
 [Mount]
 What=/dev/disk/by-label/extra
