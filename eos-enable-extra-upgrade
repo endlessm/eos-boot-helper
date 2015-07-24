@@ -39,17 +39,8 @@ is_split_unit()
     esac
 }
 
-# Exit if the stamp file exists. The service file checks for this, but
-# also guard against an accidental execution.
-stamp_dir=/var/lib/eos-boot-helper
-stamp_file="$stamp_dir/eos-enable-extra-upgrade"
-[ -f "$stamp_file" ] && exit 0
-
-mkdir -p "$stamp_dir"
-
-# Create the stamp file and exit if this is not a split unit
+# Exit if this is not a split unit
 if ! is_split_unit; then
-    touch "$stamp_file"
     echo "Not split disk unit, exiting"
     exit 0
 fi
@@ -58,7 +49,6 @@ fi
 wants_dir=/etc/systemd/system/local-fs.target.wants
 wants_link="$wants_dir/var-endless\x2dextra.mount"
 if [ -e "$wants_link" ]; then
-    touch "$stamp_file"
     echo "Mount unit already enabled or masked at $wants_link, exiting"
     exit 0
 fi
@@ -72,9 +62,6 @@ fi
 echo "Statically enabling mount unit at $wants_link"
 mkdir -p "$wants_dir"
 ln -sf "$mount_unit_path" "$wants_link"
-
-# Done, create the stamp file
-touch "$stamp_file"
 
 # Reload systemd so that the new unit is seen to be enabled
 systemctl daemon-reload
