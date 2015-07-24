@@ -79,6 +79,5 @@ touch "$stamp_file"
 # Reload systemd so that the new unit is seen to be enabled
 systemctl daemon-reload
 
-# Restart endless.mount so it uses the now (hopefully) mounted SD card
+# Start the unit now so that the SD card (hopefully) gets mounted
 systemctl start "$mount_unit"
-systemctl restart endless.mount

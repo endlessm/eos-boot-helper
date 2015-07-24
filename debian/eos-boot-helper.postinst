@@ -7,9 +7,8 @@ ln -sf /lib/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.swap" \
 	/etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
 
 # Previous versions of eos-boot-helper installed wants symlinks for some
-# of the services performing the extra storage resizing. Only the
-# local-fs.target.wants/endless.mount symlink is actually needed.
-# Cleanup the old links, trying to handle improperly escaped files, too.
+# of the services performing the extra storage resizing. Cleanup the old
+# links, trying to handle improperly escaped files, too.
 rm -rf "/etc/systemd/system/systemd-fsck@dev-disk-by\x2dlabel-extra.service.wants" \
 	/etc/systemd/system/systemd-fsck@dev-disk-byx2dlabel-extra.service.wants
 rm -f /etc/systemd/system/local-fs.target.wants/eos-extra-resize.service
