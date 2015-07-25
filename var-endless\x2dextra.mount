@@ -3,10 +3,10 @@ After=ostree-remount.service
 After=eos-extra-resize.service
 Wants=eos-extra-resize.service
 Before=local-fs.target
-ConditionPathIsDirectory=/var/endless-extra
+RequiresOverridable=systemd-fsck@dev-disk-by\x2dlabel-extra.service
+After=systemd-fsck@dev-disk-by\x2dlabel-extra.service
 
 [Mount]
 What=/dev/disk/by-label/extra
 Where=/var/endless-extra
 Type=ext4
-Options=ro

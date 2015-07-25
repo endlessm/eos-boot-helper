@@ -3,14 +3,12 @@
 
 [Unit]
 Description=Enable Endless extra storage mount on upgrade
-# Need DefaultDependencies=no so basic.target is not required
+# Need DefaultDependencies=no so sysinit.target is not required
 DefaultDependencies=no
-After=sysinit.target local-fs.target
-Before=basic.target
-
-# Skip if this has already been run
-RequiresMountsFor=/var/lib/eos-boot-helper
-ConditionPathExists=!/var/lib/eos-boot-helper/eos-enable-extra-upgrade
+Conflicts=shutdown.target
+After=local-fs.target
+Before=sysinit.target shutdown.target systemd-update-done.service
+ConditionNeedsUpdate=/etc
 
 [Service]
 Type=oneshot
