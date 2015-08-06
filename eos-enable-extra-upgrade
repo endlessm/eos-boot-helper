@@ -45,6 +45,13 @@ if ! is_split_unit; then
     exit 0
 fi
 
+# Someone may have installed the single disk image on a unit with the
+# extra SD card.
+if [ ! -f /var/eos-extra-resize ]; then
+    echo "Extra filesystem not resized, assuming single disk image, exiting"
+    exit 0
+fi
+
 # Exit if the the wants symlink is already created
 wants_dir=/etc/systemd/system/local-fs.target.wants
 wants_link="$wants_dir/var-endless\x2dextra.mount"
