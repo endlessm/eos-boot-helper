@@ -10,6 +10,9 @@ After=local-fs.target
 Before=sysinit.target shutdown.target systemd-update-done.service
 ConditionNeedsUpdate=/etc
 
+# Only run on units that have resized the extra filesystem
+ConditionPathExists=/var/eos-extra-resize
+
 [Service]
 Type=oneshot
 RemainAfterExit=yes
