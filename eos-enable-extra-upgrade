@@ -45,6 +45,18 @@ if ! is_split_unit; then
     exit 0
 fi
 
+# Previously, an overlayfs was mounted at /endless and statically
+# enabled through a symlink to its endless.mount unit. If it's now
+# dangling, clean it up.
+endless_mount_link=/etc/systemd/system/local-fs.target.wants/endless.mount
+if [ -L "$endless_mount_link" ]; then
+    endless_mount_unit=$(readlink -f "$endless_mount_link")
+    if [ ! -e "$endless_mount_unit" ]; then
+        echo "Cleaning up old symlink $endless_mount_link"
+        rm -f "$endless_mount_link"
+    fi
+fi
+
 # Someone may have installed the single disk image on a unit with the
 # extra SD card.
 if [ ! -f /var/eos-extra-resize ]; then
