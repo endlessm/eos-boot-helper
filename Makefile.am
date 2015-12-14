@@ -8,6 +8,7 @@ dist_systemdunit_DATA = \
 	eos-extra-resize.service \
 	boot.mount \
 	eos-enable-extra-upgrade.service \
+	eos-enable-zram.service \
 	$(NULL)
 
 # Unfortunately, dist chokes on the escaped \x2d, so we need to
@@ -29,4 +30,5 @@ dist_sbin_SCRIPTS = \
 	eos-firstboot \
 	eos-extra-resize \
 	eos-enable-extra-upgrade \
+	eos-enable-zram \
 	$(NULL)
