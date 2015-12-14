@@ -1,0 +1,29 @@
+#!/bin/bash -e
+# Copyright (C) 2015 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+if [ $# -lt 1 ]; then
+	echo "Error: no size supplied" >&2
+	exit 1
+fi
+
+if [ "${1:-0}" -lt 0 ]; then
+	echo "Error: invalid size $1" >&2
+	exit 1
+fi
+
+th_kb=$((1*1024*1024)) # 1GB
+ram_size_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+
+if [ "$ram_size_kb" -le "$th_kb" ]; then
+	if [ "${1:-0}" -ne 0 ]; then
+		modprobe zram
+		echo $1M > /sys/block/zram0/disksize
+		mkswap /dev/zram0
+		swapon /dev/zram0
+	else
+		swapoff /dev/zram0
+		echo 1 > /sys/block/zram0/reset
+	fi
+fi
+
