@@ -8,7 +8,7 @@
 
 # Exit if the stamp file exists. The service file checks for this, but
 # also guard against an accidental execution.
-stamp_file=/var/eos-extra-resize
+stamp_file=/var/eos-extra-resize2
 [ -e $stamp_file ] && exit 0
 
 # Identify extra partition device node and parent disk
