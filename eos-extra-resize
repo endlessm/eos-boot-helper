@@ -46,7 +46,7 @@ if [ "$marker" = "GUID:55" ]; then
     # The partition table is recreated below, which also includes the
     # magic 55 attribute being dropped.
     echo "Try to resize $extra_part at sector $part_start to fill $extra_disk"
-    echo "$part_start" | sfdisk --force --label gpt $extra_disk
+    echo "$part_start" | sfdisk --force --no-reread --label gpt $extra_disk
     echo "sfdisk returned $?"
 fi
 
