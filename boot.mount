@@ -1,12 +1,11 @@
 [Unit]
 Before=local-fs.target
-RequiresOverridable=systemd-fsck@dev-disk-by\x2dlabel-ostree\x2dboot.service
-After=systemd-fsck@dev-disk-by\x2dlabel-ostree\x2dboot.service
 
 [Mount]
-What=/dev/disk/by-label/ostree-boot
+What=/sysroot/boot
 Where=/boot
-Type=ext2
+Type=none
+Options=bind
 
 [Install]
-WantedBy=dev-disk-by\x2dlabel-ostree\x2dboot.device
+WantedBy=local-fs.target
