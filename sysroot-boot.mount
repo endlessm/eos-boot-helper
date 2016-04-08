@@ -1,0 +1,13 @@
+[Unit]
+Before=boot.mount
+Requires=systemd-fsck@dev-disk-by\x2dlabel-ostree\x2dboot.service
+After=systemd-fsck@dev-disk-by\x2dlabel-ostree\x2dboot.service
+
+[Mount]
+What=/dev/disk/by-label/ostree-boot
+Where=/sysroot/boot
+Type=ext2
+Options=nofail
+
+[Install]
+WantedBy=local-fs.target
