@@ -29,8 +29,27 @@
 #
 # Based on code from dracut-modules-olpc.
 
+# Use dracut-lib.sh for root= /proc/cmdline parsing
+. /lib/dracut-lib.sh
+
 # Identify root partition device node and parent disk
-root_part=$(readlink -f /dev/disk/by-label/ostree)
+root_arg=$(getarg root=)
+case "$root_arg" in
+  UUID=*)
+    root_part="/dev/disk/by-uuid/${root_arg#UUID=}"
+    ;;
+  LABEL=*)
+    root_part="/dev/disk/by-label/${root_arg#LABEL=}"
+    ;;
+  /dev/*)
+    root_part="$root_arg"
+    ;;
+  *)
+    echo "repartition: unrecognized root argument $root_arg"
+    exit 0
+    ;;
+esac
+root_part=$(readlink -f "$root_part")
 if [ -z ${root_part} ]; then
   echo "repartition: no root found"
   exit 0
