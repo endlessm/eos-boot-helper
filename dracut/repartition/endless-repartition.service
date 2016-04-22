@@ -7,10 +7,9 @@ Before=initrd-root-fs.target sysroot.mount
 After=dracut-pre-mount.service
 ConditionPathExists=/etc/initrd-release
 
-# wait for the root device to be ready, but avoid running at the same time
-# as fsck.
-After=dev-disk-by\x2dlabel-ostree.device
-Before=systemd-fsck@dev-disk-by\x2dlabel-ostree.service
+# Avoid running at the same time as fsck, and also use that unit's completion
+# as a synchronization point to know that the root device is ready.
+After=systemd-fsck-root.service
 
 [Service]
 Type=oneshot
