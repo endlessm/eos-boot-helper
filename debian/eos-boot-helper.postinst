@@ -18,5 +18,3 @@ rm -f "/etc/systemd/system/local-fs.target.wants/var-endless\x2dextra.mount" \
 # Ensure /endless is owned by app-manager. The permissions could be set
 # in the package, but that wouldn't fix an existing /endless directory.
 chown app-manager:app-manager /endless
-
-update-initramfs -u
