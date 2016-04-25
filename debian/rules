@@ -14,5 +14,6 @@ override_dh_systemd_start:
 override_dh_systemd_enable:
 	dh_systemd_enable eos-firstboot.service
 	dh_systemd_enable eos-enable-extra-upgrade.service
+	dh_systemd_enable sysroot-boot.mount
 	dh_systemd_enable boot.mount
 	dh_systemd_enable eos-enable-zram
