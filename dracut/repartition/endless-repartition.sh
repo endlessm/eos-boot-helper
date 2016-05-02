@@ -170,3 +170,8 @@ if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
   /usr/sbin/amlogic-fix-spl-checksum $root_disk
   udevadm settle
 fi
+
+# During the above process, the rootfs block device momentarily goes away.
+# This sometimes results in systemd cancelling various important parts
+# of the bootup procedure. Retrigger here.
+/bin/systemctl --no-block start initrd.target
