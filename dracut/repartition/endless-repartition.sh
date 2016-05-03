@@ -29,15 +29,8 @@
 #
 # Based on code from dracut-modules-olpc.
 
-root_part=$(systemctl show -p What sysroot.mount)
-root_part=${root_part#What=}
-if [ -z "${root_part}" ]; then
-  echo "repartition: couldn't identify root device"
-  exit 0
-fi
-
 # Identify root partition device node and parent disk
-root_part=$(readlink -f "${root_part}")
+root_part=$(readlink -f /dev/disk/by-label/ostree)
 if [ -z ${root_part} ]; then
   echo "repartition: no root found"
   exit 0
