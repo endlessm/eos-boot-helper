@@ -1,7 +1,8 @@
 [Unit]
 Description=swap with zram
 Before=swap.target
-ConditionArchitecture=arm
+ConditionArchitecture=|arm
+ConditionArchitecture=|arm64
 
 [Service]
 Type=oneshot
