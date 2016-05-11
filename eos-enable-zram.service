@@ -7,7 +7,6 @@ ConditionArchitecture=|arm64
 [Service]
 Type=oneshot
 RemainAfterExit=true
-
 ExecStart=/usr/sbin/eos-enable-zram 200
 ExecStop=/usr/sbin/eos-enable-zram 0
 
