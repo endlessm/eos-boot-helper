@@ -1,15 +1,15 @@
 [Unit]
 Description=EOS repartitioning
-
-# Dependencies based around dracut-pre-mount.service
-DefaultDependencies=no
-Before=initrd-root-fs.target sysroot.mount
-After=dracut-pre-mount.service
 ConditionPathExists=/etc/initrd-release
 
-# Avoid running at the same time as fsck, and also use that unit's completion
-# as a synchronization point to know that the root device is ready.
-After=systemd-fsck-root.service
+# Our position in the boot order is important. Naturally, we need to run
+# after the root device is available, before the root fs is mounted.
+# We also need to run before fsck: the repartitioning process causes the disk
+# device to be reprobed, which would otherwise cause the fsck unit to run
+# multiple times.
+DefaultDependencies=no
+Before=initrd-root-fs.target sysroot.mount systemd-fsck-root.service
+After=initrd-root-device.target dracut-pre-mount.service
 
 [Service]
 Type=oneshot
