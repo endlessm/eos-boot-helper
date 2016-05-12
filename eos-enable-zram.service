@@ -1,15 +1,14 @@
 [Unit]
 Description=swap with zram
-Before=swap.target
+Before=multi-user.target
 ConditionArchitecture=|arm
 ConditionArchitecture=|arm64
 
 [Service]
 Type=oneshot
 RemainAfterExit=true
-
 ExecStart=/usr/sbin/eos-enable-zram 200
 ExecStop=/usr/sbin/eos-enable-zram 0
 
 [Install]
-WantedBy=swap.target
+WantedBy=multi-user.target
