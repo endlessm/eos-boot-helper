@@ -1,0 +1,12 @@
+[Unit]
+Description=EOS robustness
+ConditionPathExists=/etc/initrd-release
+
+DefaultDependencies=no
+Before=dracut-pre-pivot.service
+After=initrd-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/endless-robustness
+RemainAfterExit=yes
