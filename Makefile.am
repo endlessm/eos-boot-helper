@@ -6,7 +6,6 @@ systemdunitdir=/lib/systemd/system
 dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-extra-resize.service \
-	boot.mount \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	$(NULL)
