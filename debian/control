@@ -2,7 +2,7 @@ Source: eos-boot-helper
 Section: admin
 Priority: optional
 Maintainer: Daniel Drake <drake@endlessm.com>
-Build-Depends: debhelper (>= 8), dh-systemd
+Build-Depends: debhelper (>= 8), dh-systemd, automake
 Standards-Version: 3.9.1
 Homepage: https://endlessm.com
 
