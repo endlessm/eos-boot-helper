@@ -1,6 +1,5 @@
 [Unit]
 ConditionKernelCommandLine=|ostree
-ConditionPathIsMountPoint=|/sysroot/boot
 
 [Mount]
 What=/sysroot/boot
