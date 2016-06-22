@@ -2,7 +2,20 @@
 # Copyright (C) 2014 Endless Mobile, Inc.
 # Licensed under the GPLv2
 
-resize2fs "$(findmnt -rvnf -o SOURCE /)"
+root_part=$(findmnt -rvnf -o SOURCE /)
+
+resize2fs "${root_part}"
+
+# Randomize UUID for the root filesystem
+#   uninit_bg checksums depend on the UUID, this prohibits changes to
+#   the UUID if a checksumming filesystem is mounted. Temporarly disable
+#   the feature before changing the UUID
+tune2fs -O ^uninit_bg ${root_part}
+tune2fs -U random ${root_part}
+tune2fs -O +uninit_bg ${root_part}
+
+# Print for debugging
+blkid
 
 > /var/eos-booted
 exit 0
