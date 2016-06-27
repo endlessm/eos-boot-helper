@@ -1,0 +1,8 @@
+[Unit]
+Description=Endless Set Good Root D-Bus service
+
+[Service]
+Type=dbus
+BusName=com.endlessm.SetGoodRoot
+ExecStart=/usr/sbin/eos-setgoodroot
+TimeoutStartSec=infinity

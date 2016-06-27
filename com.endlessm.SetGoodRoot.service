@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=com.endlessm.SetGoodRoot
+Exec=/usr/sbin/eos-setgoodroot
+User=root
+SystemdService=eos-setgoodroot.service

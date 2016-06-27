@@ -8,6 +8,7 @@ dist_systemdunit_DATA = \
 	eos-extra-resize.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
+	eos-setgoodroot.service \
 	$(NULL)
 
 # Unfortunately, dist chokes on the escaped \x2d, so we need to
@@ -18,6 +19,9 @@ systemdunit_DATA = \
 
 udevrulesdir=/lib/udev/rules.d
 dist_udevrules_DATA = 50-meson-vdec.rules
+
+dbussystemservicedir=/usr/share/dbus-1/system-services
+dist_dbussystemservice_DATA = com.endlessm.SetGoodRoot.service
 endif
 
 # Needs to be outside systemd conditional or it won't be included.
@@ -30,4 +34,8 @@ dist_sbin_SCRIPTS = \
 	eos-extra-resize \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
+	eos-setgoodroot \
 	$(NULL)
+
+autostartdir = $(sysconfdir)/xdg/autostart
+dist_autostart_DATA = com.endlessm.SetGoodRoot.desktop

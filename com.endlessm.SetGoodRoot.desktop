@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Set Good Root
+Exec=dbus-send --system --type=method_call --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.StartServiceByName string:"com.endlessm.SetGoodRoot" uint32:0
+Type=Application
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

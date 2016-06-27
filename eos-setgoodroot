@@ -1,0 +1,49 @@
+#!/bin/sh
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# The purpose of this script is mark a booted update as successful and clean up
+# failed boots.
+
+set -e
+
+extensions_path="/sysroot/ostree/repo/extensions/eos"
+deployment_regex='eos [[:alnum:]]{64}\.[[:digit:]]'
+
+booted_hash=$(ostree admin status | grep -E "[*] ${deployment_regex}" | cut -d' ' -f3 | cut -d. -f1)
+
+boot_flags_path="${extensions_path}/boot-flags/${booted_hash}"
+
+# XXX maybe just remove flags file? It will make the system boot anyway
+if [ -f "${boot_flags_path}" ]; then
+    echo "Setting current booted deployment as good"
+    cat <<EOF > "${boot_flags_path}"
+[boot-flags]
+successful=1
+tries_left=0
+EOF
+fi
+
+rolledback_path="${extensions_path}/rolled-back"
+
+if [ -f "${rolledback_path}" ]; then
+    echo "Detected roll back, undeploying bogus deployment if necessary"
+    hash_to_undeploy="$(cat ${rolledback_path})"
+    i=0
+    for depl in "$(ostree admin status | grep -E "[*| ] ${deployment_regex}")"; do
+        if [ $(echo "${depl}" | grep -c ${hash_to_undeploy}) -gt 0 ]; then
+            idx=${i}
+            break
+        fi
+        i=$((i + 1))
+    done
+
+    if [ -n "${idx}" ]; then
+        ostree admin undeploy ${idx}
+        rm -f "${extensions_path}/boot-flags/${hash_to_undeploy}"
+        rm -rf "${extensions_path}/tmp"
+    fi
+
+    # Remove roll-back file? Probably other tool should warn the user and
+    # remove it if appropriate.
+fi
