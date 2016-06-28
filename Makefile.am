@@ -13,7 +13,6 @@ dist_systemdunit_DATA = \
 # Unfortunately, dist chokes on the escaped \x2d, so we need to
 # split this out into EXTRA_DIST unescaped.
 systemdunit_DATA = \
-	dev-disk-by\\x2dlabel-eos\\x2dswap.swap \
 	var-endless\\x2dextra.mount
 
 udevrulesdir=/lib/udev/rules.d
@@ -22,7 +21,6 @@ endif
 
 # Needs to be outside systemd conditional or it won't be included.
 EXTRA_DIST += \
-	dev-disk-by\x2dlabel-eos\x2dswap.swap \
 	var-endless\x2dextra.mount
 
 dist_sbin_SCRIPTS = \

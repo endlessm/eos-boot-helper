@@ -1,24 +1,14 @@
 #DEBHELPER#
 
-# dh-systemd and systemctl-204 both get escaping wrong when enabling this
-# unit, so we do it manually
-mkdir -p /etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
-ln -sf /lib/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.swap" \
-	/etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
-
-# Previous versions of eos-boot-helper installed wants symlinks for some
-# of the services performing the extra storage resizing. Cleanup the old
-# links, trying to handle improperly escaped files, too.
+# Cleanup old wants symlinks for services we don't ship anymore
 rm -rf "/etc/systemd/system/systemd-fsck@dev-disk-by\x2dlabel-extra.service.wants" \
 	/etc/systemd/system/systemd-fsck@dev-disk-byx2dlabel-extra.service.wants
 rm -f /etc/systemd/system/local-fs.target.wants/eos-extra-resize.service
 rm -f "/etc/systemd/system/local-fs.target.wants/var-endless\x2dextra.mount" \
 	/etc/systemd/system/local-fs.target.wants/var-endlessx2dextra.mount
-
-# Remove wants symlinks for sysroot-boot.mount and boot.mount, which we do not
-# ship anymore
 rm -f /etc/systemd/system/local-fs.target.wants/sysroot-boot.mount
 rm -f /etc/systemd/system/local-fs.target.wants/boot.mount
+rm -f /etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
 
 # Ensure /endless is owned by app-manager. The permissions could be set
 # in the package, but that wouldn't fix an existing /endless directory.
