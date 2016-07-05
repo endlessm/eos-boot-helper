@@ -1,0 +1,58 @@
+#!/bin/sh
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# Support booting from an image file hosted on a filesystem.
+# We identify which disk blocks correspond to the image file, and create
+# a dm-linear block device mapping them.
+
+type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+
+host_device=$(cat /var/tmp/endless-image-host)
+image_path=$(getarg endless.image.path)
+
+blockdev --setro ${host_device}
+
+if getargbool 0 endless.live_boot; then
+  dm_roflag=--readonly
+  kpartx_roflag=-r
+fi
+
+# Identify the EOS image extents on the host device, and create a dm-linear
+# block device that maps exactly to that.
+extents=$(dumpexfat -f "${image_path}" "${host_device}")
+if [ $? != 0 ]; then
+  echo "image-boot: failed to lookup image on device"
+  exit 1
+fi
+
+offset=0
+echo "$extents" | while read extent_offset extent_size; do
+  [ -z "${extent_offset}" -o -z "${extent_size}" ] && continue
+  # Convert bytes to sectors, rounding up
+  if [ $(( extent_size % 512 )) != 0 ]; then
+    echo "image-boot: extent size $extent_size not sector-aligned" >&2
+    exit 1
+  fi
+  extent_size=$(( extent_size / 512 ))
+  extent_offset=$(( extent_offset / 512 ))
+  echo "${offset} ${extent_size} linear ${host_device} $extent_offset"
+  offset=$((offset + extent_size))
+done > /tmp/dmtable
+
+if [ $? != 0 ]; then
+  exit 1
+fi
+
+dmsetup create endless-image $dm_roflag < /tmp/dmtable
+if [ $? != 0 ]; then
+  echo "image-boot: failed to set up linear mapping"
+  exit 1
+fi
+
+if ! kpartx $kpartx_roflag -a -v /dev/mapper/endless-image; then
+  echo "image-boot: failed to probe partitions"
+  exit 1
+fi
+
+exit 0

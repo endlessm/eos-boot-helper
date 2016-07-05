@@ -1,0 +1,86 @@
+#!/bin/sh
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# Support booting from an image file hosted on a filesystem.
+# We parse the kernel parameters requesting this functionality and configure
+# other systemd units to go about setting up the block devices and mounting
+# the target filesystem.
+
+type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+
+GENERATOR_DIR="$1"
+
+image_device=$(getarg endless.image.device=)
+image_path=$(getarg endless.image.path=)
+
+[ -z "${image_device}" -o -z "${image_path}" ] && exit 0
+
+case "${image_device}" in
+PARTUUID=*)
+  image_device=/dev/disk/by-partuuid/${image_device#PARTUUID=}
+  ;;
+UUID=*)
+  image_device=/dev/disk/by-uuid/${image_device#UUID=}
+  ;;
+esac
+
+image_device_escaped=$(systemd-escape -p "${image_device}")
+
+# For convenience so that other scripts don't have to parse the cmdline again
+echo "${image_device}" > /var/tmp/endless-image-host
+
+# When the image device appears, run the setup
+mkdir -p ${GENERATOR_DIR}/initrd-fs.target.wants
+ln -s /lib/systemd/system/eos-image-boot-setup.service \
+	${GENERATOR_DIR}/initrd-fs.target.wants
+mkdir -p ${GENERATOR_DIR}/eos-image-boot-setup.service.d
+cat <<EOF >${GENERATOR_DIR}/eos-image-boot-setup.service.d/50-device.conf
+[Unit]
+Requires=${image_device_escaped}.device
+After=${image_device_escaped}.device
+EOF
+
+if getargbool 0 endless.live_boot; then
+  rwflag=ro
+else
+  rwflag=rw
+fi
+
+# Once the actual EOS device has appeared, use the normal infrastructure
+# to fsck and mount it.
+cat <<EOF >${GENERATOR_DIR}/sysroot.mount
+[Unit]
+Before=initrd-root-fs.target
+Requires=systemd-fsck-root.service
+After=systemd-fsck-root.service
+[Mount]
+What=/dev/mapper/endless-image3
+Where=/sysroot
+Options=$rwflag
+EOF
+
+cat <<EOF >${GENERATOR_DIR}/systemd-fsck-root.service
+[Unit]
+DefaultDependencies=no
+BindsTo=dev-mapper-endless\x2dimage3.device
+After=initrd-root-device.target local-fs-pre.target
+Before=shutdown.target
+ConditionKernelCommandLine=!endless.live_boot
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/lib/systemd/systemd-fsck /dev/mapper/endless-image3
+TimeoutSec=0
+EOF
+
+mkdir -p ${GENERATOR_DIR}/initrd-root-device.target.d
+cat <<EOF >${GENERATOR_DIR}/initrd-root-device.target.d/50-device.conf
+[Unit]
+Requires=dev-mapper-endless\x2dimage3.device
+After=dev-mapper-endless\x2dimage3.device
+EOF
+
+mkdir -p ${GENERATOR_DIR}/initrd-root-fs.target.requires
+ln -s ${GENERATOR_DIR}/sysroot.mount \
+	${GENERATOR_DIR}/initrd-root-fs.target.requires

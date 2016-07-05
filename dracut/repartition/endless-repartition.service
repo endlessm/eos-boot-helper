@@ -1,6 +1,7 @@
 [Unit]
 Description=EOS repartitioning
 ConditionPathExists=/etc/initrd-release
+ConditionKernelCommandLine=!endless.live_boot
 
 # Our position in the boot order is important. Naturally, we need to run
 # after the root device is available, before the root fs is mounted.

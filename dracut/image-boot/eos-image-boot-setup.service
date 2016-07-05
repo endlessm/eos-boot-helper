@@ -1,0 +1,11 @@
+# This unit is dynamically enabled by endless-image-boot-generator
+[Unit]
+Description=EndlessOS image boot filesystem setup
+DefaultDependencies=no
+Before=initrd-switch-root.target initrd-fs.target
+ConditionKernelCommandLine=endless.image.device
+
+[Service]
+Type=oneshot
+ExecStart=/bin/eos-image-boot-setup
+RemainAfterExit=yes

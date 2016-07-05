@@ -1,0 +1,13 @@
+[Unit]
+Description=Endless live boot overlayfs setup
+DefaultDependencies=no
+After=ostree-remount.service
+Before=local-fs.target
+ConditionKernelCommandLine=endless.live_boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-live-boot-overlayfs-setup
+
+[Install]
+WantedBy=local-fs.target

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Mount overlays over any directory that might be written to
+# Note that /etc was handled in the initramfs since it must be done early.
+# The rest of these should be done later, to avoid fighting with ostree-remount
+overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot var"
+for dir in $overlay_dirs; do
+    [ -d /$dir ] || continue
+    # If the directory is a symlink, assume it's pointing to a location
+    # covered by another top level overlay
+    [ -L /$dir ] && continue
+    mkdir -p /run/eos-live/$dir /run/eos-live/$dir-workdir
+    mount -t overlay -o \
+        rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
+        eos-live-$dir /$dir
+done
+
+# Disable the updater for this boot
+systemctl stop eos-updater.timer
+systemctl mask --runtime eos-updater.timer
