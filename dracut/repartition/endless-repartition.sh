@@ -29,15 +29,15 @@
 #
 # Based on code from dracut-modules-olpc.
 
-root_part=$(systemctl show -p What sysroot.mount)
-root_part=${root_part#What=}
-if [ -z "${root_part}" ]; then
+orig_root_part=$(systemctl show -p What sysroot.mount)
+orig_root_part=${orig_root_part#What=}
+if [ -z "${orig_root_part}" ]; then
   echo "repartition: couldn't identify root device"
   exit 0
 fi
 
 # Identify root partition device node and parent disk
-root_part=$(readlink -f "${root_part}")
+root_part=$(readlink -f "${orig_root_part}")
 if [ -z ${root_part} ]; then
   echo "repartition: no root found"
   exit 0
@@ -168,6 +168,26 @@ fi
 # filesystem is mounted.
 tune2fs -U random $root_part
 udevadm settle
+
+# Now that we changed the UUID, the auto-generated units based on the
+# kernel cmdline root= parameter are wrong. It's easy to override
+# sysroot.mount here
+mkdir -p /etc/systemd/system/sysroot.mount.d
+cat <<EOF > /etc/systemd/system/sysroot.mount.d/50-newuuid.conf
+[Mount]
+What=$root_part
+EOF
+
+# systemd-fsck-root can't be fixed as above, because there's no way
+# for a drop-in to fix the existing BindsTo= entry (a drop-in can only
+# append another value). So we override the whole unit.
+sed -e "s:$orig_root_part:$root_part:" \
+  -e "s:$(systemd-escape $orig_root_part):$(systemd-escape $root_part):" \
+  /run/systemd/generator/systemd-fsck-root.service \
+  > /etc/systemd/system/systemd-fsck-root.service
+
+# Make systemd aware of the unit file changes
+/bin/systemctl daemon-reload
 
 # Remove marker - must be done last, prevents this script from running again
 sfdisk --force --part-attrs $root_disk $partno ''
