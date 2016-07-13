@@ -73,9 +73,18 @@ if [ -z "${root_disk}" ]; then
   exit 0
 fi
 
+pt_label=$(blkid -o value -s PTTYPE $root_disk)
+
 # Check for our magic "this is Endless" marker
-marker=$(sfdisk --force --part-attrs $root_disk $partno)
-if [ "$marker" != "GUID:55" ]; then
+if [ "$pt_label" = "dos" ]; then
+  marker=$(sfdisk --force --part-type $root_disk 4)
+  swap_type="82"
+else
+  marker=$(sfdisk --force --part-attrs $root_disk $partno)
+  swap_type="0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
+fi
+
+if [ "$marker" != "dd" ] && [ "$marker" != "GUID:55" ]; then
   echo "repartition: marker not found"
   exit 0
 fi
@@ -92,8 +101,10 @@ echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
 # the remainder of the disk
 new_size=$(( disk_size - part_start ))
 
-# Subtract the size of the secondary GPT header at the end of the disk
-new_size=$(( new_size - 33 ))
+if [ "$pt_label" = "gpt" ]; then
+  # Subtract the size of the secondary GPT header at the end of the disk
+  new_size=$(( new_size - 33 ))
+fi
 
 # If we find ourselves with >100GB free space, we'll use the final 4GB as
 # a swap partition
@@ -116,6 +127,11 @@ udevadm settle
 
 # take current partition table
 parts=$(sfdisk -d $root_disk)
+
+# if MBR avoid considering the magic marker partition (the last one)
+if [ "$pt_label" = "dos" ]; then
+  parts=$(echo "$parts" | sed -e '$d')
+fi
 
 # check the last partition on the disk
 lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
@@ -143,7 +159,7 @@ if [ -n "$swap_start" ]; then
   # Create swap partition
   echo "Create swap partition at $swap_start"
   parts="$parts
-start=$swap_start, type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
+start=$swap_start, type=$swap_type"
 fi
 
 echo "$parts"
@@ -170,7 +186,9 @@ tune2fs -U random $root_part
 udevadm settle
 
 # Remove marker - must be done last, prevents this script from running again
-sfdisk --force --part-attrs $root_disk $partno ''
+if [ "$pt_label" = "gpt" ]; then
+  sfdisk --force --part-attrs $root_disk $partno ''
+fi
 udevadm settle
 
 # Final update to SPL checksum

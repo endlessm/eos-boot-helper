@@ -32,9 +32,16 @@ if [ -z "$extra_disk" ]; then
     exit 0
 fi
 
+pt_label=$(blkid -o value -s PTTYPE $extra_disk)
+
+if [ "$pt_label" = "gpt" ]; then
+  marker=$(sfdisk --force --part-attrs $extra_disk 1)
+else
+  marker=$(sfdisk --force --part-type $extra_disk 4)
+fi
+
 # Check for our magic "this is Endless" marker to trigger repartitioning.
-marker=$(sfdisk --force --part-attrs $extra_disk 1)
-if [ "$marker" = "GUID:55" ]; then
+if [ "$marker" = "GUID:55" ] || [ "$marker" = "dd" ]; then
     # udev might still be busy probing the disk, meaning that it will be
     # in use.
     udevadm settle
@@ -43,10 +50,15 @@ if [ "$marker" = "GUID:55" ]; then
     extra_part_name=${extra_part#/dev/}
     part_start=$(< /sys/class/block/$extra_part_name/start)
 
-    # The partition table is recreated below, which also includes the
-    # magic 55 attribute being dropped.
+    # The partition table is recreated below
     echo "Try to resize $extra_part at sector $part_start to fill $extra_disk"
-    echo "$part_start" | sfdisk --force --no-reread --label gpt $extra_disk
+    echo "$part_start" | sfdisk --force --no-reread --label $pt_label $extra_disk
+
+    if [ "$pt_label" = "dos" ]; then
+      udevadm settle
+      # Remove the marker so that repartitioning does not run again (needed?)
+      printf "\x00" | dd of=$extra_disk bs=1 count=1 seek=498 conv=notrunc
+    fi
     echo "sfdisk returned $?"
 fi
 
