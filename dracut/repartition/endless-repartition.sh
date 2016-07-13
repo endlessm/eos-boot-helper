@@ -163,6 +163,12 @@ fi
 
 [ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
 
+# Randomize root filesystem UUID
+# uninit_bg functionality prevents us from doing this later when the
+# filesystem is mounted.
+tune2fs -U random $root_part
+udevadm settle
+
 # Remove marker - must be done last, prevents this script from running again
 sfdisk --force --part-attrs $root_disk $partno ''
 udevadm settle
