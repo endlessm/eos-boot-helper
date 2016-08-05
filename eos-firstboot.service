@@ -6,6 +6,7 @@ DefaultDependencies=no
 After=sysinit.target local-fs.target
 Before=basic.target
 ConditionPathExists=!/var/eos-booted
+ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
 Type=oneshot

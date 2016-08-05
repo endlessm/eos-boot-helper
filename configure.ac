@@ -11,5 +11,6 @@ AM_CONDITIONAL(ENABLE_SYSTEMD, [test "$enable_systemd" = yes])
 AC_CONFIG_FILES([
 	Makefile
 	dracut/Makefile
+	dracut/image-boot/Makefile
 	dracut/repartition/Makefile])
 AC_OUTPUT

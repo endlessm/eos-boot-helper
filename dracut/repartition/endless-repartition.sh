@@ -68,6 +68,14 @@ case ${root_part} in
     ;;
 esac
 
+case ${orig_root_part} in
+  /dev/mapper/endless-image?)
+    root_disk=${orig_root_part%?}
+    swap_part=${root_disk}${swap_partno}
+    using_device_mapper=1
+    ;;
+esac
+
 if [ -z "${root_disk}" ]; then
   echo "repartition: no root disk found for $root_part"
   exit 0
@@ -80,11 +88,28 @@ if [ "$marker" != "GUID:55" ]; then
   exit 0
 fi
 
-root_disk_name=${root_disk#/dev/}
-root_part_name=${root_part#/dev/}
-disk_size=$(cat /sys/class/block/$root_disk_name/size)
-part_size=$(cat /sys/class/block/$root_part_name/size)
-part_start=$(cat /sys/class/block/$root_part_name/start)
+# udev might still be busy probing the disk, meaning that it will be in use.
+udevadm settle
+
+# take current partition table
+parts=$(sfdisk -d $root_disk)
+
+# check the last partition on the disk
+lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
+
+if [ $lastpart -eq $swap_partno ]; then
+  # already have an extra partition, perhaps we were halfway through creating
+  # a swap partition but didn't finish. Remove it to try again below.
+  parts=$(echo "$parts" | sed '$d')
+elif [ $lastpart -gt $swap_partno ]; then
+  echo "repartition: found $lastpart partitions?"
+  exit 0
+fi
+
+# calculate new partition sizes
+disk_size=$(blockdev --getsz $root_disk)
+part_size=$(blockdev --getsz $root_part)
+part_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]\+\([0-9]\+\).*$/\1/p')
 part_end=$(( part_start + part_size ))
 echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
 
@@ -109,24 +134,6 @@ if [ $added_space -gt 209715200 ]; then
     # might as well bump up root partition size too, instead of leaving a gap
     new_size=$(( new_size + 2048 - residue ))
   fi
-fi
-
-# udev might still be busy probing the disk, meaning that it will be in use.
-udevadm settle
-
-# take current partition table
-parts=$(sfdisk -d $root_disk)
-
-# check the last partition on the disk
-lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
-
-if [ $lastpart -eq $swap_partno ]; then
-  # already have an extra partition, perhaps we were halfway through creating
-  # a swap partition but didn't finish. Remove it to try again below.
-  parts=$(echo "$parts" | sed '$d')
-elif [ $lastpart -gt $swap_partno ]; then
-  echo "repartition: found $lastpart partitions?"
-  exit 0
 fi
 
 # remove the last-lba line so that we fill the disk
@@ -160,6 +167,12 @@ if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
 fi
 
 [ "$ret" != "0" ] && exit 0
+
+# Device-mapper needs an extra prod to update the block devices
+if [ -n "$using_device_mapper" ]; then
+  kpartx -u $root_disk
+  udevadm settle
+fi
 
 [ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
 
