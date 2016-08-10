@@ -10,7 +10,7 @@ depends() {
 }
 
 install() {
-  dracut_install blockdev kpartx dmsetup dumpexfat
+  dracut_install blockdev kpartx dmsetup dumpexfat ntfsextents lsblk
   instmods overlay
   inst_rules 55-dm.rules
   inst_script "$moddir"/eos-image-boot-setup /bin/eos-image-boot-setup

@@ -18,9 +18,27 @@ if getargbool 0 endless.live_boot; then
   kpartx_roflag=-r
 fi
 
+fstype=$(lsblk --noheadings -o FSTYPE "${host_device}")
+if [ $? != 0 ]; then
+  echo "image-boot: failed to detect filesystem type"
+  exit 1
+fi
+
 # Identify the EOS image extents on the host device, and create a dm-linear
 # block device that maps exactly to that.
-extents=$(dumpexfat -f "${image_path}" "${host_device}")
+
+case "${fstype}" in
+exfat)
+  extents=$(dumpexfat -f "${image_path}" "${host_device}")
+  ;;
+ntfs)
+  extents=$(ntfsextents "${host_device}" "${image_path}")
+  ;;
+*)
+  echo "image-boot: unsupported filesystem ${fstype}"
+  exit 1
+esac
+
 if [ $? != 0 ]; then
   echo "image-boot: failed to lookup image on device"
   exit 1
