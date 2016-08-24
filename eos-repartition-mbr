@@ -8,12 +8,15 @@ if [ $# -lt 1 ]; then
 	exit 1
 fi
 
-root_part=$1
-root_partno=${root_part: -1}
-root_disk=${root_part%?}
+root_part="$1"
+root_partno="${root_part: -1}"
+root_part_base="${root_part:: -1}"
+eval $(lsblk -o PKNAME,PARTTYPE "${root_part}" --paths --pairs --nodeps)
+root_disk="$PKNAME"
+root_guid="$PARTTYPE"
 
 swap_partno=$((root_partno + 1))
-swap_part=${root_disk}${swap_partno}
+swap_part="${root_part_base}${swap_partno}"
 
 # check if we passed the full device file path
 if [ "${root_part//dev/}" = "${root_part}" ]; then
@@ -41,13 +44,9 @@ udevadm settle
 # take current partition table
 parts=$(sfdisk -d $root_disk)
 
-# take the root partition type GUID
-root_part_dev=${root_part#/dev/}
-root_guid=$(echo "$parts" | sed -n -e "s/.*$root_part_dev.*type=\([A-Z0-9-]*\).*/\1/p")
-
 # check against the DiscoverablePartitionsSpec partition type UUIDs
 dps_root_guid="4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709"
-if [ "$root_guid" != "$dps_root_guid" ]; then
+if [ "${root_guid^^}" != "${dps_root_guid^^}" ]; then
 	echo "$0: $root_part doesn't have the correct GUID (read $root_guid)"
 	exit 1
 fi
@@ -68,17 +67,12 @@ find_and_remove_partition() {
 	local name=${1:?No name supplied to ${FUNCNAME}}
 	local guid=${2:?No GUID supplied to ${FUNCNAME}}
 
-	local partno=$(echo "$parts" | sed -n -e "s/[^:]*\([0-9]\) :.*$guid.*/\1/p")
-
-	if [ -z "${partno}" ]; then
+	if ! echo "$parts" | grep -q "$guid"; then
 		echo "$0: $name not found"
 		exit 1
 	fi
 
-	local part=${root_disk}${partno}
-	local part_dev=${part#/dev/}
-
-	parts=$(echo "$parts" | sed -e "/$part_dev/d")
+	parts=$(echo "$parts" | grep -v "$guid")
 }
 
 find_and_remove_partition "ESP" "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
@@ -125,23 +119,25 @@ fi
 
 # Reset partition indexes
 root_disk_dev=${root_disk#/dev/}
-parts=$(echo "$parts" | sed -e "s/${root_disk_dev}.//")
+parts=$(echo "$parts" | sed -e "s/${root_disk_dev}[^: ]\+//")
 
 # GPT -> DOS
 parts=$(echo "$parts" | sed -e "s/label: gpt/label: dos/")
 
 # Set MBR partition type
 parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83/")
-# Remove partition UUIDs
-parts=$(echo "$parts" | sed -e "s/, uuid=\S\+//g")
+# Remove partition UUIDs and GPT attributes
+parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
 
 echo "$parts"
 echo "$parts" | sfdisk --force --no-reread $root_disk
 udevadm settle
+partprobe "${root_disk}"
+udevadm settle
 
 # mkswap with the new partition index
 swap_partno=$((swap_partno - 2))
-swap_part=${root_disk}${swap_partno}
+swap_part=${root_part_base}${swap_partno}
 [ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
 
 # Remove GPT headers. It's a little tricky to work out where the backup one is
@@ -163,9 +159,10 @@ udevadm settle
 
 # Restore bootloader
 root_mountpoint=$(mktemp -d)
-mount ${root_disk}$((root_partno - 2)) ${root_mountpoint}
+mount "${root_part_base}$((root_partno - 2))" ${root_mountpoint}
 dd if=${root_mountpoint}/boot/grub/i386-pc/boot.img of=${root_disk} bs=446 count=1 conv=fsync
 udevadm settle
 dd if=${root_mountpoint}/boot/grub/i386-pc/core.img of=${root_disk} bs=512 seek=1 conv=fsync
 udevadm settle
 umount ${root_mountpoint}
+rmdir ${root_mountpoint}
