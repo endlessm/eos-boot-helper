@@ -30,4 +30,5 @@ dist_sbin_SCRIPTS = \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-live-boot-overlayfs-setup \
+	eos-repartition-mbr \
 	$(NULL)
