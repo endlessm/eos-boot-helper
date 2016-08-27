@@ -11,10 +11,15 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	$(NULL)
 
-# Unfortunately, dist chokes on the escaped \x2d, so we need to
-# split this out into EXTRA_DIST unescaped.
-systemdunit_DATA = \
-	var-endless\\x2dextra.mount
+# Unfortunately, the escaped \x2d is handled poorly, so we distribute
+# this unit under another name and install it by hand.
+install-data-hook:
+	$(MKDIR_P) '$(DESTDIR)$(systemdunitdir)'
+	$(INSTALL_DATA) $(srcdir)/var-endless_x2dextra.mount \
+	  '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
+
+uninstall-hook:
+	rm -f '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 
 udevrulesdir=/lib/udev/rules.d
 dist_udevrules_DATA = 50-meson-vdec.rules
@@ -22,7 +27,7 @@ endif
 
 # Needs to be outside systemd conditional or it won't be included.
 EXTRA_DIST += \
-	var-endless\x2dextra.mount
+	var-endless_x2dextra.mount
 
 dist_sbin_SCRIPTS = \
 	eos-firstboot \
