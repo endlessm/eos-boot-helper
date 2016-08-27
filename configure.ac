@@ -4,7 +4,8 @@ AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([eos-firstboot])
 
 AC_ARG_ENABLE([systemd],
-	[systemd integration],
+	AS_HELP_STRING([--enable-systemd],
+		[Enable systemd integration]),
 	enable_systemd=$enableval, enable_systemd=no)
 AM_CONDITIONAL(ENABLE_SYSTEMD, [test "$enable_systemd" = yes])
 
