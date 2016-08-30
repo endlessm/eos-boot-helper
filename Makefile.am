@@ -1,8 +1,12 @@
 SUBDIRS = dracut
 EXTRA_DIST = debian
 
-if ENABLE_SYSTEMD
-systemdunitdir=/lib/systemd/system
+# Install systemd units and udev rules under $prefix for distcheck
+AM_DISTCHECK_CONFIGURE_FLAGS = \
+	--with-systemdunitdir='$${prefix}/lib/systemd/systemd' \
+	--with-udevdir='$${prefix}/lib/udev' \
+	$(NULL)
+
 dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-extra-resize.service \
@@ -13,6 +17,9 @@ dist_systemdunit_DATA = \
 
 # Unfortunately, the escaped \x2d is handled poorly, so we distribute
 # this unit under another name and install it by hand.
+EXTRA_DIST += \
+	var-endless_x2dextra.mount
+
 install-data-hook:
 	$(MKDIR_P) '$(DESTDIR)$(systemdunitdir)'
 	$(INSTALL_DATA) $(srcdir)/var-endless_x2dextra.mount \
@@ -21,13 +28,8 @@ install-data-hook:
 uninstall-hook:
 	rm -f '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 
-udevrulesdir=/lib/udev/rules.d
+udevrulesdir = $(udevdir)/rules.d
 dist_udevrules_DATA = 50-meson-vdec.rules
-endif
-
-# Needs to be outside systemd conditional or it won't be included.
-EXTRA_DIST += \
-	var-endless_x2dextra.mount
 
 dist_sbin_SCRIPTS = \
 	eos-firstboot \
