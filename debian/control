@@ -2,11 +2,19 @@ Source: eos-boot-helper
 Section: admin
 Priority: optional
 Maintainer: Daniel Drake <drake@endlessm.com>
-Build-Depends: debhelper (>= 8), dh-systemd, automake
+Build-Depends: automake,
+               debhelper (>= 8),
+               dh-systemd,
+               pkg-config,
+               systemd,
+               udev,
 Standards-Version: 3.9.1
 Homepage: https://endlessm.com
 
 Package: eos-boot-helper
 Architecture: any
 Description: Endless boot helper
-Depends: ${misc:Depends}, dracut, xinit, xterm
+Depends: ${misc:Depends},
+         dracut,
+         xinit,
+         xterm,
