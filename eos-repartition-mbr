@@ -4,37 +4,28 @@
 
 # arguments checking
 if [ $# -lt 1 ]; then
-	echo "Usage: $0 <EOS partition>"
-	exit 1
+  echo "Usage: $0 <EOS device>" >&2
+  exit 1
 fi
 
-root_part="$1"
-root_partno="${root_part: -1}"
-root_part_base="${root_part:: -1}"
-eval $(lsblk -o PKNAME,PARTTYPE "${root_part}" --paths --pairs --nodeps)
-root_disk="$PKNAME"
-root_guid="$PARTTYPE"
-
-swap_partno=$((root_partno + 1))
-swap_part="${root_part_base}${swap_partno}"
+root_disk="$1"
 
 # check if we passed the full device file path
-if [ "${root_part//dev/}" = "${root_part}" ]; then
-	echo "$0: Specify the full path for the root device file (i.e. /dev/sda3)"
-	exit 1
+if [ "${root_disk//dev/}" = "${root_disk}" ]; then
+  echo "$0: Specify the full path for the root device file (i.e. /dev/sda)" >&2
+  exit 1
 fi
 
-# check if we passed the device file for the partition and not for the disk
-case ${root_partno} in
-	*[!0-9]* )
-		echo "$0: Specify the root partition (i.e. /dev/sda3)"
-		exit 1
-		;;
-esac
+# check if the root disk exists
+if [ ! -e "$root_disk" ]; then
+  echo "$0: $root_disk doesn't exist" >&2
+  exit 1
+fi
 
-# check if the root partition does exist (if it exists we assume $root_disk does exist too)
-if [ ! -e "${root_part}" ]; then
-  echo "$0: $root_part doesn't exist"
+# check it's a disk (not a partition or non-block device)
+type="$(lsblk -o type --nodeps --noheadings "$root_disk")"
+if [ "$type" != "disk" ]; then
+  echo "$0: $root_disk isn't a disk, but a $type" >&2
   exit 1
 fi
 
@@ -44,12 +35,37 @@ udevadm settle
 # take current partition table
 parts=$(sfdisk -d $root_disk)
 
-# check against the DiscoverablePartitionsSpec partition type UUIDs
+find_partition_device() {
+  local name=${1:?No name supplied to ${FUNCNAME}}
+  local guid=${2:?No GUID supplied to ${FUNCNAME}}
+
+  if ! echo "$parts" | grep -iq "type=$2"; then
+    echo "$0: $name partition not found" >&2
+    exit 1
+  fi
+
+  echo "$parts" | grep -i "type=$2" | cut -d' ' -f1
+}
+
+find_and_remove_partition() {
+  local name=${1:?No name supplied to ${FUNCNAME}}
+  local guid=${2:?No GUID supplied to ${FUNCNAME}}
+
+  if ! echo "$parts" | grep -q "type=$guid"; then
+    echo "$0: $name partition not found" >&2
+    exit 1
+  fi
+
+  parts=$(echo "$parts" | grep -v "$guid")
+}
+
 dps_root_guid="4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709"
-if [ "${root_guid^^}" != "${dps_root_guid^^}" ]; then
-	echo "$0: $root_part doesn't have the correct GUID (read $root_guid)"
-	exit 1
-fi
+root_part=$(find_partition_device "Endless OS root" "$dps_root_guid")
+root_partno="${root_part: -1}"
+root_part_base="${root_part:: -1}"
+
+swap_partno=$((root_partno + 1))
+swap_part="${root_part_base}${swap_partno}"
 
 # check the last partition on the disk
 lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
@@ -59,21 +75,9 @@ if [ $lastpart -eq $swap_partno ]; then
   # a swap partition but didn't finish. Remove it to try again below.
   parts=$(echo "$parts" | sed '$d')
 elif [ $lastpart -gt $swap_partno ]; then
-  echo "repartition: found $lastpart partitions?"
+  echo "repartition: found $lastpart partitions?" >&2
   exit 1
 fi
-
-find_and_remove_partition() {
-	local name=${1:?No name supplied to ${FUNCNAME}}
-	local guid=${2:?No GUID supplied to ${FUNCNAME}}
-
-	if ! echo "$parts" | grep -q "$guid"; then
-		echo "$0: $name not found"
-		exit 1
-	fi
-
-	parts=$(echo "$parts" | grep -v "$guid")
-}
 
 find_and_remove_partition "ESP" "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
 find_and_remove_partition "BIOS boot" "21686148-6449-6E6F-744E-656564454649"
