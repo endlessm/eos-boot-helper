@@ -12,6 +12,7 @@ dist_systemdunit_DATA = \
 	eos-extra-resize.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
+	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
 	$(NULL)
 
@@ -36,6 +37,7 @@ dist_sbin_SCRIPTS = \
 	eos-extra-resize \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
+	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-repartition-mbr \
 	$(NULL)

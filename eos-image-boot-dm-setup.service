@@ -1,0 +1,13 @@
+[Unit]
+Description=Endless image boot device mapper setup
+DefaultDependencies=no
+After=ostree-remount.service
+Before=local-fs.target
+ConditionKernelCommandLine=endless.image.device
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-image-boot-dm-setup
+
+[Install]
+WantedBy=local-fs.target
