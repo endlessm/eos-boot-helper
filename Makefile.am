@@ -32,6 +32,11 @@ uninstall-hook:
 udevrulesdir = $(udevdir)/rules.d
 dist_udevrules_DATA = 50-meson-vdec.rules
 
+polkitrulesdir = $(datadir)/polkit-1/rules.d
+dist_polkitrules_DATA = \
+	10-allow-mounting-endless-image-device.rules \
+	$(NULL)
+
 dist_sbin_SCRIPTS = \
 	eos-firstboot \
 	eos-extra-resize \
