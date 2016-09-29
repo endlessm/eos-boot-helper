@@ -16,12 +16,20 @@ image_path=$(getarg endless.image.path=)
 
 [ -z "${image_device}" -o -z "${image_path}" ] && exit 0
 
+# Make sure runtime udev rules dir exists
+mkdir -p /run/udev/rules.d
+
 case "${image_device}" in
 PARTUUID=*)
+  echo "SUBSYSTEM==\"block\", ENV{ID_PART_ENTRY_UUID}==\"${image_device#PARTUUID=}\", ENV{DM_NAME}!=\"endless-image-device\", ENV{UDISKS_IGNORE}=\"1\"" > /run/udev/rules.d/79-endless-image-device.rules
   image_device=/dev/disk/by-partuuid/${image_device#PARTUUID=}
   ;;
 UUID=*)
+  echo "SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"${image_device#UUID=}\", ENV{DM_NAME}!=\"endless-image-device\", ENV{UDISKS_IGNORE}=\"1\"" > /run/udev/rules.d/79-endless-image-device.rules
   image_device=/dev/disk/by-uuid/${image_device#UUID=}
+  ;;
+*)
+  echo "SUBSYSTEM==\"block\", ENV{DEVNAME}==\"${image_device}\", ENV{UDISKS_IGNORE}=\"1\"" > /run/udev/rules.d/79-endless-image-device.rules
   ;;
 esac
 
