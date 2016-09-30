@@ -1,20 +1,19 @@
 #!/bin/sh
-# Copyright (C) 2014 Endless Mobile, Inc.
+# Copyright (C) 2014-2016 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
 # The purpose of this script is to identify if we are running on target
-# Endless hardware and if so, enlarges partition 2 (data partition) to use
+# Endless hardware and if so, enlarges the root partition to use
 # all available space.
 # When disk space is plentiful, we also carve out some space at the end of
-# the disk, and use it to create a swap partition (partition 3).
+# the disk, and use it to create a swap partition.
 #
 # It is important to identify that this system is an Endless-flashed device
-# that desires such treatment. We do this by detecting that the type code for
-# unused partition entry 4 has magic number 'dd', which is deliberately set in
-# EOS images. If you need to avoid such repartitioning, just remove that 4th
-# partition before first boot.
+# that desires such treatment. We do this by detecting that GPT flag #55 is
+# set on the root partition, which is deliberately set in EOS images. If you
+# need to avoid such repartitioning, just remove that flag before first boot.
 #
-# The dd "marker" is also removed after this script is run, providing a
+# The 55 flag is also removed after this script is run, providing a
 # quick/cheap way of knowing that our work is done, avoiding going through
 # all this logic on each boot.
 #
