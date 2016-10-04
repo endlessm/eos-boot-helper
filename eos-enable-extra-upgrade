@@ -84,6 +84,3 @@ ln -sf "$mount_unit_path" "$wants_link"
 
 # Reload systemd so that the new unit is seen to be enabled
 systemctl daemon-reload
-
-# Start the unit now so that the SD card (hopefully) gets mounted
-systemctl start "$mount_unit"
