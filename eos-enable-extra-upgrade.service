@@ -3,11 +3,20 @@
 
 [Unit]
 Description=Enable Endless extra storage mount on upgrade
-# Need DefaultDependencies=no so sysinit.target is not required
+# Need DefaultDependencies=no so local-fs.target is not required
 DefaultDependencies=no
+# Standard local-fs conflicts and ordering
 Conflicts=shutdown.target
-After=local-fs.target
-Before=sysinit.target shutdown.target systemd-update-done.service
+Before=local-fs.target shutdown.target
+# Need normal mounts done for /usr and /var from ostree
+After=ostree-remount.service
+# Ensure /var/eos-extra-resize has been created
+After=eos-extra-resize.service
+# Run before systemd analyzes the /var/endless-extra mount unit
+Before=var-endless\x2dextra.mount
+
+# Only run on updates
+Before=systemd-update-done.service
 ConditionNeedsUpdate=/etc
 
 # Only run on units that have resized the extra filesystem
@@ -20,4 +29,4 @@ StandardOutput=journal+console
 ExecStart=/usr/sbin/eos-enable-extra-upgrade
 
 [Install]
-WantedBy=basic.target
+WantedBy=local-fs.target
