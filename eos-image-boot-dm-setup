@@ -33,59 +33,7 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
-fstype=$(blkid -o value -s TYPE "${host_device}")
-if [ $? != 0 ]; then
-  echo "Failed to detect filesystem type on ${host_device}"
-  exit 1
-fi
-
-case "${fstype}" in
-exfat)
-  extents=$(dumpexfat -f "${image_path}" "${host_device}")
-  ;;
-ntfs)
-  extents=$(ntfsextents "${host_device}" "${image_path}")
-  ;;
-*)
-  echo "Unsupported filesystem ${fstype} on ${host_device}"
-  exit 1
-esac
-
-if [ $? != 0 ]; then
-  echo "Failed to lookup ${image_path} on ${host_device} (${fstype})"
-  exit 1
-fi
-
-# Sort the file extents so we create the holes in the correct places
-extents=$(echo "$extents" | sort -n)
-
-# Cleanup the device mapper table file from previous runs
-rm -f /tmp/dmtable
-
-i=0
-while read extent_i extent_size; do
-  [ -z "${extent_i}" -o -z "${extent_size}" ] && continue
-
-  if [ $((extent_size % 512)) != 0 ]; then
-    echo "Extent size $extent_size is not sector-aligned"
-    exit 1
-  fi
-
-  extent_size=$((extent_size / 512))
-  extent_i=$((extent_i / 512))
-
-  if [ ${i} -lt ${extent_i} ]; then
-    echo "${i} $((extent_i - i)) linear ${host_device} ${i}" >> /tmp/dmtable
-    echo "${extent_i} ${extent_size} error" >> /tmp/dmtable
-    i=$((extent_i + extent_size))
-  fi
-done <<< "$(echo "$extents")"
-
-if [ ${i} -lt ${host_device_size} ]; then
-  echo "${i} $((host_device_size - i)) linear ${host_device} ${i}" >> /tmp/dmtable
-fi
-
-dmsetup create endless-image-device < /tmp/dmtable
+echo 0 $host_device_size linear $host_device 0 | dmsetup create endless-image-device
 if [ $? != 0 ]; then
   echo "Failed to set up a device map for ${host_device}"
   exit 1
