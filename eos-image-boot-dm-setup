@@ -16,8 +16,6 @@ for i in $(</proc/cmdline); do
   esac
 done
 
-dm_roflag="--readonly"
-
 [ -z "${host_device}" -o -z "${image_path}" ] && exit 1
 
 case "${host_device}" in
@@ -87,7 +85,7 @@ if [ ${i} -lt ${host_device_size} ]; then
   echo "${i} $((host_device_size - i)) linear ${host_device} ${i}" >> /tmp/dmtable
 fi
 
-dmsetup create endless-image-device $dm_roflag < /tmp/dmtable
+dmsetup create endless-image-device < /tmp/dmtable
 if [ $? != 0 ]; then
   echo "Failed to set up a device map for ${host_device}"
   exit 1
