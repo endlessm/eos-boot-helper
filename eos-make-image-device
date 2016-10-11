@@ -1,0 +1,54 @@
+#!/bin/sh
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# Support booting from an image file hosted on a filesystem.
+# We identify which disk blocks correspond to the image file, and create
+# a dm-linear block device mapping them.
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 HOST_DEVICE IMAGE_PATH" >&2
+  exit 2
+fi
+
+host_device="$1"
+image_path="$2"
+
+blockdev --setro ${host_device}
+
+if getargbool 0 endless.live_boot; then
+  dm_roflag=--readonly
+  kpartx_roflag=-r
+fi
+
+# Identify the EOS image extents on the host device, and create a dm-linear
+# block device that maps exactly to that.
+
+extents=$(eos-dump-file-sectors "${host_device}" "${image_path}")
+if [ $? != 0 ]; then
+  echo "image-boot: failed to lookup image on device"
+  exit 1
+fi
+
+offset=0
+echo "$extents" | while read extent_offset extent_size; do
+  echo "${offset} ${extent_size} linear ${host_device} $extent_offset"
+  offset=$((offset + extent_size))
+done > /tmp/dmtable
+
+if [ $? != 0 ]; then
+  exit 1
+fi
+
+dmsetup create endless-image $dm_roflag < /tmp/dmtable
+if [ $? != 0 ]; then
+  echo "image-boot: failed to set up linear mapping"
+  exit 1
+fi
+
+if ! kpartx $kpartx_roflag -a -v /dev/mapper/endless-image; then
+  echo "image-boot: failed to probe partitions"
+  exit 1
+fi
+
+exit 0
