@@ -3,7 +3,7 @@
 # Mount overlays over any directory that might be written to
 # Note that /etc was handled in the initramfs since it must be done early.
 # The rest of these should be done later, to avoid fighting with ostree-remount
-overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot var"
+overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/flatpak sysroot/home sysroot/ostree var"
 for dir in $overlay_dirs; do
     [ -d /$dir ] || continue
     # If the directory is a symlink, assume it's pointing to a location
