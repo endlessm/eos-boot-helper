@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Allow xattrs in the user namespace on /run, and by extension in the ostree
+# repo, where they are used to record permissions when run as an unprivileged
+# user.
+mount -o remount,user_xattr /run
+
 # Mount overlays over any directory that might be written to
 # Note that /etc was handled in the initramfs since it must be done early.
 # The rest of these should be done later, to avoid fighting with ostree-remount
