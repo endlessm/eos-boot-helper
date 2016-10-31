@@ -9,13 +9,21 @@
 # the disk, and use it to create a swap partition.
 #
 # It is important to identify that this system is an Endless-flashed device
-# that desires such treatment. We do this by detecting that GPT flag #55 is
-# set on the root partition, which is deliberately set in EOS images. If you
-# need to avoid such repartitioning, just remove that flag before first boot.
+# that desires such treatment.
+
+# For platforms using a GPT partition table, we do this by detecting that GPT
+# flag #55 is set on the root partition, which is deliberately set in EOS
+# images. If you need to avoid such repartitioning, just remove that flag
+# before first boot.
 #
-# The 55 flag is also removed after this script is run, providing a
-# quick/cheap way of knowing that our work is done, avoiding going through
-# all this logic on each boot.
+# When dealing with a DOS partition table we do this by detecting that the type
+# code for unused partition entry 4 has magic number 'dd', which is
+# deliberately set in EOS images. If you need to avoid such repartitioning,
+# just remove that 4th partition before first boot.
+#
+# The 55 flag (or the "dd" marker) is also removed after this script is run,
+# providing a quick/cheap way of knowing that our work is done, avoiding going
+# through all this logic on each boot.
 #
 # This script is written carefully so that it can be interrupted after each
 # operation, on next boot it should effectively continue where it left off.
@@ -80,9 +88,18 @@ if [ -z "${root_disk}" ]; then
   exit 0
 fi
 
+pt_label=$(blkid -o value -s PTTYPE $root_disk)
+
 # Check for our magic "this is Endless" marker
-marker=$(sfdisk --force --part-attrs $root_disk $partno)
-if [ "$marker" != "GUID:55" ]; then
+if [ "$pt_label" == "dos" ]; then
+  marker=$(sfdisk --force --part-type $root_disk 4)
+  swap_type="82"
+else
+  marker=$(sfdisk --force --part-attrs $root_disk $partno)
+  swap_type="0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
+fi
+
+if [ "$marker" != "dd" ] && [ "$marker" != "GUID:55" ]; then
   echo "repartition: marker not found"
   exit 0
 fi
@@ -92,6 +109,11 @@ udevadm settle
 
 # take current partition table
 parts=$(sfdisk -d $root_disk)
+
+# if MBR avoid considering the magic marker partition (the last one)
+if [ "$pt_label" = "dos" ]; then
+  parts=$(echo "$parts" | sed -e '$d')
+fi
 
 # check the last partition on the disk
 lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
@@ -116,7 +138,8 @@ echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
 # the remainder of the disk
 new_size=$(( disk_size - part_start ))
 
-# Subtract the size of the secondary GPT header at the end of the disk
+# Subtract the size of the secondary GPT header at the end of the disk. We do
+# this also for MBR in case we want to convert MBR->GPT later
 new_size=$(( new_size - 33 ))
 
 # If we find ourselves with >100GB free space, we'll use the final 4GB as
@@ -149,7 +172,7 @@ if [ -n "$swap_start" ]; then
   # Create swap partition
   echo "Create swap partition at $swap_start"
   parts="$parts
-start=$swap_start, type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
+start=$swap_start, type=$swap_type"
 fi
 
 echo "$parts"
@@ -202,7 +225,11 @@ sed -e "s:$orig_root_part:$root_part:" \
 /bin/systemctl daemon-reload
 
 # Remove marker - must be done last, prevents this script from running again
-sfdisk --force --part-attrs $root_disk $partno ''
+# In the MBR case the marker partition is removed as part of sfdisk rewriting
+# the partition table above
+if [ "$pt_label" = "gpt" ]; then
+  sfdisk --force --part-attrs $root_disk $partno ''
+fi
 udevadm settle
 
 # Final update to SPL checksum
