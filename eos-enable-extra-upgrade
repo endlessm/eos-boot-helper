@@ -48,3 +48,9 @@ ln -sf "$mount_unit_path" "$wants_link"
 
 # Reload systemd so that the new unit is seen to be enabled
 systemctl daemon-reload
+
+# Start the unit now so that the SD card (hopefully) gets mounted before
+# local-fs.target is reached. Use --no-block so that a deadlock isn't
+# introduced since the service declares that it needs to be completed
+# before the mount unit starts.
+systemctl start --no-block "$mount_unit"
