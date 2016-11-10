@@ -19,7 +19,11 @@ Before=var-endless\x2dextra.mount
 Before=systemd-update-done.service
 ConditionNeedsUpdate=/etc
 
-# Only run on units that have resized the extra filesystem
+# Only run on units that have resized the extra filesystem. This was
+# changed to eos-extra-resize2 prior to 2.6.0, but that was after the
+# mounting was reworked so that the mount unit was always enabled.
+# Therefore, checking for eos-extra-resize should indicate the old SD
+# card mount setup that needs upgrading.
 ConditionPathExists=/var/eos-extra-resize
 
 [Service]
