@@ -5,43 +5,14 @@
 # Enable the /var/endless-extra mount for systems upgrading from an
 # ostree without the statically enabled unit file.
 
-# Safely read and match the content of a file.
-match_file_content()
-{
-    local file=$1
-    local value=$2
-    local content
-
-    [ -f "$file" ] || return 1
-    content=$(<"$file") || return $?
-
-    # Return the comparison result
-    [ "$content" = "$value" ]
-}
-
-# Determine if this is a unit with separate SD card. Currently this is
-# the eMMC Sqwerty unit. Need to catch errors and return since this is
-# used in a conditional below. Thanks, POSIX.
-is_split_unit()
-{
-    local rootdev
-
-    match_file_content /sys/class/dmi/id/sys_vendor Endless || return $?
-    match_file_content /sys/class/dmi/id/product_name EC-200 || return $?
-    rootdev=$(findmnt -rvnf -o SOURCE /)
-    case "$rootdev" in
-	/dev/mmcblk*)
-	    return 0
-	    ;;
-	*)
-	    return 1
-	    ;;
-    esac
-}
-
-# Exit if this is not a split unit
-if ! is_split_unit; then
-    echo "Not split disk unit, exiting"
+# There's not a really reliable way to know if this is a multi-disk
+# unit, so check if the old SD card resizing stamp file exists. This was
+# changed to eos-extra-resize2 prior to 2.6.0, but that was after the
+# mounting was reworked so that the mount unit was always enabled.
+# Therefore, checking for eos-extra-resize should indicate the old SD
+# card mount setup that needs upgrading.
+if [ ! -f /var/eos-extra-resize ]; then
+    echo "Extra filesystem not resized, assuming single disk image, exiting"
     exit 0
 fi
 
@@ -55,13 +26,6 @@ if [ -L "$endless_mount_link" ]; then
         echo "Cleaning up old symlink $endless_mount_link"
         rm -f "$endless_mount_link"
     fi
-fi
-
-# Someone may have installed the single disk image on a unit with the
-# extra SD card.
-if [ ! -f /var/eos-extra-resize ]; then
-    echo "Extra filesystem not resized, assuming single disk image, exiting"
-    exit 0
 fi
 
 # Exit if the the wants symlink is already created
@@ -84,3 +48,9 @@ ln -sf "$mount_unit_path" "$wants_link"
 
 # Reload systemd so that the new unit is seen to be enabled
 systemctl daemon-reload
+
+# Start the unit now so that the SD card (hopefully) gets mounted before
+# local-fs.target is reached. Use --no-block so that a deadlock isn't
+# introduced since the service declares that it needs to be completed
+# before the mount unit starts.
+systemctl start --no-block "$mount_unit"
