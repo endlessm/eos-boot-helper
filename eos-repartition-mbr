@@ -128,8 +128,9 @@ parts=$(echo "$parts" | sed -e "s/${root_disk_dev}[^: ]\+//")
 # GPT -> DOS
 parts=$(echo "$parts" | sed -e "s/label: gpt/label: dos/")
 
-# Set MBR partition type
-parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83/")
+# Set MBR partition type and mark as bootable (not strictly true, but our MBR
+# does not care - some BIOSes don't consider a drive to be bootable without it)
+parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83, bootable/")
 # Remove partition UUIDs and GPT attributes
 parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
 
