@@ -89,6 +89,10 @@ if [ -z "${root_disk}" ]; then
 fi
 
 pt_label=$(blkid -o value -s PTTYPE $root_disk)
+if [ -z "$pt_label" ]; then
+  echo "repartition: blkid -o value -s PTTYPE '$root_disk' failed"
+  exit 0
+fi
 
 # Check for our magic "this is Endless" marker
 if [ "$pt_label" == "dos" ]; then
