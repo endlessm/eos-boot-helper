@@ -51,19 +51,20 @@ get_last_char() {
 }
 
 # We have to work with a variety of setups here:
-# - Either SCSI or MMC block devices with different naming conventions
+# - SCSI/MMC/NVMe block devices with different naming conventions
 # - A different partition numbering scheme as not all configurations have
 #   a ESP and a BIOS boot partition.
 partno=$(get_last_char ${root_part})
+
 swap_partno=$((partno + 1))
 case ${root_part} in
-  /dev/mmcblk?p?)
-    root_disk=${root_part%p?}
-    swap_part=${root_disk}p${swap_partno}
-    ;;
   /dev/sd??)
     root_disk=${root_part%?}
     swap_part=${root_disk}${swap_partno}
+    ;;
+  /dev/*p[0-9])
+    root_disk=${root_part%p?}
+    swap_part=${root_disk}p${swap_partno}
     ;;
 esac
 
