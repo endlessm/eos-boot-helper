@@ -82,45 +82,6 @@ fi
 find_and_remove_partition "ESP" "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
 find_and_remove_partition "BIOS boot" "21686148-6449-6E6F-744E-656564454649"
 
-# calculate new partition sizes
-disk_size=$(blockdev --getsz $root_disk)
-part_size=$(blockdev --getsz $root_part)
-part_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]\+\([0-9]\+\).*$/\1/p')
-part_end=$(( part_start + part_size ))
-echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
-
-# Calculate the new root partition size, assuming that it will expand to fill
-# the remainder of the disk
-new_size=$(( disk_size - part_start ))
-
-# If we find ourselves with >100GB free space, we'll use the final 4GB as
-# a swap partition
-added_space=$(( new_size - part_size ))
-if [ $added_space -gt 209715200 ]; then
-  new_size=$(( new_size - 8388608 ))
-  swap_start=$(( part_start + new_size ))
-
-  # Align swap partition start to 1MB boundary
-  residue=$(( swap_start % 2048 ))
-  if [ $residue -gt 0 ]; then
-    swap_start=$(( swap_start + 2048 - residue ))
-    # might as well bump up root partition size too, instead of leaving a gap
-    new_size=$(( new_size + 2048 - residue ))
-  fi
-fi
-
-if [ $new_size -gt $part_size ]; then
-  echo "Try to resize $root_part to fill $new_size sectors"
-  parts=$(echo "$parts" | sed -e "$ s/size=[0-9\t ]*,/size=$new_size,/")
-fi
-
-if [ -n "$swap_start" ]; then
-  # Create swap partition
-  echo "Create swap partition at $swap_start"
-  parts="$parts
-start=$swap_start, type=82"
-fi
-
 # Reset partition indexes
 root_disk_dev=${root_disk#/dev/}
 parts=$(echo "$parts" | sed -e "s/${root_disk_dev}[^: ]\+//")
@@ -140,10 +101,10 @@ udevadm settle
 partprobe "${root_disk}"
 udevadm settle
 
-# mkswap with the new partition index
-swap_partno=$((swap_partno - 2))
-swap_part=${root_part_base}${swap_partno}
-[ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
+# Set marker on 4th partition so that the partition gets enlarged to fill the
+# disk on first boot
+printf "\xdd" | dd of=${root_disk} bs=1 count=1 seek=498 conv=notrunc
+udevadm settle
 
 # Remove GPT headers. It's a little tricky to work out where the backup one is
 # from sfdisk's output, but we can get it from the primary header:
