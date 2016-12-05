@@ -19,7 +19,7 @@ if [ -z $extra_part ]; then
 fi
 
 case ${extra_part} in
-    /dev/mmcblk?p1)
+    /dev/*p1)
         extra_disk=${extra_part%p1}
         ;;
     /dev/sd?1)
