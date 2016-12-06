@@ -96,7 +96,7 @@ if [ -z "$pt_label" ]; then
 fi
 
 # Check for our magic "this is Endless" marker
-if [ "$pt_label" == "dos" ]; then
+if [ "$pt_label" = "dos" ]; then
   marker=$(sfdisk --force --part-type $root_disk 4)
   swap_type="82"
 else
