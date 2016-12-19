@@ -132,6 +132,11 @@ elif [ $lastpart -gt $swap_partno ]; then
   exit 0
 fi
 
+# read the current ESP's UUID
+if [ "$pt_label" = "gpt" ]; then
+  orig_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
+fi
+
 # calculate new partition sizes
 disk_size=$(blockdev --getsz $root_disk)
 part_size=$(blockdev --getsz $root_part)
@@ -191,6 +196,11 @@ udevadm settle
 if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
   /usr/sbin/amlogic-fix-spl-checksum $root_disk
   udevadm settle
+elif [ "$pt_label" = "gpt" ]; then
+  # Remove the stale boot entry pointing to the old ESP's UUID.
+  # fallback.efi will take care of creating a new one on the next boot
+  boot_num=$(efibootmgr -v -d $root_disk | grep -i $orig_esp_uuid | grep "Endless" | cut -c 5-8)
+  efibootmgr -d $root_disk -b $boot_num -B
 fi
 
 [ "$ret" != "0" ] && exit 0
