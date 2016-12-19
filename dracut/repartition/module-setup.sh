@@ -16,6 +16,9 @@ install() {
   dracut_install mkswap
   dracut_install sed
   dracut_install tune2fs
+  dracut_install efibootmgr
+  dracut_install grep
+  dracut_install cut
   dracut_install -o amlogic-fix-spl-checksum
   inst_script "$moddir/endless-repartition.sh" /bin/endless-repartition
   inst_simple "$moddir/endless-repartition.service" \
