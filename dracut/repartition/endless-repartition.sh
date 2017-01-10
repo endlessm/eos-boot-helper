@@ -120,15 +120,28 @@ if [ "$pt_label" = "dos" ]; then
   parts=$(echo "$parts" | sed -e '$d')
 fi
 
-# check the last partition on the disk
-lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
+# If we detect a recovery partition at the end of the disk, we'll be careful
+# not to destroy it.
+lastparttype=$(echo "$parts" | sed -n -e '$ s/.*type=\([A-F0-9-]\+\).*/\1/p')
+if [ "$lastparttype" = "BFBFAFE7-A34F-448A-9A5B-6213EB736C22" ]; then
+  # We'll use the free space up to where this partition starts
+  preserve_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]*\([^,]*\).*/\1/p')
 
-if [ $lastpart -eq $swap_partno ]; then
+  # Save the partition entry to be restored later, and delete it from the
+  # list for now, to simplify the logic that follows.
+  preserve_partition=$(echo "$parts" | sed -n -e '$ s/[^:]*:\(.*\)$/\1/p')
+  parts=$(echo "$parts" | sed '$d')
+fi
+
+# check the last partition on the disk
+lastpartno=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
+
+if [ $lastpartno -eq $swap_partno ]; then
   # already have an extra partition, perhaps we were halfway through creating
   # a swap partition but didn't finish. Remove it to try again below.
   parts=$(echo "$parts" | sed '$d')
-elif [ $lastpart -gt $swap_partno ]; then
-  echo "repartition: found $lastpart partitions?"
+elif [ $lastpartno -gt $swap_partno ]; then
+  echo "repartition: found $lastpartno partitions?"
   exit 0
 fi
 
@@ -137,27 +150,35 @@ disk_size=$(blockdev --getsz $root_disk)
 part_size=$(blockdev --getsz $root_part)
 part_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]\+\([0-9]\+\).*$/\1/p')
 part_end=$(( part_start + part_size ))
-echo "Dsize $disk_size Psize $part_size Pstart $part_start Pend $part_end"
+echo "Dsize $disk_size PreserveStart $preserve_start Psize $part_size Pstart $part_start Pend $part_end"
 
 # Calculate the new root partition size, assuming that it will expand to fill
-# the remainder of the disk
-new_size=$(( disk_size - part_start ))
+# all available space
+if [ -n "$preserve_start" ]; then
+  # Use free space up until the start of the preserve partition
+  new_size=$(( preserve_start - part_start ))
+else
+  # Fill the remainder of the disk
+  new_size=$(( disk_size - part_start ))
 
-# Subtract the size of the secondary GPT header at the end of the disk. We do
-# this also for MBR in case we want to convert MBR->GPT later
-new_size=$(( new_size - 33 ))
+  # Subtract the size of the secondary GPT header at the end of the disk. We do
+  # this also for MBR in case we want to convert MBR->GPT later
+  new_size=$(( new_size - 33 ))
+fi
 
 # If we find ourselves with >100GB free space, we'll use the final 4GB as
 # a swap partition
 added_space=$(( new_size - part_size ))
 if [ $added_space -gt 209715200 ]; then
-  new_size=$(( new_size - 8388608 ))
+  swap_size=8388608
+  new_size=$(( new_size - swap_size ))
   swap_start=$(( part_start + new_size ))
 
   # Align swap partition start to 1MB boundary
   residue=$(( swap_start % 2048 ))
   if [ $residue -gt 0 ]; then
     swap_start=$(( swap_start + 2048 - residue ))
+    swap_size=$(( swap_size - (2048 - residue) ))
     # might as well bump up root partition size too, instead of leaving a gap
     new_size=$(( new_size + 2048 - residue ))
   fi
@@ -175,9 +196,15 @@ fi
 
 if [ -n "$swap_start" ]; then
   # Create swap partition
-  echo "Create swap partition at $swap_start"
+  echo "Create swap partition at $swap_start size $swap_size"
   parts="$parts
-start=$swap_start, type=$swap_type"
+start=$swap_start, size=$swap_size, type=$swap_type"
+fi
+
+# Readd the preserve partition that we excluded earlier
+if [ -n "$preserve_partition" ]; then
+  parts="$parts
+$preserve_partition"
 fi
 
 echo "$parts"
