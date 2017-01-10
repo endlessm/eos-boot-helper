@@ -34,6 +34,18 @@ exfat)
 ntfs)
   extents=$(ntfsextents "${host_device}" "${image_path}")
   ;;
+iso9660)
+  # Mount the ISO image
+  mkdir /cd
+  mount ${host_device} /cd
+
+  # Create a loopback device backing the endless image
+  host_device=$(losetup --find --show /cd/${image_path})
+
+  # Create a device-mapper linear device corresponding to the loopback
+  size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
+  extents="0 ${size_bytes}"
+  ;;
 *)
   echo "image-boot: unsupported filesystem ${fstype}"
   exit 1
