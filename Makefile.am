@@ -8,6 +8,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	eos-add-flatpak-gnome-repos.service \
 	eos-firstboot.service \
 	eos-extra-resize.service \
 	eos-enable-extra-upgrade.service \
@@ -39,6 +40,7 @@ dist_polkitrules_DATA = \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
+	eos-add-flatpak-gnome-repos \
 	eos-firstboot \
 	eos-extra-resize \
 	eos-enable-extra-upgrade \
