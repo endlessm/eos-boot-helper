@@ -18,10 +18,28 @@ if getargbool 0 endless.live_boot; then
   kpartx_roflag=-r
 fi
 
-fstype=$(lsblk --noheadings -o FSTYPE "${host_device}")
+fstype=$(lsblk -d --noheadings -o FSTYPE "${host_device}")
 if [ $? != 0 ]; then
   echo "image-boot: failed to detect filesystem type"
   exit 1
+fi
+
+if [ "$fstype" = "iso9660" ]; then
+    loopdev="/dev/mapper/endless-image"
+
+    # mount the iso image
+    mkdir -p /cd
+    mount ${host_device} /cd
+
+    # manually create the loop device needed for the device mapper
+    mknod -m660 $loopdev b 7 8
+
+    # setup the image partitions
+    losetup -v -r $loopdev "/cd/${image_path}"
+    kpartx -r -a -v $loopdev
+
+    # if not an iso: fallback to normal booting
+    exit 0
 fi
 
 # Identify the EOS image extents on the host device, and create a dm-linear
