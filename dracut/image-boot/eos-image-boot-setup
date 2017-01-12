@@ -39,8 +39,15 @@ iso9660)
   mkdir /cd
   mount ${host_device} /cd
 
+  # Create a loopback device backing the squashfs
+  squash_device=$(losetup --find --show /cd/${image_path})
+
+  # Mount the squashfs
+  mkdir /squash
+  mount ${squash_device} /squash
+  
   # Create a loopback device backing the endless image
-  host_device=$(losetup --find --show /cd/${image_path})
+  host_device=$(losetup --find --show /squash/endless.img)
 
   # Create a device-mapper linear device corresponding to the loopback
   size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
