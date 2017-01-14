@@ -14,6 +14,7 @@ dist_systemdunit_DATA = \
 	eos-enable-zram.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-fix-flatpak-branches.service \
 	$(NULL)
 
 # Unfortunately, the escaped \x2d is handled poorly, so we distribute
@@ -45,4 +46,5 @@ dist_sbin_SCRIPTS = \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-repartition-mbr \
+	eos-fix-flatpak-branches \
 	$(NULL)
