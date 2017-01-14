@@ -1,0 +1,19 @@
+[Unit]
+Description=Fix branch references in flatpak desktop files
+# Only run on updates. Need DefaultDependencies=no so this can run
+# before sysinit.target and not create a circular dependency with
+# systemd-update-done.service.
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=/var
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-fix-flatpak-branches
+
+[Install]
+WantedBy=multi-user.target
