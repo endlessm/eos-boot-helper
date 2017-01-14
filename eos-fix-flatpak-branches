@@ -20,18 +20,19 @@ for app_dir in "$flatpak_dir"/app/*; do
     # This only affects eos3 apps
     [ "$current_branch" = eos3 ] || continue
 
-    # Change the --branch=$branch argument in each desktop file to use
-    # the current branch.
+    # Change the --branch=$branch argument in each desktop file and
+    # D-Bus service file to use the current branch.
     desktop_dir="$app_dir"/current/active/export/share/applications
-    for desktop in "$desktop_dir"/*.desktop; do
-        [ -f "$desktop" ] || continue
+    dbus_dir="$app_dir"/current/active/export/share/dbus-1/services
+    for exported_file in "$desktop_dir"/*.desktop "$dbus_dir"/*.service; do
+        [ -f "$exported_file" ] || continue
 
-        exec_line=$(grep '^Exec' "$desktop" || true)
+        exec_line=$(grep '^Exec' "$exported_file" || true)
         [ -n "$exec_line" ] || continue
-        echo "Updating $desktop to use --branch=$current_branch"
+        echo "Updating $exported_file to use --branch=$current_branch"
         echo "Before: $exec_line"
-        sed -ri "/^Exec/s/(--branch=)[^[:space:]]+/\1${current_branch}/" "$desktop"
-        exec_line=$(grep '^Exec' "$desktop")
-        echo "After: $exec_line"
+        sed -ri "/^Exec/s/(--branch=)[^[:space:]]+/\1${current_branch}/" "$exported_file"
+        exec_line=$(grep '^Exec' "$exported_file")
+        echo "After:  $exec_line"
     done
 done
