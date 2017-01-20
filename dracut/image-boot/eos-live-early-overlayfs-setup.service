@@ -1,7 +1,8 @@
-# We need to set up the /etc overlayfs before switch-root. Otherwise there
-# are several problems during early boot like journald not starting.
+# We need to set up the /etc and /var overlayfs before switch-root. Otherwise there
+# are several problems during early boot like journald not starting or ostree-remount
+# mounting a tmpfs over /var
 [Unit]
-Description=EndlessOS live /etc setup
+Description=EndlessOS live early overlayfs setup
 DefaultDependencies=no
 After=initrd-switch-root.target
 After=ostree-prepare-root.service
@@ -11,6 +12,5 @@ ConditionKernelCommandLine=endless.live_boot
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mkdir -p /run/eos-live/etc /run/eos-live/etc-workdir
-ExecStart=/usr/bin/mount -t overlay -o rw,upperdir=/run/eos-live/etc,lowerdir=/sysroot/etc,workdir=/run/eos-live/etc-workdir eos-live-etc /sysroot/etc
+ExecStart=/bin/eos-live-early-overlayfs-setup
 RemainAfterExit=yes

@@ -6,7 +6,7 @@
 mount -o remount,user_xattr /run
 
 # Mount overlays over any directory that might be written to
-# Note that /etc was handled in the initramfs since it must be done early.
+# Note that /etc and /var were handled in the initramfs since it must be done early.
 # The rest of these should be done later, to avoid fighting with ostree-remount
 
 # /sysroot/ostree needs special handling:
@@ -46,7 +46,7 @@ setup_ostree_flatpak_overlay() {
 setup_ostree_flatpak_overlay
 
 # Everything else is pretty straightforward:
-overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
+overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home"
 for dir in $overlay_dirs; do
     [ -d /$dir ] || continue
     # If the directory is a symlink, assume it's pointing to a location

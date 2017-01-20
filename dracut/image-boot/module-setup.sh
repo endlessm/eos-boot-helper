@@ -14,6 +14,7 @@ install() {
   instmods overlay
   inst_rules 55-dm.rules 60-cdrom_id.rules
   inst_script "$moddir"/eos-image-boot-setup /bin/eos-image-boot-setup
+  inst_script "$moddir"/eos-live-early-overlayfs-setup /bin/eos-live-early-overlayfs-setup
   inst_simple "$moddir"/eos-image-boot-setup.service \
 	"$systemdsystemunitdir"/eos-image-boot-setup.service
   inst_simple "$moddir"/eos-live-early-overlayfs-setup.service \
