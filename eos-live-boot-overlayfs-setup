@@ -31,6 +31,7 @@ setup_ostree_flatpak_overlay() {
     local lowerdir=/sysroot/ostree:/sysroot/flatpak
     local upperdir=/run/eos-live/ostree-flatpak
     local workdir=$upperdir-workdir
+    [ -d $workdir ] && return;
     mkdir -p $upperdir $workdir
     mount -t overlay -o \
         rw,upperdir=$upperdir,lowerdir=$lowerdir,workdir=$workdir \
@@ -49,6 +50,7 @@ setup_ostree_flatpak_overlay
 overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
 for dir in $overlay_dirs; do
     [ -d /$dir ] || continue
+    [ -d /run/eos-live/$dir ] && continue
     # If the directory is a symlink, assume it's pointing to a location
     # covered by another top level overlay
     [ -L /$dir ] && continue
