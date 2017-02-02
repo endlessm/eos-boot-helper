@@ -11,6 +11,7 @@ type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 host_device=$(cat /var/tmp/endless-image-host)
 image_path=$(getarg endless.image.path)
 
+udevadm settle
 blockdev --setro ${host_device}
 
 if getargbool 0 endless.live_boot; then
@@ -33,6 +34,25 @@ exfat)
   ;;
 ntfs)
   extents=$(ntfsextents "${host_device}" "${image_path}")
+  ;;
+iso9660)
+  # Mount the ISO image
+  mkdir /cd
+  mount ${host_device} /cd
+
+  # Create a loopback device backing the squashfs
+  squash_device=$(losetup --find --show /cd/${image_path})
+
+  # Mount the squashfs
+  mkdir /squash
+  mount ${squash_device} /squash
+  
+  # Create a loopback device backing the endless image
+  host_device=$(losetup --find --show /squash/endless.img)
+
+  # Create a device-mapper linear device corresponding to the loopback
+  size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
+  extents="0 ${size_bytes}"
   ;;
 *)
   echo "image-boot: unsupported filesystem ${fstype}"

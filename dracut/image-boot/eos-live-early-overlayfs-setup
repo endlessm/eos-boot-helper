@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+
+early_overlay_dirs="etc var"
+for dir in $early_overlay_dirs; do
+	[ -d /$dir ] || continue
+	# If the directory is a symlink, assume it's pointing to a location
+	# covered by another top level overlay
+	[ -L /$dir ] && continue
+	mkdir -p /run/eos-live/$dir /run/eos-live/$dir-workdir
+	mount -t overlay -o \
+		rw,upperdir=/run/eos-live/$dir,lowerdir=/sysroot/$dir,workdir=/run/eos-live/$dir-workdir \
+		eos-live-$dir /sysroot/$dir
+done
