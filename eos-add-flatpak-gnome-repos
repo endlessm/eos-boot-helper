@@ -47,4 +47,9 @@ EOF
 flatpak remote-add --if-not-exists --from gnome ${TMPDIR}/gnome.flatpakrepo
 flatpak remote-add --if-not-exists --from gnome-apps ${TMPDIR}/gnome-apps.flatpakrepo
 
+# Make sure the title is set as well, as a fix for images built
+# with the repos already configured without titles (EOS <3.1.2)
+flatpak remote-modify --title="Gnome Stable Runtimes" gnome
+flatpak remote-modify --title="Gnome Stable Applications" gnome-apps
+
 exit 0
