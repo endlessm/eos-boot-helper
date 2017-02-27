@@ -1,0 +1,196 @@
+#!/bin/bash -e
+
+# eos-firewall-localonly - simple firewall to restrict host to local networks
+#
+# Copyright (C) 2017 Endless Mobile, Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+IFACE="${1}"
+ACTION="${2}"
+
+LOCALONLY_CHAIN="localonly"
+
+IFACE_CHAIN="${LOCALONLY_CHAIN}-${IFACE}"
+
+METRICS_CHAIN="${LOCALONLY_CHAIN}-metrics"
+METRICS_HOSTS="production.metrics.endlessm.com dev.metrics.endlessm.com home.endlessm.com"
+
+# check if iptables is loaded at all - otherwise looking for the chains
+# will load the modules un-necessarily
+check_iptables_loaded() {
+  lsmod | grep -q ip_tables || exit 0
+  lsmod | grep -q ip6_tables || exit 0
+}
+
+# check if localonly chains exists
+check_for_localonly() {
+  for cmd in iptables ip6tables; do
+    if ! ${cmd} -n -L "${LOCALONLY_CHAIN}" >/dev/null 2>&1; then
+      exit 0
+    fi
+  done
+}
+
+# if the given chain doesn't exist, create it and prepend it to the localonly table
+ensure_localonly_chain() {
+  local chain="${1}"
+
+  for cmd in iptables ip6tables; do
+    if ! ${cmd} -n -L "${chain}" >/dev/null 2>&1; then
+      ${cmd} -N "${chain}"
+      ${cmd} -A "${chain}" -j RETURN
+      ${cmd} -I "${LOCALONLY_CHAIN}" -j "${chain}"
+    fi
+  done
+}
+
+# if the given ACCEPT doesn't exist, create it and prepend it to the given table
+ensure_accept_rule_v4() {
+  local chain="${1}"
+  local dst="${2}"
+
+  if ! iptables -C "${chain}" -d "${dst}" -j ACCEPT >/dev/null 2>&1; then
+    echo "eos-firewall-localonly-nm: allowing ${dst} on ${chain}"
+    iptables -I "${chain}" -d "${dst}" -j ACCEPT
+  fi
+}
+
+# if the given ACCEPT doesn't exist, create it and prepend it to the given table
+ensure_accept_rule_v6() {
+  local chain="${1}"
+  local dst="${2}"
+
+  if ! ip6tables -C "${chain}" -d "${dst}" -j ACCEPT >/dev/null 2>&1; then
+    echo "eos-firewall-localonly-nm: allowing ${dst} on ${chain}"
+    ip6tables -I "${chain}" -d "${dst}" -j ACCEPT
+  fi
+}
+
+# look up the v4 and v6 addresses for the hosts in METRICS_HOSTS and prepend
+# ACCEPT rules to the METRICS_CHAIN. we don't expect the addresses to change
+# often, so there isn't any real benefit to the complexity of trying to
+# atomically clean / remove the old ones
+update_metrics() {
+  ensure_localonly_chain "${METRICS_CHAIN}"
+
+  for addr in $(getent ahostsv4 ${METRICS_HOSTS} | cut -f1 -d' ' | sort -u); do
+    ensure_accept_rule_v4 "${METRICS_CHAIN}" "${addr}"
+  done
+
+  # same but for v6 - filter out the v4 mapped addresses as these won't occur
+  # in the v6 output chain - if an IPv6 app is accessing a ::ffff: address, it
+  # will leave the host via the v4 stack
+  for addr in $(getent ahostsv6 ${METRICS_HOSTS} | cut -f1 -d' ' | sort -u | grep -v ^::ffff:); do
+    ensure_accept_rule_v6 "${METRICS_CHAIN}" "${addr}"
+  done
+}
+
+# iterate the NetworkManager provided address/subnet and route/subnet variables
+# add ACCEPT rules for any missing ones to a chain named after the interface
+add_rules_v4() {
+  local chain="${1}"
+  local num_addrs="${2}"
+  local num_routes="${3}"
+
+  for ((i=0; i<num_addrs; i++)); do
+    local addr_var="IP4_ADDRESS_${i}"
+    ensure_accept_rule_v4 "${chain}" $(echo "${!addr_var}" | cut -f1 -d' ')
+  done
+
+  for ((i=0; i<num_routes; i++)); do
+    local route_var="IP4_ROUTE_${i}"
+    ensure_accept_rule_v4 "${chain}" $(echo "${!route_var}" | cut -f1 -d' ')
+  done
+}
+
+# same as above, but for IPv6
+add_rules_v6() {
+  local chain="${1}"
+  local num_addrs="${2}"
+  local num_routes="${3}"
+
+  for ((i=0; i<num_addrs; i++)); do
+    local addr_var="IP6_ADDRESS_${i}"
+    ensure_accept_rule_v6 "${chain}" $(echo "${!addr_var}" | cut -f1 -d' ')
+  done
+
+  for ((i=0; i<num_routes; i++)); do
+    local route_var="IP6_ROUTE_${i}"
+    ensure_accept_rule_v6 "${chain}" $(echo "${!route_var}" | cut -f1 -d' ')
+  done
+}
+
+remove_localonly_chain() {
+  local chain="${1}"
+
+  for cmd in iptables ip6tables; do
+    if ${cmd} -n -L "${chain}" >/dev/null 2>&1; then
+      # ignore failure in case chain is empty
+      ${cmd} -D "${LOCALONLY_CHAIN}" -j "${chain}" >/dev/null 2>&1 || true
+      ${cmd} -F "${chain}"
+      ${cmd} -X "${chain}"
+    fi
+  done
+}
+
+check_iptables_loaded
+check_for_localonly
+
+case "${ACTION}" in
+  connectivity-change)
+    # not interested
+    exit 0
+    ;;
+  dhcp4-change)
+    ensure_localonly_chain "${IFACE_CHAIN}"
+    add_rules_v4 "${IFACE_CHAIN}" "${IP4_NUM_ADDRESSES}" "${IP4_NUM_ROUTES}"
+    update_metrics
+    ;;
+  dhcp6-change)
+    ensure_localonly_chain "${IFACE_CHAIN}"
+    add_rules_v6 "${IFACE_CHAIN}" "${IP6_NUM_ADDRESSES}" "${IP6_NUM_ROUTES}"
+    update_metrics
+    ;;
+  down)
+    remove_localonly_chain "${IFACE_CHAIN}"
+    ;;
+  hostname)
+    # not interested
+    exit 0
+    ;;
+  pre-*)
+    # not interested
+    exit 0
+    ;;
+  up)
+    ensure_localonly_chain "${IFACE_CHAIN}"
+    add_rules_v4 "${IFACE_CHAIN}" "${IP4_NUM_ADDRESSES}" "${IP4_NUM_ROUTES}"
+    add_rules_v6 "${IFACE_CHAIN}" "${IP6_NUM_ADDRESSES}" "${IP6_NUM_ROUTES}"
+    update_metrics
+    ;;
+  vpn-*)
+    # VPN interfaces coming and going also cause normal up/down events - these
+    # events are for VPN-specific actions
+    exit 0
+    ;;
+  *)
+    echo "eos-firewall-localonly-nm: ignoring unknown action ${1}"
+    exit 0
+    ;;
+esac
+
+exit 0
+
