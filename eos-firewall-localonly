@@ -1,0 +1,171 @@
+#!/bin/bash -e
+
+# eos-firewall-localonly - simple firewall to restrict host to local networks
+#
+# Copyright (C) 2017 Endless Mobile, Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# this script sets up "localonly" iptables/ip6tables chains which are connected
+# to the OUTPUT chain, so that the host can reach typical local network and
+# local multicast address ranges, a couple of internet services (DNS and NTP)
+# but are otherwise left offline. a NetworkManager dispatcher hook adds
+# any other local network routes and looks up the IP addresses for the Endless
+# metrics servers too.
+
+LOCALONLY_CHAIN="localonly"
+METRICS_CHAIN="${LOCALONLY_CHAIN}-metrics"
+
+# deep madness lies in blocking any localhost traffic
+allowed_interfaces="lo"
+
+# allowed v4 ranges:
+#  - the three usual ranges for private IPs (these should always be handled
+#    by eos-firewall-localonly-nm, this is just belt & braces)
+#  - the "link-local autoconf" address range
+#  - link-local multicast for mDNS etc
+#  - local broadcast (all 1s) for DHCP etc
+allowed_v4_networks="10.0.0.0/8 172.16.0.0/12 169.254.0.0/16 192.168.0.0/16 224.0.0.0/24 255.255.255.255"
+
+# allowed v6 ranges (IPv6 is so much more elegant!):
+#  - unique local addresses
+#  - link-local addresses
+#  - link-local multicast ranges
+allowed_v6_networks="fc00::/7 fe80::/10 ff02::/16"
+
+# these are the services where we want to talk *outside* the local networks
+# so eg DHCP is not here: it should be permitted by the allowed networks
+allowed_internet_services="ntp domain"
+
+# add the localonly chain to OUTPUT
+enable() {
+  for cmd in iptables ip6tables; do
+    ${cmd} -F OUTPUT
+    ${cmd} -A OUTPUT -j "${LOCALONLY_CHAIN}"
+    ${cmd} -P OUTPUT DROP
+  done
+}
+
+# remove the localonly chain from OUTPUT
+disable() {
+  for cmd in iptables ip6tables; do
+    ${cmd} -P OUTPUT ACCEPT
+    ${cmd} -F OUTPUT
+  done
+}
+
+# initialise the localonly chain
+setup() {
+  for cmd in iptables ip6tables; do
+    ${cmd} -N ${LOCALONLY_CHAIN}
+
+    for i in ${allowed_interfaces}; do
+      ${cmd} -A ${LOCALONLY_CHAIN} -o ${i} -j ACCEPT
+    done
+
+    for p in tcp udp; do
+      for s in ${allowed_internet_services}; do
+        ${cmd} -A ${LOCALONLY_CHAIN} -p ${p} --dport ${s} -j ACCEPT
+      done
+    done
+  done
+
+  for n in ${allowed_v4_networks}; do
+    iptables -A ${LOCALONLY_CHAIN} -d ${n} -j ACCEPT
+  done
+
+  for n in ${allowed_v6_networks}; do
+    ip6tables -A ${LOCALONLY_CHAIN} -d ${n} -j ACCEPT
+  done
+
+  # log anything we're about to DROP, but reset TCP connections for faster app feedback
+  for cmd in iptables ip6tables; do
+    ${cmd} -A ${LOCALONLY_CHAIN} -m limit --limit 1/min -j LOG --log-prefix "eos-firewall-localonly: "
+    ${cmd} -A ${LOCALONLY_CHAIN} -p tcp -j REJECT --reject-with tcp-reset
+
+    ${cmd} -A ${LOCALONLY_CHAIN} -j RETURN
+  done
+}
+
+remove_localonly_chain() {
+  local chain="${1}"
+
+  for cmd in iptables ip6tables; do
+    if ${cmd} -n -L "${chain}" >/dev/null 2>&1; then
+      # ignore failure in case chain is not present
+      ${cmd} -D "${LOCALONLY_CHAIN}" -j "${chain}" >/dev/null 2>&1 || true
+      ${cmd} -F "${chain}"
+      ${cmd} -X "${chain}"
+    fi
+  done
+}
+
+# clear and remove any localonly chains
+reset() {
+  # disable first because otherwise we can't erase our chains
+  disable
+
+  for iface in $(find /sys/class/net -maxdepth 1 -type l -printf "%f\n"); do
+    remove_localonly_chain "${LOCALONLY_CHAIN}-${iface}"
+  done
+
+  remove_localonly_chain "${METRICS_CHAIN}"
+
+  # this will try and remove the localonly chain from itself, but the failure
+  # is ignored so this saves code
+  remove_localonly_chain "${LOCALONLY_CHAIN}"
+}
+
+usage() {
+  cat <<EOF
+Usage:
+    $0 ACTION
+
+Set up a simple firewall which permits the system to only access IPv4 and
+IPv6 resources on the local network.
+
+Actions:
+  start   Set up the firewall
+  stop    Remove the firewall
+  test    Set up the firewall without making it active, so that the localonly
+          iptables chain exists and the NetworkManager dispatcher is active
+EOF
+}
+
+
+case "$1" in
+  "start")
+    reset
+    setup
+    enable
+    echo "$0 started"
+    ;;
+  "stop")
+    reset
+    echo "$0 stopped"
+    ;;
+  "test")
+    reset
+    setup
+    echo "$0 started in test mode"
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
+
+exit 0
+
