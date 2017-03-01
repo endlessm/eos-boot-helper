@@ -9,13 +9,13 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 dist_systemdunit_DATA = \
 	eos-add-flatpak-gnome-repos.service \
-	eos-firstboot.service \
-	eos-extra-resize.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
+	eos-extra-resize.service \
+	eos-firstboot.service \
+	eos-fix-flatpak-branches.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-fix-flatpak-branches.service \
 	$(NULL)
 
 # Unfortunately, the escaped \x2d is handled poorly, so we distribute
@@ -41,12 +41,12 @@ dist_polkitrules_DATA = \
 
 dist_sbin_SCRIPTS = \
 	eos-add-flatpak-gnome-repos \
-	eos-firstboot \
-	eos-extra-resize \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
+	eos-extra-resize \
+	eos-firstboot \
+	eos-fix-flatpak-branches \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-repartition-mbr \
-	eos-fix-flatpak-branches \
 	$(NULL)
