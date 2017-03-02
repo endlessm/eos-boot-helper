@@ -1,0 +1,14 @@
+# Run eos-firewall-localonly before NetworkManager starts
+
+[Unit]
+Description=Endless local-only firewall
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-firewall-localonly start
+ExecStopPost=/usr/sbin/eos-firewall-localonly stop
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
