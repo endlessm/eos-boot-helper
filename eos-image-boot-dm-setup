@@ -1,9 +1,9 @@
 #!/bin/bash
-# Copyright (C) 2016 Endless Mobile, Inc.
+# Copyright (C) 2016-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
 # When booting from an image file hosted on a filesystem, this program maps the
-# host filesystem to a dm-device with a hole where the image file lives.
+# host filesystem to a dm-device with holes where the image file lives.
 
 for i in $(</proc/cmdline); do
   case $i in
@@ -76,7 +76,7 @@ while read extent_i extent_size; do
 
   if [ ${i} -lt ${extent_i} ]; then
     echo "${i} $((extent_i - i)) linear ${host_device} ${i}" >> /tmp/dmtable
-    echo "${extent_i} ${extent_size} error" >> /tmp/dmtable
+    echo "${extent_i} ${extent_size} zero" >> /tmp/dmtable
     i=$((extent_i + extent_size))
   fi
 done <<< "$(echo "$extents")"
