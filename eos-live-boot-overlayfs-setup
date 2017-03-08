@@ -59,7 +59,3 @@ for dir in $overlay_dirs; do
         rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
         eos-live-$dir /$dir
 done
-
-# Disable the updater for this boot
-systemctl stop eos-updater.timer
-systemctl mask --runtime eos-updater.timer
