@@ -1,0 +1,32 @@
+#!/bin/sh
+
+CUSTOM_SPLASH_DIR="/eos-customization/plymouth"
+CUSTOM_SPLASH_CONFIG="${CUSTOM_SPLASH_DIR}/plymouthd.defaults"
+PLYMOUTH_RUNTIME_DIR="/run/plymouth"
+
+if [ ! -d ${CUSTOM_SPLASH_DIR} ] ; then
+	echo "${CUSTOM_SPLASH_DIR} not found" >&2
+	exit 1
+fi
+
+if [ ! -f ${CUSTOM_SPLASH_CONFIG} ] ; then
+	echo "${CUSTOM_SPLASH_CONFIG} not found" >&2
+	exit 1
+fi
+
+theme_name="`sed -n 's/Theme=\(.*\)/\1/p' ${CUSTOM_SPLASH_CONFIG}`"
+if [ -z ${theme_name} ]; then
+	echo "Theme entry missing from ${CUSTOM_SPLASH_CONFIG}" >&2
+	exit 1
+fi
+
+if [ ! -d ${CUSTOM_SPLASH_DIR}/themes/${theme_name} ] ; then
+	echo "${CUSTOM_SPLASH_DIR}/themes/${theme_name} not found" >&2
+	exit 1
+fi
+
+mkdir -p ${PLYMOUTH_RUNTIME_DIR}
+cp ${CUSTOM_SPLASH_CONFIG} ${PLYMOUTH_RUNTIME_DIR}
+cp -r ${CUSTOM_SPLASH_DIR}/themes ${PLYMOUTH_RUNTIME_DIR}
+sed -i "s:ImageDir=.*:ImageDir=${PLYMOUTH_RUNTIME_DIR}/themes/${theme_name}:" \
+	${PLYMOUTH_RUNTIME_DIR}/themes/${theme_name}/${theme_name}.plymouth

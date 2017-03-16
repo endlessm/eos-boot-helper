@@ -31,5 +31,6 @@ AC_CONFIG_FILES([
 	Makefile
 	dracut/Makefile
 	dracut/image-boot/Makefile
-	dracut/repartition/Makefile])
+	dracut/repartition/Makefile
+	dracut/customization/Makefile])
 AC_OUTPUT
