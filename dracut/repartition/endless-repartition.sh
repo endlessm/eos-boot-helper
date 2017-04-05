@@ -120,21 +120,19 @@ if [ "$pt_label" = "dos" ]; then
   parts=$(echo "$parts" | sed -e '$d')
 fi
 
-# If we detect a data or recovery partition at the end of the disk, we'll be
-# careful not to destroy it.
+# If we detect a recovery partition at the end of the disk, we'll be careful
+# not to destroy it.
 lastparttype=$(echo "$parts" | sed -n -e '$ s/.*type=\([A-F0-9-]\+\).*/\1/p')
-case ${lastparttype} in
-  BFBFAFE7-A34F-448A-9A5B-6213EB736C22)
-  EBD0A0A2-B9E5-4433-87C0-68B6B72699C7)
-    # We'll use the free space up to where this partition starts
-    preserve_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]*\([^,]*\).*/\1/p')
+if [ "$lastparttype" = "BFBFAFE7-A34F-448A-9A5B-6213EB736C22" \
+    -o "$lastparttype" = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7" ]; then
+  # We'll use the free space up to where this partition starts
+  preserve_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]*\([^,]*\).*/\1/p')
 
-    # Save the partition entry to be restored later, and delete it from the
-    # list for now, to simplify the logic that follows.
-    preserve_partition=$(echo "$parts" | sed -n -e '$ s/[^:]*:\(.*\)$/\1/p')
-    parts=$(echo "$parts" | sed '$d')
-    ;;
-esac
+  # Save the partition entry to be restored later, and delete it from the
+  # list for now, to simplify the logic that follows.
+  preserve_partition=$(echo "$parts" | sed -n -e '$ s/[^:]*:\(.*\)$/\1/p')
+  parts=$(echo "$parts" | sed '$d')
+fi
 
 # check the last partition on the disk
 lastpartno=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
