@@ -8,6 +8,7 @@ Build-Depends: automake,
                pkg-config,
                systemd,
                udev,
+               python3,
 Standards-Version: 3.9.1
 Homepage: https://endlessm.com
 

@@ -38,14 +38,23 @@ ntfs)
 iso9660)
   # Mount the ISO image
   mkdir /cd
-  mount ${host_device} /cd
+  if ! mount ${host_device} /cd; then
+    echo "Failed to mount ${host_device}"
+    exit 1
+  fi
 
   # Create a loopback device backing the squashfs
-  squash_device=$(losetup --find --show /cd/${image_path})
+  if ! squash_device=$(losetup --find --show /cd/${image_path}); then
+    echo "losetup failed for /cd/${image_path}"
+    exit 1
+  fi
 
   # Mount the squashfs
   mkdir /squash
-  mount ${squash_device} /squash
+  if ! mount ${squash_device} /squash; then
+    echo "Failed to mount ${squash_device}"
+    exit 1
+  fi
   
   # Create a loopback device backing the endless image
   host_device=$(losetup --find --show /squash/endless.img)

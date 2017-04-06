@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+def find_files(pattern):
+    '''Find files matching 'pattern' on the first line.'''
+    output = subprocess.check_output([
+        'grep', '-r', '--files-with-match', '--null',
+        # Only first line
+        '--max-count', '1',
+        # Skip .git and friends
+        '--exclude-dir=.*',
+        pattern, ROOT
+    ])
+    return [x.decode('utf-8') for x in output.split(b'\x00') if x]
+
+
+def main():
+    '''Checks shell scripts' syntax, printing results in TAP format and
+    exiting non-zero if any script has syntax errors.'''
+    checks = []
+
+    for bash_script in find_files("^#!/bin/bash"):
+        checks.append(["bash", "-n", bash_script])
+
+    for dash_script in find_files("^#!/bin/sh"):
+        checks.append(["dash", "-n", dash_script])
+
+    print('1..{}'.format(len(checks)))
+    failed = False
+    for i, check in enumerate(checks, 1):
+        label = ' '.join(check)
+        try:
+            subprocess.check_call(check)
+        except subprocess.CalledProcessError:
+            result = 'not ok'
+            failed = True
+        else:
+            result = 'ok'
+
+        print('{} {} - {}'.format(result, i, label))
+
+    exit(failed)
+
+
+if __name__ == '__main__':
+    main()

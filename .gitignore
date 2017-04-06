@@ -12,3 +12,6 @@ configure
 depcomp
 install-sh
 missing
+test-driver
+tests/*.log
+tests/*.trs

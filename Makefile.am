@@ -1,4 +1,4 @@
-SUBDIRS = dracut
+SUBDIRS = dracut tests
 EXTRA_DIST = debian
 
 # Install systemd units and udev rules under $prefix for distcheck
