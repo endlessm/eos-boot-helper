@@ -183,6 +183,8 @@ if [ $added_space -gt 209715200 ]; then
     # might as well bump up root partition size too, instead of leaving a gap
     new_size=$(( new_size + 2048 - residue ))
   fi
+else
+  swap_part=
 fi
 
 # remove the last-lba line so that we fill the disk
