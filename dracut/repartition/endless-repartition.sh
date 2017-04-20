@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2014-2016 Endless Mobile, Inc.
+# Copyright (C) 2014-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
 # The purpose of this script is to identify if we are running on target
@@ -36,8 +36,14 @@
 #
 # Based on code from dracut-modules-olpc.
 
-orig_root_part=$(systemctl show -p What sysroot.mount)
-orig_root_part=${orig_root_part#What=}
+if [ $# -ge 1 ]; then
+  # For testing
+  orig_root_part="$1"
+else
+  orig_root_part=$(systemctl show -p What sysroot.mount)
+  orig_root_part=${orig_root_part#What=}
+fi
+
 if [ -z "${orig_root_part}" ]; then
   echo "repartition: couldn't identify root device"
   exit 0
@@ -81,6 +87,9 @@ case ${orig_root_part} in
     root_disk=${orig_root_part%?}
     swap_part=${root_disk}${swap_partno}
     using_device_mapper=1
+    ;;
+  /dev/loop?p?)
+    using_loop=1
     ;;
 esac
 
@@ -228,6 +237,12 @@ fi
 # Device-mapper needs an extra prod to update the block devices
 if [ -n "$using_device_mapper" ]; then
   kpartx -u $root_disk
+  udevadm settle
+fi
+
+# Loop devices need a different extra prod
+if [ -n "$using_loop" ]; then
+  partprobe $root_disk
   udevadm settle
 fi
 

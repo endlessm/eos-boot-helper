@@ -2,4 +2,6 @@ TESTS = \
 	check-syntax
 
 EXTRA_DIST = \
-	$(TESTS)
+	$(TESTS) \
+	test_repartition.py \
+	$(NULL)
