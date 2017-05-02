@@ -14,6 +14,7 @@ override_dh_systemd_enable:
 	    eos-enable-zram.service \
 	    eos-firstboot.service \
 	    eos-fix-flatpak-branches.service \
+	    eos-fix-home-dir-permissions.service \
 	    eos-image-boot-dm-setup.service \
 	    eos-live-boot-overlayfs-setup.service \
 	    $(NULL)
