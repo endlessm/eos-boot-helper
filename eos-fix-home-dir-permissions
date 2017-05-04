@@ -1,0 +1,28 @@
+#!/bin/bash -e
+
+# Prior to 3.1.6, home directory permissions were created with dir mode 755.
+# This is now fixed, but on upgrade from an earlier version to 3.1.6,
+# let's perform a one-time clean up of any existing home dirs.
+
+stamp_dir=/var/lib/misc
+stamp_file="$stamp_dir"/eos-dir-mode-700
+
+if [ -f "$stamp_file" ]; then
+    echo "Dir mode 700 has already been set for home directories, exiting"
+    exit 0
+fi
+
+for home_dir in /home/*; do
+    [ -d "$home_dir" ] || continue
+
+    perm=$(stat -c %a "$home_dir")
+
+    if [ "$perm" = "755" ]; then
+        echo "Changing $home_dir dir mode from 755 to 700"
+        chmod 700 "$home_dir"
+    fi
+done
+
+# Create the stamp file to avoid ever running this again
+mkdir -p "$stamp_dir"
+touch "$stamp_file"
