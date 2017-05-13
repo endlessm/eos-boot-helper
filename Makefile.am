@@ -18,6 +18,7 @@ dist_systemdunit_DATA = \
 	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-migrate-image-defaults.service \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which
@@ -65,5 +66,6 @@ dist_sbin_SCRIPTS = \
 	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
+	eos-migrate-image-defaults \
 	eos-repartition-mbr \
 	$(NULL)
