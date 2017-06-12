@@ -8,6 +8,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	eos-add-flatpak-apps-repos.service \
 	eos-add-flatpak-gnome-repos.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
@@ -56,6 +57,7 @@ dist_polkitrules_DATA = \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
+	eos-add-flatpak-apps-repos \
 	eos-add-flatpak-gnome-repos \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
