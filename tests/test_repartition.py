@@ -139,7 +139,3 @@ start=   482312879, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)
         self.assertEqual(fstype(partition), type_, msg=msg)
-
-
-if __name__ == '__main__':
-    unittest.main()
