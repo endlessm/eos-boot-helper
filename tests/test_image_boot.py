@@ -82,7 +82,6 @@ class TestImageBootSetup(ImageTestCase):
         subprocess.check_call(('mksquashfs',) + contents + (endless_squash,))
         return endless_squash
 
-    @unittest.expectedFailure
     def test_image_boot_iso(self):
         '''Tests ISO > uncompressed image'''
         iso = self._mkisofs(self.endless_img)

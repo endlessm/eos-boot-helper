@@ -65,6 +65,7 @@ linear_map() {
 # first map that, then setup a loopback device for the uncompressed image
 # within it.
 
+# First, map the outermost image file (uncompressed or squashfs)
 case "${fstype}" in
 exfat | ntfs)
   if ! eos-map-image-file "$host_device" "$image_path" "$target_name$squashfs"
@@ -86,9 +87,15 @@ iso9660)
   fi
 
   # Create a loopback device backing the squashfs
-  if ! squash_device=$(losetup --find --show /cd/${image_path}); then
+  if ! image_device=$(losetup --find --show /cd/${image_path}); then
     echo "losetup failed for /cd/${image_path}"
     exit 1
+  fi
+
+  if [ -n "$squashfs" ]; then
+    squash_device="$image_device"
+  else
+    linear_map "$image_device"
   fi
   ;;
 *)
