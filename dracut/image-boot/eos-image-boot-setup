@@ -39,14 +39,42 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
+# $squashfs is used both as a suffix for the device-mapper device (if needed),
+# and as a flag indicating that we're dealing with a squashfs.
+case "$image_path" in
+*.squash)  squashfs=-squashfs ;;
+*)         squashfs=          ;;
+esac
+
+linear_map() {
+  # Create a device-mapper linear device corresponding to the given loopback.
+  # If $image_path is uncompressed, and $host_device is NTFS or exFAT,
+  # eos-map-image-file will create this linear device directly and this
+  # function is unused.
+  local device="${1:?}"
+  local size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${device})
+  if ! echo "0 $((size_bytes / 512 )) linear ${device} 0" \
+    | dmsetup create $target_name $dm_roflag; then
+    echo "Failed to create linear device for ${device}" >&2
+    exit 1
+  fi
+}
+
 # Identify the EOS image extents on the host device, and create a dm-linear
-# block device that maps exactly to that.
+# block device that maps exactly to that. If the image is a squashfs, then
+# first map that, then setup a loopback device for the uncompressed image
+# within it.
 
 case "${fstype}" in
 exfat | ntfs)
-  if ! eos-map-image-file "${host_device}" "${image_path}" $target_name; then
+  if ! eos-map-image-file "$host_device" "$image_path" "$target_name$squashfs"
+  then
     echo "Failed to map ${image_path} on ${host_device}" >&2
     exit 1
+  fi
+
+  if [ -n "$squashfs" ]; then
+    squash_device="/dev/mapper/$target_name$squashfs"
   fi
   ;;
 iso9660)
@@ -62,7 +90,15 @@ iso9660)
     echo "losetup failed for /cd/${image_path}"
     exit 1
   fi
+  ;;
+*)
+  echo "image-boot: unsupported filesystem ${fstype}"
+  exit 1
+esac
 
+# If $image_path is a squashfs, now create a loopback device for the
+# uncompressed image within it
+if [ -n "$squash_device" ]; then
   # Mount the squashfs
   mkdir /squash
   if ! mount ${squash_device} /squash; then
@@ -72,19 +108,8 @@ iso9660)
   
   # Create a loopback device backing the endless image
   host_device=$(losetup --find --show /squash/endless.img)
-
-  # Create a device-mapper linear device corresponding to the loopback
-  size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
-  if ! echo "0 $((size_bytes / 512 )) linear ${host_device} 0" \
-    | dmsetup create $target_name $dm_roflag; then
-    echo "Failed to create linear device for ${host_device}" >&2
-    exit 1
-  fi
-  ;;
-*)
-  echo "image-boot: unsupported filesystem ${fstype}"
-  exit 1
-esac
+  linear_map "$host_device"
+fi
 
 if ! kpartx $kpartx_roflag -a -v /dev/mapper/$target_name; then
   echo "image-boot: failed to probe partitions"

@@ -103,7 +103,6 @@ class TestImageBootSetup(ImageTestCase):
 
             self._go(host_device, 'endless.img', readonly=False)
 
-    @unittest.expectedFailure
     def test_image_boot_exfat_squashfs(self):
         '''Tests exFAT > SquashFS > uncompressed image'''
         endless_squash = self._mksquashfs(self.endless_img)
@@ -167,6 +166,9 @@ class TestImageBootSetup(ImageTestCase):
             if os.path.exists('/squash'):
                 subprocess.call(('umount', '/squash'))
                 os.rmdir(('/squash'))
+
+            target_squash = target_name + '-squashfs'
+            subprocess.call(('dmsetup', 'remove', target_squash))
 
             self._detach_if_exists('/cd/endless.squash')
             self._detach_if_exists('/cd/endless.img')
