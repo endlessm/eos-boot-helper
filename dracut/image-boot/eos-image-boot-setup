@@ -6,17 +6,31 @@
 # We identify which disk blocks correspond to the image file, and create
 # a dm-linear block device mapping them.
 
-type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+if [ $# -ge 1 ]; then
+  # For testing
+  if [ "$1" = "--readonly" ]; then
+    shift
+    dm_roflag=--readonly
+    kpartx_roflag=-r
+  fi
 
-host_device=$(cat /var/tmp/endless-image-host)
-image_path=$(getarg endless.image.path)
+  host_device="$1"
+  image_path="$2"
+  target_name="$3"
+else
+  type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
-udevadm settle
-blockdev --setro ${host_device}
+  host_device=$(cat /var/tmp/endless-image-host)
+  image_path=$(getarg endless.image.path)
+  target_name=endless-image
 
-if getargbool 0 endless.live_boot; then
-  dm_roflag=--readonly
-  kpartx_roflag=-r
+  udevadm settle
+  blockdev --setro ${host_device}
+
+  if getargbool 0 endless.live_boot; then
+    dm_roflag=--readonly
+    kpartx_roflag=-r
+  fi
 fi
 
 fstype=$(lsblk --noheadings -o FSTYPE "${host_device}")
@@ -30,7 +44,7 @@ fi
 
 case "${fstype}" in
 exfat | ntfs)
-  if ! eos-map-image-file "${host_device}" "${image_path}" endless-image; then
+  if ! eos-map-image-file "${host_device}" "${image_path}" $target_name; then
     echo "Failed to map ${image_path} on ${host_device}" >&2
     exit 1
   fi
@@ -62,7 +76,7 @@ iso9660)
   # Create a device-mapper linear device corresponding to the loopback
   size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
   if ! echo "0 $((size_bytes / 512 )) linear ${host_device} 0" \
-    | dmsetup create endless-image $dm_roflag; then
+    | dmsetup create $target_name $dm_roflag; then
     echo "Failed to create linear device for ${host_device}" >&2
     exit 1
   fi
@@ -72,7 +86,7 @@ iso9660)
   exit 1
 esac
 
-if ! kpartx $kpartx_roflag -a -v /dev/mapper/endless-image; then
+if ! kpartx $kpartx_roflag -a -v /dev/mapper/$target_name; then
   echo "image-boot: failed to probe partitions"
   exit 1
 fi

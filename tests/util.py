@@ -1,5 +1,6 @@
 import contextlib
 import subprocess
+import tempfile
 import unittest
 import os
 
@@ -23,18 +24,37 @@ def udevadm_settle():
     subprocess.check_call(['udevadm', 'settle'])
 
 
-def fstype(device):
+def get_lsblk_field(device, field):
     return subprocess.check_output([
-        'lsblk', '--noheading', '--output', 'fstype', device
+        'lsblk', '--nodeps', '--noheading', '--output', field, device
     ]).decode('utf-8').strip()
 
 
-def sfdisk(device, partition_table):
-    args = ("sfdisk", device)
+def fstype(device):
+    return get_lsblk_field(device, 'fstype')
+
+
+def sfdisk(device, partition_table, label='dos'):
+    args = ("sfdisk", "--label", label, device)
     sfdisk_proc = subprocess.Popen(args, stdin=subprocess.PIPE)
     sfdisk_proc.communicate(partition_table)
     if sfdisk_proc.returncode:
         raise subprocess.CalledProcessError(sfdisk_proc.returncode, args)
+
+
+@contextlib.contextmanager
+def mount(device):
+    '''Mounts device on a freshly-created mount point.'''
+    mount_point = tempfile.mkdtemp()
+    try:
+        subprocess.check_call(['mount', device, mount_point])
+
+        try:
+            yield mount_point
+        finally:
+            subprocess.check_call(['umount', mount_point])
+    finally:
+        os.rmdir(mount_point)
 
 
 class BaseTestCase(unittest.TestCase):
