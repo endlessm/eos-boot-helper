@@ -1,22 +1,36 @@
 #!/bin/sh
-# Copyright (C) 2016 Endless Mobile, Inc.
+# Copyright (C) 2016-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
 # Support booting from an image file hosted on a filesystem.
 # We identify which disk blocks correspond to the image file, and create
 # a dm-linear block device mapping them.
 
-type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+if [ $# -ge 1 ]; then
+  # For testing
+  if [ "$1" = "--readonly" ]; then
+    shift
+    dm_roflag=--readonly
+    kpartx_roflag=-r
+  fi
 
-host_device=$(cat /var/tmp/endless-image-host)
-image_path=$(getarg endless.image.path)
+  host_device="$1"
+  image_path="$2"
+  target_name="$3"
+else
+  type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
-udevadm settle
-blockdev --setro ${host_device}
+  host_device=$(cat /var/tmp/endless-image-host)
+  image_path=$(getarg endless.image.path)
+  target_name=endless-image
 
-if getargbool 0 endless.live_boot; then
-  dm_roflag=--readonly
-  kpartx_roflag=-r
+  udevadm settle
+  blockdev --setro ${host_device}
+
+  if getargbool 0 endless.live_boot; then
+    dm_roflag=--readonly
+    kpartx_roflag=-r
+  fi
 fi
 
 fstype=$(lsblk --noheadings -o FSTYPE "${host_device}")
@@ -25,15 +39,44 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
-# Identify the EOS image extents on the host device, and create a dm-linear
-# block device that maps exactly to that.
+# $squashfs is used both as a suffix for the device-mapper device (if needed),
+# and as a flag indicating that we're dealing with a squashfs.
+case "$image_path" in
+*.squash)  squashfs=-squashfs ;;
+*)         squashfs=          ;;
+esac
 
+linear_map() {
+  # Create a device-mapper linear device corresponding to the given loopback.
+  # If $image_path is uncompressed, and $host_device is NTFS or exFAT,
+  # eos-map-image-file will create this linear device directly and this
+  # function is unused.
+  local device="${1:?}"
+  local size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${device})
+  if ! echo "0 $((size_bytes / 512 )) linear ${device} 0" \
+    | dmsetup create $target_name $dm_roflag; then
+    echo "Failed to create linear device for ${device}" >&2
+    exit 1
+  fi
+}
+
+# Identify the EOS image extents on the host device, and create a dm-linear
+# block device that maps exactly to that. If the image is a squashfs, then
+# first map that, then setup a loopback device for the uncompressed image
+# within it.
+
+# First, map the outermost image file (uncompressed or squashfs)
 case "${fstype}" in
-exfat)
-  extents=$(dumpexfat -f "${image_path}" "${host_device}")
-  ;;
-ntfs)
-  extents=$(ntfsextents "${host_device}" "${image_path}")
+exfat | ntfs)
+  if ! eos-map-image-file "$host_device" "$image_path" "$target_name$squashfs"
+  then
+    echo "Failed to map ${image_path} on ${host_device}" >&2
+    exit 1
+  fi
+
+  if [ -n "$squashfs" ]; then
+    squash_device="/dev/mapper/$target_name$squashfs"
+  fi
   ;;
 iso9660)
   # Mount the ISO image
@@ -44,11 +87,25 @@ iso9660)
   fi
 
   # Create a loopback device backing the squashfs
-  if ! squash_device=$(losetup --find --show /cd/${image_path}); then
+  if ! image_device=$(losetup --find --show /cd/${image_path}); then
     echo "losetup failed for /cd/${image_path}"
     exit 1
   fi
 
+  if [ -n "$squashfs" ]; then
+    squash_device="$image_device"
+  else
+    linear_map "$image_device"
+  fi
+  ;;
+*)
+  echo "image-boot: unsupported filesystem ${fstype}"
+  exit 1
+esac
+
+# If $image_path is a squashfs, now create a loopback device for the
+# uncompressed image within it
+if [ -n "$squash_device" ]; then
   # Mount the squashfs
   mkdir /squash
   if ! mount ${squash_device} /squash; then
@@ -58,46 +115,10 @@ iso9660)
   
   # Create a loopback device backing the endless image
   host_device=$(losetup --find --show /squash/endless.img)
-
-  # Create a device-mapper linear device corresponding to the loopback
-  size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${host_device})
-  extents="0 ${size_bytes}"
-  ;;
-*)
-  echo "image-boot: unsupported filesystem ${fstype}"
-  exit 1
-esac
-
-if [ $? != 0 ]; then
-  echo "image-boot: failed to lookup image on device"
-  exit 1
+  linear_map "$host_device"
 fi
 
-offset=0
-echo "$extents" | while read extent_offset extent_size; do
-  [ -z "${extent_offset}" -o -z "${extent_size}" ] && continue
-  # Convert bytes to sectors, rounding up
-  if [ $(( extent_size % 512 )) != 0 ]; then
-    echo "image-boot: extent size $extent_size not sector-aligned" >&2
-    exit 1
-  fi
-  extent_size=$(( extent_size / 512 ))
-  extent_offset=$(( extent_offset / 512 ))
-  echo "${offset} ${extent_size} linear ${host_device} $extent_offset"
-  offset=$((offset + extent_size))
-done > /tmp/dmtable
-
-if [ $? != 0 ]; then
-  exit 1
-fi
-
-dmsetup create endless-image $dm_roflag < /tmp/dmtable
-if [ $? != 0 ]; then
-  echo "image-boot: failed to set up linear mapping"
-  exit 1
-fi
-
-if ! kpartx $kpartx_roflag -a -v /dev/mapper/endless-image; then
+if ! kpartx $kpartx_roflag -a -v /dev/mapper/$target_name; then
   echo "image-boot: failed to probe partitions"
   exit 1
 fi

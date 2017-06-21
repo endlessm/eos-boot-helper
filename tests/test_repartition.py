@@ -3,48 +3,22 @@
 Tests endless-repartition.sh. Must be run as a user privileged enough to run
 `losetup`. If run as an unprivileged user, all tests are skipped.
 '''
-import contextlib
-import os
 import subprocess
 import tempfile
-import unittest
+
+from .util import (
+    BaseTestCase,
+    dracut_script,
+    partprobe,
+    sfdisk,
+    udevadm_settle,
+)
 
 
-ENDLESS_REPARTITION_SH = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        '../dracut/repartition/endless-repartition.sh'))
+ENDLESS_REPARTITION_SH = dracut_script('repartition', 'endless-repartition.sh')
 
 
-def partprobe(device):
-    subprocess.check_call(['partprobe', device])
-
-
-def udevadm_settle():
-    subprocess.check_call(['udevadm', 'settle'])
-
-
-def fstype(device):
-    return subprocess.check_output([
-        'lsblk', '--noheading', '--output', 'fstype', device
-    ]).decode('utf-8').strip()
-
-
-class TestRepartition(unittest.TestCase):
-    @contextlib.contextmanager
-    def losetup(self, path):
-        try:
-            output = subprocess.check_output(['losetup', '--find', '--show', path])
-        except subprocess.CalledProcessError:
-            self.skipTest(reason='losetup failed (not running as root?)')
-
-        device = output.decode('utf-8').strip()
-        try:
-            partprobe(device)
-            yield device
-        finally:
-            subprocess.check_call(['losetup', '--detach', device])
-
+class TestRepartition(BaseTestCase):
     def test_creates_swap(self):
         '''
         This disk is big, so we should create a swap partition at the end.
@@ -105,9 +79,7 @@ start=   482312879, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
     def _go(self, disk_size_bytes, partition_table, bd_pre=None, bd_post=None, swap=None):
         with tempfile.NamedTemporaryFile() as img:
             img.truncate(disk_size_bytes)
-            sfdisk = subprocess.Popen(["sfdisk", img.name], stdin=subprocess.PIPE)
-            sfdisk.communicate(partition_table)
-            self.assertEqual(sfdisk.returncode, 0, 'sfdisk failed')
+            sfdisk(img.name, partition_table)
 
             with self.losetup(img.name) as img_device:
                 try:
@@ -134,12 +106,3 @@ start=   482312879, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
                     # Pause
                     # subprocess.check_call(["cat"])
                     raise
-
-    def assert_fstype(self, partition, type_):
-        '''Asserts that 'partition' contains a 'type_' filesystem.'''
-        msg = 'expected {} to have type {!r}'.format(partition, type_)
-        self.assertEqual(fstype(partition), type_, msg=msg)
-
-
-if __name__ == '__main__':
-    unittest.main()

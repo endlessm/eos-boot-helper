@@ -8,11 +8,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 def find_files(pattern):
     '''Find files matching 'pattern' on the first line.'''
     output = subprocess.check_output([
-        'grep', '-r', '--files-with-match', '--null',
-        # Only first line
-        '--max-count', '1',
-        # Skip .git and friends
-        '--exclude-dir=.*',
+        'git', 'grep', '--files-with-match', '--null',
         pattern, ROOT
     ])
     return [x.decode('utf-8') for x in output.split(b'\x00') if x]
