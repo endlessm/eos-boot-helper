@@ -13,6 +13,8 @@ def find_files(pattern):
         '--max-count', '1',
         # Skip .git and friends
         '--exclude-dir=.*',
+        # Skip temporary files
+        '--exclude=.*', '--exclude=*~',
         pattern, ROOT
     ])
     return [x.decode('utf-8') for x in output.split(b'\x00') if x]
