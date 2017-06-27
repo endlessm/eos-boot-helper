@@ -9,14 +9,7 @@ override_dh_systemd_start:
 # don't automatically enable eos-firewall-localonly
 override_dh_systemd_enable:
 	dh_systemd_enable \
-	    eos-add-flatpak-gnome-repos.service \
-	    eos-enable-extra-upgrade.service \
-	    eos-enable-zram.service \
-	    eos-firstboot.service \
-	    eos-fix-flatpak-branches.service \
-	    eos-fix-home-dir-permissions.service \
-	    eos-image-boot-dm-setup.service \
-	    eos-live-boot-overlayfs-setup.service \
+	    -Xeos-firewall-localonly.service \
 	    $(NULL)
 	dh_systemd_enable --no-enable \
 	    eos-firewall-localonly.service \
