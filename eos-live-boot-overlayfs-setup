@@ -47,7 +47,7 @@ setup_ostree_flatpak_overlay() {
 setup_ostree_flatpak_overlay
 
 # Everything else is pretty straightforward:
-overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home"
+overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
 for dir in $overlay_dirs; do
     [ -d /$dir ] || continue
     [ -d /run/eos-live/$dir ] && continue

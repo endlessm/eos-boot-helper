@@ -4,7 +4,7 @@
 
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
-early_overlay_dirs="etc var"
+early_overlay_dirs="etc"
 for dir in $early_overlay_dirs; do
 	[ -d /$dir ] || continue
 	# If the directory is a symlink, assume it's pointing to a location
