@@ -47,8 +47,9 @@ ntfs)
   extents=$(ntfsextents "${host_device}" "${image_path}")
   ;;
 *)
-  echo "Unsupported filesystem ${fstype} on ${host_device}"
-  exit 1
+  # No overlay necessary on filesystems where we use normal loopback mounts
+  # (eg iso9660).
+  exit 0
 esac
 
 if [ $? != 0 ]; then
