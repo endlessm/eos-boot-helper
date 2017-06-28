@@ -1,8 +1,8 @@
 [Unit]
 Description=Endless live boot overlayfs setup
 DefaultDependencies=no
-After=ostree-remount.service
-Before=local-fs.target
+After=ostree-remount.service var.mount
+Before=local-fs.target systemd-random-seed.service
 ConditionKernelCommandLine=endless.live_boot
 
 [Service]
