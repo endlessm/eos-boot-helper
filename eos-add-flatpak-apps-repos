@@ -32,4 +32,8 @@ EOF
 # Add the repo only if not added yet
 flatpak remote-add --if-not-exists --from eos-sdk ${TMPDIR}/eos-sdk.flatpakrepo
 
+# Change com.endlessm.EknServices over to the version that uses the new runtime
+# in the eos-sdk repo
+eos-flatpak-change-origin com.endlessm.EknServices eos-sdk
+
 exit 0
