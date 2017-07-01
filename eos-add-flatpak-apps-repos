@@ -34,23 +34,6 @@ flatpak remote-add --if-not-exists --from eos-sdk ${TMPDIR}/eos-sdk.flatpakrepo
 
 # Change com.endlessm.EknServices over to the version that uses the new runtime
 # in the eos-sdk repo
-cat <<EOF >${TMPDIR}/switch-eknservices.py
-import gi
-gi.require_version('Flatpak', '1.0')
-from gi.repository import Flatpak
-
-installation = Flatpak.Installation.new_system(cancellable=None)
-ref = installation.get_current_installed_app('com.endlessm.EknServices',
-                                             cancellable=None)
-old_origin = ref.props.origin
-ref.props.origin = 'eos-sdk'
-
-print('Switching com.endlessm.EknServices origin from', old_origin, 'to',
-      ref.props.origin)
-
-# FIXME need to write this back to the flatpak installation somehow!
-EOF
-
-python3 ${TMPDIR}/switch-eknservices.py
+eos-flatpak-change-origin com.endlessm.EknServices eos-sdk
 
 exit 0
