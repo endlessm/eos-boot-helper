@@ -9,7 +9,7 @@ After=local-fs.target
 
 # Only run on updates
 Before=multi-user.target systemd-update-done.service
-ConditionNeedsUpdate=/var
+ConditionNeedsUpdate=/etc
 
 [Service]
 Type=oneshot
