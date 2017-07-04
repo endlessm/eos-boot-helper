@@ -1,24 +1,43 @@
-#!/bin/bash -e
+#!/usr/bin/python3
+#
+# eos-add-flatpak-apps-repos: Add the stable Endless apps flatpak repositories
+# after an OS upgrade and fix the origin of com.endlessm.EknServices
+#
 # Copyright (C) 2017 Endless Mobile, Inc.
-# Licensed under the GPLv2
+# Authors:
+#  Mario Sanchez Prada <mario@endlessm.com>
+#  Philip Chimento <philip@endlessm.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-# Add the stable Endless apps flatpak repositories after an OS upgrade
+import logging
+import os
+import shutil
+import subprocess
+import tempfile
 
-TMPDIR=`mktemp -d`
-trap '[ -n "$TMPDIR" ] && rm -rf "$TMPDIR"' EXIT
+import gi
+gi.require_version('Flatpak', '1.0')
+from gi.repository import Flatpak
+from gi.repository import Gio
+from gi.repository import GLib
 
-# Sanity check
-if [ -z ${TMPDIR} ] || [ ! -d ${TMPDIR} ] ; then
-    echo "Error creating temporary directory, exiting"
-    exit 1
-fi
+# Path to the flatpak system installation.
+FLATPAK_SYSTEM_INSTALLATION = '/var/lib/flatpak'
 
-# This information for setting up this repo is stable, so we
-# can just hardcode here the contents of the .flatpakrepo file
-# so that we don't need to rely on a network connection.
-
-# Endless apps runtime Flatpak repository
-cat <<EOF > ${TMPDIR}/eos-sdk.flatpakrepo
+REF_FILE_CONTENTS = '''
 [Flatpak Repo]
 Title=Endless Apps Runtimes
 Url=https://ostree.endlessm.com/ostree/eos-sdk
@@ -27,13 +46,55 @@ Comment=Flatpak runtime for developing apps for Endless OS
 Description=Endless apps runtimes are released on a three month schedule and contain the libraries necessary for developing and running offline content apps. They receive minor bug fixing and security updates, and should be considered ABI stable and frozen.
 Icon=https://endlessos.com/wp-content/themes/endless/assets/images/logo.svg
 GPGKey=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
-EOF
+'''
 
-# Add the repo only if not added yet
-flatpak remote-add --if-not-exists --from eos-sdk ${TMPDIR}/eos-sdk.flatpakrepo
 
-# Change com.endlessm.EknServices over to the version that uses the new runtime
-# in the eos-sdk repo
-eos-flatpak-change-origin com.endlessm.EknServices eos-sdk
+def _add_flatpak_repo():
+    with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8') as repo_file:
+        repo_file.write(REF_FILE_CONTENTS)
+        subprocess.check_call(['flatpak', 'remote-add', '--if-not-exists',
+                               '--from', 'eos-sdk', repo_file.name])
 
-exit 0
+
+def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
+    deploy_file_path = os.path.join(FLATPAK_SYSTEM_INSTALLATION,
+                                    'app', app_id, 'current', 'active', 'deploy')
+    logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
+
+    src_file_contents = None
+    with open(deploy_file_path, 'rb') as f:
+        src_file_contents = GLib.Bytes.new(f.read())
+
+    # We need to read the GVariant in the deploy file and generate a
+    # new one with all the same content but the right remote set.
+    variant_type = GLib.VariantType.new('(ssasta{sv})')
+    orig_variant = GLib.Variant.new_from_bytes(variant_type, src_file_contents, False)
+    logging.debug("Original variant: {}".format(str(orig_variant)))
+
+    builder = GLib.VariantBuilder.new(variant_type)
+    for idx, val in enumerate(orig_variant):
+        # We just need to replace the first element in the Variant.
+        if idx == 0:
+            builder.add_value(GLib.Variant.new_string(new_remote_name))
+        else:
+            builder.add_value(orig_variant.get_child_value(idx))
+
+    new_variant = builder.end()
+    logging.debug("New variant: {}".format(str(new_variant)))
+
+    # Write the new GVariant to a temporary file and replace the original one.
+    with tempfile.NamedTemporaryFile() as tmp_deploy_file:
+        logging.info("Building new deploy file at {}, pointing to remote '{}'..."
+                     .format(tmp_deploy_file.name, new_remote_name))
+
+        # Write temporary file to disk and overwrite the original one with it.
+        dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
+        out_stream = dest_file.append_to(Gio.FileCreateFlags.NONE, None)
+        out_stream.write_bytes(new_variant.get_data_as_bytes())
+
+        os.chmod(tmp_deploy_file.name, 0o644)
+        shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
+
+if __name__ == '__main__':
+    _add_flatpak_repo()
+    _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
