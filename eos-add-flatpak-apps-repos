@@ -71,6 +71,10 @@ def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
     orig_variant = GLib.Variant.new_from_bytes(variant_type, src_file_contents, False)
     logging.debug("Original variant: {}".format(str(orig_variant)))
 
+    if orig_variant[0] == new_remote_name:
+        logging.debug('Nothing to do')
+        return
+
     builder = GLib.VariantBuilder.new(variant_type)
     for idx, val in enumerate(orig_variant):
         # We just need to replace the first element in the Variant.
