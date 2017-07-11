@@ -66,7 +66,6 @@ dist_sbin_SCRIPTS = \
 	eos-firstboot \
 	eos-fix-flatpak-branches \
 	eos-fix-home-dir-permissions \
-	eos-flatpak-change-origin \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
