@@ -52,6 +52,7 @@ GPGKey=mQINBFdcTroBEADFMZmOZ3ldxbL729lLOxfAlAHB+ELP0nbhRlV3sLtomUKzPGvFVUnKW7AQ6
 def _add_flatpak_repo():
     with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8') as repo_file:
         repo_file.write(REF_FILE_CONTENTS)
+        repo_file.flush()
         subprocess.check_call(['flatpak', 'remote-add', '--if-not-exists',
                                '--from', 'eos-sdk', repo_file.name])
 
@@ -95,6 +96,7 @@ def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
         dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
         out_stream = dest_file.append_to(Gio.FileCreateFlags.NONE, None)
         out_stream.write_bytes(new_variant.get_data_as_bytes())
+        out_stream.close()
 
         os.chmod(tmp_deploy_file.name, 0o644)
         shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
