@@ -59,13 +59,18 @@ def _add_flatpak_repo():
 
 
 def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
-    if os.path.isdir(FLATPAK_EXTERNAL_INSTALLATION):
-        flatpak_dir = FLATPAK_EXTERNAL_INSTALLATION
-    else:
-        flatpak_dir = FLATPAK_SYSTEM_INSTALLATION
+    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
+                        FLATPAK_SYSTEM_INSTALLATION]:
+        deploy_file_path = os.path.join(flatpak_dir, 'app', app_id, 'current',
+                                        'active', 'deploy')
 
-    deploy_file_path = os.path.join(flatpak_dir, 'app', app_id, 'current',
-                                    'active', 'deploy')
+        if not os.path.isfile(deploy_file_path):
+            logging.debug("{} not deployed in {}, skipping".format(app_id, flatpak_dir))
+            continue
+
+        _update_deploy_file_with_remote(deploy_file_path, new_remote_name)
+
+def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
     logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
 
     src_file_contents = None
