@@ -34,8 +34,9 @@ from gi.repository import Flatpak
 from gi.repository import Gio
 from gi.repository import GLib
 
-# Path to the flatpak system installation.
+# Path to the flatpak system installations.
 FLATPAK_SYSTEM_INSTALLATION = '/var/lib/flatpak'
+FLATPAK_EXTERNAL_INSTALLATION = '/var/endless-extra/flatpak'
 
 REF_FILE_CONTENTS = '''
 [Flatpak Repo]
@@ -58,8 +59,13 @@ def _add_flatpak_repo():
 
 
 def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
-    deploy_file_path = os.path.join(FLATPAK_SYSTEM_INSTALLATION,
-                                    'app', app_id, 'current', 'active', 'deploy')
+    if os.path.isdir(FLATPAK_EXTERNAL_INSTALLATION):
+        flatpak_dir = FLATPAK_EXTERNAL_INSTALLATION
+    else:
+        flatpak_dir = FLATPAK_SYSTEM_INSTALLATION
+
+    deploy_file_path = os.path.join(flatpak_dir, 'app', app_id, 'current',
+                                    'active', 'deploy')
     logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
 
     src_file_contents = None
