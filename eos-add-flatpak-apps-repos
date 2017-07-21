@@ -58,14 +58,16 @@ def _add_flatpak_repo():
                                '--from', 'eos-sdk', repo_file.name])
 
 
-def _update_deploy_file_for_app_and_remote(app_id, new_remote_name):
+def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
+                                           arch_branch='current'):
     for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
                         FLATPAK_SYSTEM_INSTALLATION]:
-        deploy_file_path = os.path.join(flatpak_dir, 'app', app_id, 'current',
+        deploy_file_path = os.path.join(flatpak_dir, kind, app_id, arch_branch,
                                         'active', 'deploy')
 
         if not os.path.isfile(deploy_file_path):
-            logging.debug("{} not deployed in {}, skipping".format(app_id, flatpak_dir))
+            logging.debug("{}/{} not deployed in {}, skipping"
+                          .format(app_id, arch_branch, flatpak_dir))
             continue
 
         _update_deploy_file_with_remote(deploy_file_path, new_remote_name)
@@ -115,3 +117,11 @@ def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
 if __name__ == '__main__':
     _add_flatpak_repo()
     _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
+    for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
+                    'com.endlessm.apps.Platform.Locale',
+                    'com.endlessm.apps.Sdk.Locale',
+                    'com.endlessm.apps.Sdk.Debug'):
+        for arch_branch in ('x86_64/1', 'x86_64/master', 'arm/1', 'arm/master'):
+            _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
+                                                   kind='runtime',
+                                                   arch_branch=arch_branch)
