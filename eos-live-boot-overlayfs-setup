@@ -6,7 +6,7 @@
 mount -o remount,user_xattr /run
 
 # Mount overlays over any directory that might be written to
-# Note that /etc and /var were handled in the initramfs since it must be done early.
+# Note that /etc was handled in the initramfs since it must be done early.
 # The rest of these should be done later, to avoid fighting with ostree-remount
 
 # /sysroot/ostree needs special handling:
@@ -44,9 +44,8 @@ setup_ostree_flatpak_overlay() {
     # And leave /sysroot/flatpak uncovered; since it is only ever referenced
     # via the /var/lib/flatpak symlink.
 }
-setup_ostree_flatpak_overlay
 
-# Everything else is pretty straightforward:
+# Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
 overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
 for dir in $overlay_dirs; do
     [ -d /$dir ] || continue
@@ -59,3 +58,6 @@ for dir in $overlay_dirs; do
         rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
         eos-live-$dir /$dir
 done
+
+# Once /var is writable, we can set up the special ostree+flatpak overlay:
+setup_ostree_flatpak_overlay
