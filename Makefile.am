@@ -1,9 +1,10 @@
 SUBDIRS = dracut tests
 EXTRA_DIST = debian
 
-# Install systemd units and udev rules under $prefix for distcheck
+# Install systemd units and generators and udev rules under $prefix for distcheck
 AM_DISTCHECK_CONFIGURE_FLAGS = \
-	--with-systemdunitdir='$${prefix}/lib/systemd/systemd' \
+	--with-systemdunitdir='$${prefix}/lib/systemd/system' \
+	--with-systemdgeneratordir='$${prefix}/lib/systemd/system-generators' \
 	--with-udevdir='$${prefix}/lib/udev' \
 	$(NULL)
 
@@ -20,6 +21,10 @@ dist_systemdunit_DATA = \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
+	$(NULL)
+
+dist_systemdgenerator_DATA = \
+	eos-live-boot-generator \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which

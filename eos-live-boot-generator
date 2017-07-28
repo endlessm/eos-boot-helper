@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Usage: eos-live-boot-generator normal-dir [...]
+#
+# Conditionally adds additional boot dependencies for live boots.
+# This script implements systemd.generator(7).
+
+is_live()
+{
+    # Check $proc_cmdline, if set, for testing purposes
+    grep -q "\<endless.live_boot\>" "${proc_cmdline:-/proc/cmdline}"
+}
+
+dest_dir="${1:?normal-dir argument missing}"
+
+system_dir=/usr/lib/systemd/system
+local_fs_target_wants="$dest_dir/local-fs.target.wants"
+if is_live; then
+    mkdir -p "$local_fs_target_wants"
+    ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
+fi

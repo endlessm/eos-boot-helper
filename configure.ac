@@ -9,6 +9,9 @@ dnl can be set under $prefix for distcheck.
 m4_define([no_systemd_error],
           [m4_normalize([Could not get systemdsystemunitdir setting from]
                         [systemd pkg-config file])])
+m4_define([no_systemdsystemgeneratordir_error],
+          [m4_normalize([Could not get systemdsystemgeneratordir setting from]
+                        [systemd pkg-config file])])
 m4_define([no_udev_error],
           [m4_normalize([Could not get udevdir setting from udev]
                         [pkg-config file])])
@@ -18,6 +21,13 @@ AC_ARG_WITH([systemdunitdir],
             [systemdunitdir="$withval"],
             [PKG_CHECK_VAR([systemdunitdir], [systemd],
                            [systemdsystemunitdir], [],
+                           [AC_MSG_ERROR(no_systemd_error)])])
+AC_ARG_WITH([systemdgeneratordir],
+            [AS_HELP_STRING([--with-systemdgeneratordir],
+                            [Path to the system directory for systemd generators])],
+            [systemdgeneratordir="$withval"],
+            [PKG_CHECK_VAR([systemdgeneratordir], [systemd],
+                           [systemdsystemgeneratordir], [],
                            [AC_MSG_ERROR(no_systemd_error)])])
 AC_ARG_WITH([udevdir],
             [AS_HELP_STRING([--with-udevdir],
