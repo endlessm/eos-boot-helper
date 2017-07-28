@@ -9,7 +9,6 @@ import os
 import tempfile
 import shutil
 import subprocess
-import unittest
 
 from .util import (
     BaseTestCase,
@@ -196,7 +195,6 @@ class TestMapImageFile(ImageTestCase):
     def test_map_ntfs_readonly(self):
         '''Tests mapping a file on an NTFS filesystem, readonly.'''
         self._go('ntfs', readonly=True)
-
 
     # TODO: would be nice to verify that eos-map-image-file fails if the file
     # has holes or is not fully initialized on NTFS
