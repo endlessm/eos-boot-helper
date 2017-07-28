@@ -18,4 +18,7 @@ local_fs_target_wants="$dest_dir/local-fs.target.wants"
 if is_live; then
     mkdir -p "$local_fs_target_wants"
     ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
+
+    # Don't try to remount the (read-only) root filesystem read-write
+    ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
 fi
