@@ -1,8 +1,13 @@
 TESTS = \
-	check-syntax
+	check-syntax \
+	run-tests \
+	$(NULL)
 
 EXTRA_DIST = \
 	$(TESTS) \
-	run-tests \
+	__init__.py \
+	test_image_boot.py \
+	test_live_boot_generator.py \
 	test_repartition.py \
+	util.py \
 	$(NULL)

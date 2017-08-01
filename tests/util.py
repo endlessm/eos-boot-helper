@@ -1,19 +1,22 @@
 import contextlib
+import os
+import shutil
 import subprocess
 import tempfile
 import unittest
-import os
+
+
+def system_script(script):
+    '''Gets the absolute path to a script in the top level of this
+    repository.'''
+    return os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', script))
 
 
 def dracut_script(module, script):
     '''Gets the absolute path to a script in a dracut module in this
     repository.'''
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            '../dracut',
-            module,
-            script))
+    return system_script(os.path.join('dracut', module, script))
 
 
 def partprobe(device):
@@ -43,18 +46,26 @@ def sfdisk(device, partition_table, label='dos'):
 
 
 @contextlib.contextmanager
+def TemporaryDirectory():
+    '''Reimplementation of tempfile.TemporaryDirectory from Python >= 3.5
+    since Endless OS only has Python 3.4.'''
+    d = tempfile.mkdtemp()
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d)
+
+
+@contextlib.contextmanager
 def mount(device):
     '''Mounts device on a freshly-created mount point.'''
-    mount_point = tempfile.mkdtemp()
-    try:
+    with TemporaryDirectory() as mount_point:
         subprocess.check_call(['mount', device, mount_point])
 
         try:
             yield mount_point
         finally:
             subprocess.check_call(['umount', mount_point])
-    finally:
-        os.rmdir(mount_point)
 
 
 class BaseTestCase(unittest.TestCase):
