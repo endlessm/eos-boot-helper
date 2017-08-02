@@ -6,6 +6,11 @@ import tempfile
 import unittest
 
 
+run_needs_root_tests = bool(os.environ.get('EBH_ROOT_TESTS'))
+needs_root = unittest.skipIf(not run_needs_root_tests,
+                             "needs root; set EBH_ROOT_TESTS=1 to enable")
+
+
 def system_script(script):
     '''Gets the absolute path to a script in the top level of this
     repository.'''
@@ -68,23 +73,21 @@ def mount(device):
             subprocess.check_call(['umount', mount_point])
 
 
+@contextlib.contextmanager
+def losetup(path):
+    '''Yields a loopback device for path.'''
+    args = ('losetup', '--find', '--show', path,)
+    output = subprocess.check_output(args)
+
+    device = output.decode('utf-8').strip()
+    try:
+        partprobe(device)
+        yield device
+    finally:
+        subprocess.check_call(['losetup', '--detach', device])
+
+
 class BaseTestCase(unittest.TestCase):
-    @contextlib.contextmanager
-    def losetup(self, path):
-        '''Yields a loopback device for path.'''
-        try:
-            args = ('losetup', '--find', '--show', path,)
-            output = subprocess.check_output(args)
-        except subprocess.CalledProcessError:
-            self.skipTest(reason='losetup failed (not running as root?)')
-
-        device = output.decode('utf-8').strip()
-        try:
-            partprobe(device)
-            yield device
-        finally:
-            subprocess.check_call(['losetup', '--detach', device])
-
     def assert_fstype(self, partition, type_):
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)
