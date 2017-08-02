@@ -9,6 +9,7 @@ import tempfile
 from .util import (
     BaseTestCase,
     dracut_script,
+    needs_root,
     partprobe,
     sfdisk,
     udevadm_settle,
@@ -19,6 +20,7 @@ ENDLESS_REPARTITION_SH = dracut_script('repartition', 'endless-repartition.sh')
 
 
 class TestRepartition(BaseTestCase):
+    @needs_root
     def test_creates_swap(self):
         '''
         This disk is big, so we should create a swap partition at the end.
@@ -36,6 +38,7 @@ start=      131072, size=       20.4G, type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 
         self._go(disk_size_bytes, partition_table, swap='p4')
 
+    @needs_root
     def test_preserves_basic_data_no_swap(self):
         '''
         This disk is too small to create a swap partition, but it does have a
@@ -56,6 +59,7 @@ start=   232243200, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
 
         self._go(disk_size_bytes, partition_table, bd_pre='p4', bd_post='p4')
 
+    @needs_root
     def test_preserves_basic_data_swap(self):
         '''
         This disk is big, so we should create a swap partition just before the

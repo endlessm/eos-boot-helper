@@ -6,6 +6,11 @@ import tempfile
 import unittest
 
 
+run_needs_root_tests = bool(os.environ.get('EBH_ROOT_TESTS'))
+needs_root = unittest.skipIf(not run_needs_root_tests,
+                             "needs root; set EBH_ROOT_TESTS=1 to enable")
+
+
 def system_script(script):
     '''Gets the absolute path to a script in the top level of this
     repository.'''
@@ -72,11 +77,8 @@ class BaseTestCase(unittest.TestCase):
     @contextlib.contextmanager
     def losetup(self, path):
         '''Yields a loopback device for path.'''
-        try:
-            args = ('losetup', '--find', '--show', path,)
-            output = subprocess.check_output(args)
-        except subprocess.CalledProcessError:
-            self.skipTest(reason='losetup failed (not running as root?)')
+        args = ('losetup', '--find', '--show', path,)
+        output = subprocess.check_output(args)
 
         device = output.decode('utf-8').strip()
         try:

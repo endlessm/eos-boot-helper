@@ -13,10 +13,11 @@ import subprocess
 from .util import (
     BaseTestCase,
     dracut_script,
+    get_lsblk_field,
     mount,
+    needs_root,
     partprobe,
     sfdisk,
-    get_lsblk_field,
     udevadm_settle,
 )
 
@@ -81,18 +82,21 @@ class TestImageBootSetup(ImageTestCase):
         subprocess.check_call(('mksquashfs',) + contents + (endless_squash,))
         return endless_squash
 
+    @needs_root
     def test_image_boot_iso(self):
         '''Tests ISO > uncompressed image'''
         iso = self._mkisofs(self.endless_img)
         with self.losetup(iso) as host_device:
             self._go(host_device, 'endless.img', readonly=True)
 
+    @needs_root
     def test_image_boot_iso_squashfs(self):
         '''Tests ISO > SquashFS > uncompressed image'''
         iso = self._mkisofs(self._mksquashfs(self.endless_img))
         with self.losetup(iso) as host_device:
             self._go(host_device, 'endless.squash', readonly=True)
 
+    @needs_root
     def test_image_boot_exfat(self):
         '''Tests exFAT > uncompressed image'''
         with self.make_host_device('exfat') as host_device:
@@ -101,6 +105,7 @@ class TestImageBootSetup(ImageTestCase):
 
             self._go(host_device, 'endless.img', readonly=False)
 
+    @needs_root
     def test_image_boot_exfat_squashfs(self):
         '''Tests exFAT > SquashFS > uncompressed image'''
         endless_squash = self._mksquashfs(self.endless_img)
@@ -110,6 +115,7 @@ class TestImageBootSetup(ImageTestCase):
 
             self._go(host_device, 'endless.squash', readonly=True)
 
+    @needs_root
     def test_image_boot_ntfs(self):
         '''Tests NTFS > uncompressed image'''
         with self.make_host_device('ntfs') as host_device:
@@ -180,18 +186,22 @@ class TestMapImageFile(ImageTestCase):
     '''Tests eos-map-image-file can correctly map a file within an unmounted
     filesystem via device-mapper.'''
 
+    @needs_root
     def test_map_exfat_readwrite(self):
         '''Tests mapping a file on an exFAT filesystem.'''
         self._go('exfat', readonly=False)
 
+    @needs_root
     def test_map_ntfs_readwrite(self):
         '''Tests mapping a file on an NTFS filesystem.'''
         self._go('ntfs', readonly=False)
 
+    @needs_root
     def test_map_exfat_readonly(self):
         '''Tests mapping a file on an exFAT filesystem, readonly.'''
         self._go('exfat', readonly=True)
 
+    @needs_root
     def test_map_ntfs_readonly(self):
         '''Tests mapping a file on an NTFS filesystem, readonly.'''
         self._go('ntfs', readonly=True)
