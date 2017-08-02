@@ -14,6 +14,7 @@ from .util import (
     BaseTestCase,
     dracut_script,
     get_lsblk_field,
+    losetup,
     mount,
     needs_root,
     partprobe,
@@ -36,7 +37,7 @@ class ImageTestCase(BaseTestCase):
             host_img.truncate(2 * 1024 * 1024)
             sfdisk(host_img.name, b'start=64KiB, type=0x07')
 
-            with self.losetup(host_img.name) as host_disk:
+            with losetup(host_img.name) as host_disk:
                 partprobe(host_disk)
                 udevadm_settle()
 
@@ -86,14 +87,14 @@ class TestImageBootSetup(ImageTestCase):
     def test_image_boot_iso(self):
         '''Tests ISO > uncompressed image'''
         iso = self._mkisofs(self.endless_img)
-        with self.losetup(iso) as host_device:
+        with losetup(iso) as host_device:
             self._go(host_device, 'endless.img', readonly=True)
 
     @needs_root
     def test_image_boot_iso_squashfs(self):
         '''Tests ISO > SquashFS > uncompressed image'''
         iso = self._mkisofs(self._mksquashfs(self.endless_img))
-        with self.losetup(iso) as host_device:
+        with losetup(iso) as host_device:
             self._go(host_device, 'endless.squash', readonly=True)
 
     @needs_root

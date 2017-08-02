@@ -73,20 +73,21 @@ def mount(device):
             subprocess.check_call(['umount', mount_point])
 
 
+@contextlib.contextmanager
+def losetup(path):
+    '''Yields a loopback device for path.'''
+    args = ('losetup', '--find', '--show', path,)
+    output = subprocess.check_output(args)
+
+    device = output.decode('utf-8').strip()
+    try:
+        partprobe(device)
+        yield device
+    finally:
+        subprocess.check_call(['losetup', '--detach', device])
+
+
 class BaseTestCase(unittest.TestCase):
-    @contextlib.contextmanager
-    def losetup(self, path):
-        '''Yields a loopback device for path.'''
-        args = ('losetup', '--find', '--show', path,)
-        output = subprocess.check_output(args)
-
-        device = output.decode('utf-8').strip()
-        try:
-            partprobe(device)
-            yield device
-        finally:
-            subprocess.check_call(['losetup', '--detach', device])
-
     def assert_fstype(self, partition, type_):
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)

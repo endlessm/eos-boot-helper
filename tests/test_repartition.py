@@ -9,6 +9,7 @@ import tempfile
 from .util import (
     BaseTestCase,
     dracut_script,
+    losetup,
     needs_root,
     partprobe,
     sfdisk,
@@ -85,7 +86,7 @@ start=   482312879, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
             img.truncate(disk_size_bytes)
             sfdisk(img.name, partition_table)
 
-            with self.losetup(img.name) as img_device:
+            with losetup(img.name) as img_device:
                 try:
                     if bd_pre is not None:
                         bd_partition = img_device + bd_pre
