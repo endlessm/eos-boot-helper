@@ -23,7 +23,7 @@ dist_systemdunit_DATA = \
 	eos-migrate-image-defaults.service \
 	$(NULL)
 
-dist_systemdgenerator_DATA = \
+dist_systemdgenerator_SCRIPTS = \
 	eos-live-boot-generator \
 	$(NULL)
 
