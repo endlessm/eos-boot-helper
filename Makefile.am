@@ -20,6 +20,7 @@ dist_systemdunit_DATA = \
 	eos-fix-flatpak-branches.service \
 	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
+	eos-link-host-mali-driver.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-remove-legacy-external-apps.service \
@@ -75,6 +76,7 @@ dist_sbin_SCRIPTS = \
 	eos-fix-flatpak-branches \
 	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \
+	eos-link-host-mali-driver \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
 	eos-remove-legacy-external-apps \
