@@ -1,0 +1,21 @@
+# Copy the host GL driver for Mali to a place where Flatpak will mount it
+
+[Unit]
+Description=Copy Mali GL driver for Flatpak
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+Before=multi-user.target
+
+# Only run on ARM systems with the Mali driver
+ConditionArchitecture=arm
+ConditionPathExists=/usr/lib/arm-linux-gnueabihf/mali400-egl-x11
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-copy-host-mali-driver
+
+[Install]
+WantedBy=multi-user.target
