@@ -28,4 +28,4 @@ fi
 
 DEST_DIR="$EXTENSIONS_DIR/org.freedesktop.Platform.GL.mali450/arm/1.6/lib"
 mkdir -p "$DEST_DIR"
-ln -s /usr/lib/arm-linux-gnueabihf/mali400-egl-x11 "$DEST_DIR"
+cp -rl /usr/lib/arm-linux-gnueabihf/mali400-egl-x11 "$DEST_DIR"
