@@ -1,0 +1,20 @@
+# Add the Flathub flatpak repositories after an OS upgrade
+
+[Unit]
+Description=Configure the Flathub flatpak repositories
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=/etc
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-add-flatpak-flathub-repos
+
+[Install]
+WantedBy=multi-user.target
