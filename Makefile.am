@@ -9,6 +9,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	boot.mount \
 	eos-add-flatpak-apps-repos.service \
 	eos-add-flatpak-gnome-repos.service \
 	eos-enable-extra-upgrade.service \

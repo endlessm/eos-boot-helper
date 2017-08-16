@@ -1,0 +1,11 @@
+[Unit]
+ConditionKernelCommandLine=ostree
+
+[Mount]
+What=/sysroot/boot
+Where=/boot
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target
