@@ -22,6 +22,7 @@ dist_systemdunit_DATA = \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
+	eos-remove-legacy-external-apps.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
@@ -76,5 +77,6 @@ dist_sbin_SCRIPTS = \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
+	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
 	$(NULL)
