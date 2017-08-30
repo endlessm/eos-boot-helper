@@ -1,0 +1,34 @@
+#!/bin/bash -e
+# Copyright (C) 2017 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+# Legacy external apps had a runtime that was built locally
+# to contain the binaries (downloaded on the fly) of an app
+# that we didn't have the rights to distribute (like it's
+# currently done with Flatpak's extra-data).
+#
+# So it created a remote called 'eos-external-apps' in
+# '/var/lib/flatpak-external-apps'.
+#
+# The external apps in this case were Dropbox, Skype, and
+# Spotify.
+
+ext_apps_repo=/var/lib/flatpak-external-apps
+ext_apps_remote=eos-external-apps
+
+# Remove the 'eos-external-apps' remote
+flatpak remote-delete $ext_apps_remote || true
+
+# Remove the 'eos-external-apps' repo
+if [ -d $ext_apps_repo ]; then
+    rm -rf $ext_apps_repo
+fi
+
+# Remove legacy runtimes
+apps=(com.google.Chrome com.microsoft.Skype com.spotify.Client com.dropbox.Client)
+installed_runtimes=$(flatpak list --runtime)
+for app in ${apps[@]}; do
+	for installed_runtime in $(echo "$installed_runtimes" | grep "$app" | cut -d' ' -f1); do
+		flatpak uninstall $installed_runtime || true
+	done
+done
