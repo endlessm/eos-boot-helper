@@ -12,6 +12,9 @@ m4_define([no_systemd_error],
 m4_define([no_systemdsystemgeneratordir_error],
           [m4_normalize([Could not get systemdsystemgeneratordir setting from]
                         [systemd pkg-config file])])
+m4_define([no_systemdsystempresetdir_error],
+          [m4_normalize([Could not get systemdsystempresetdir setting from]
+                        [systemd pkg-config file])])
 m4_define([no_udev_error],
           [m4_normalize([Could not get udevdir setting from udev]
                         [pkg-config file])])
@@ -29,6 +32,13 @@ AC_ARG_WITH([systemdgeneratordir],
             [PKG_CHECK_VAR([systemdgeneratordir], [systemd],
                            [systemdsystemgeneratordir], [],
                            [AC_MSG_ERROR(no_systemd_error)])])
+AC_ARG_WITH([systemdpresetdir],
+            [AS_HELP_STRING([--with-systemdpresetdir],
+                            [Path to the system directory for systemd presets])],
+            [systemdpresetdir="$withval"],
+            [PKG_CHECK_VAR([systemdpresetdir], [systemd],
+                           [systemdsystempresetdir], [],
+                           [AC_MSG_ERROR(no_systemdsystempresetdir_error)])])
 AC_ARG_WITH([udevdir],
             [AS_HELP_STRING([--with-udevdir],
                             [Path to the system udev directory])],
