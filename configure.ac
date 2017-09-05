@@ -31,7 +31,7 @@ AC_ARG_WITH([systemdgeneratordir],
             [systemdgeneratordir="$withval"],
             [PKG_CHECK_VAR([systemdgeneratordir], [systemd],
                            [systemdsystemgeneratordir], [],
-                           [AC_MSG_ERROR(no_systemd_error)])])
+                           [AC_MSG_ERROR(no_systemdsystemgeneratordir_error)])])
 AC_ARG_WITH([systemdpresetdir],
             [AS_HELP_STRING([--with-systemdpresetdir],
                             [Path to the system directory for systemd presets])],
