@@ -1,5 +1,7 @@
 #!/bin/bash
 
+EXTRA_PATHS=$@
+
 # Allow xattrs in the user namespace on /run, and by extension in the ostree
 # repo, where they are used to record permissions when run as an unprivileged
 # user.
@@ -47,7 +49,7 @@ setup_ostree_flatpak_overlay() {
 
 # Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
 overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
-for dir in $overlay_dirs; do
+for dir in $overlay_dirs $EXTRA_PATHS; do
     [ -d /$dir ] || continue
     [ -d /run/eos-live/$dir ] && continue
     # If the directory is a symlink, assume it's pointing to a location
