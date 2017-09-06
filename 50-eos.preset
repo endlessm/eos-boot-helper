@@ -1,0 +1,69 @@
+# Systemd unit file presets for EOS. We do not install a wildcard
+# "disable *" rule, so here we simply blacklist any units that aren't
+# desired. All others will be enabled by systemd.
+
+# Reverse systemd defaults
+disable systemd-timesyncd.service
+disable systemd-networkd.service
+disable systemd-resolved.service
+disable systemd-networkd-wait-online.service
+
+# Disable other unwanted units
+disable bluetooth-init.service
+disable eos-firewall-localonly.service
+disable eos-update-server.service
+disable eos-update-server.socket
+disable eos-updater-avahi.path
+disable eos-updater-avahi.service
+disable NetworkManager-wait-online.service
+disable rtkit-daemon.service
+disable serial-getty@.service
+disable ssh*.service
+disable ssh.socket
+disable systemd-nspawn@.service
+disable wpa_supplicant@.service
+disable wpa_supplicant.service
+
+# Disable units masked by Debian, as systemctl preset-all fails to
+# handle them. Without this, `systemctl preset-all` will fail with:
+#
+# Operation failed: Cannot send after transport endpoint shutdown
+#
+# Units masked in systemd. See debian/systemd.links.
+disable x11-common.service
+disable hostname.service
+disable rmnologin.service
+disable bootmisc.service
+disable fuse.service
+disable bootlogd.service
+disable stop-bootlogd-single.service
+disable stop-bootlogd.service
+disable hwclock.service
+disable mountkernfs.service
+disable mountdevsubfs.service
+disable mountall.service
+disable mountall-bootclean.service
+disable mountnfs.service
+disable mountnfs-bootclean.service
+disable umountfs.service
+disable umountnfs.service
+disable umountroot.service
+disable checkfs.service
+disable checkroot.service
+disable checkroot-bootclean.service
+disable cryptdisks.service
+disable cryptdisks-early.service
+disable single.service
+disable killprocs.service
+disable sendsigs.service
+disable halt.service
+disable reboot.service
+disable rc.service
+disable rcS.service
+disable motd.service
+disable bootlogs.service
+#
+# Units masked by other packages. Run the following to find them:
+#
+# find /usr/lib/systemd/system -lname /dev/null -printf 'disable %f\n' | sort
+disable screen-cleanup.service

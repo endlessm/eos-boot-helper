@@ -20,3 +20,5 @@ Depends: ${misc:Depends},
          xinit,
          xterm,
          iptables,
+Breaks: systemd (<= 232+dev145.a41a4e3-23)
+Replaces: systemd (<= 232+dev145.a41a4e3-23)
