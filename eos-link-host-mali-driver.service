@@ -1,0 +1,22 @@
+# Symlink the host GL driver for Mali to a place where Flatpak will mount it
+
+[Unit]
+Description=Symlink Mali GL driver for Flatpak
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+Before=multi-user.target
+
+# Only run on ARM systems with the Mali driver where we haven't run before
+ConditionArchitecture=arm
+ConditionPathExists=/usr/lib/arm-linux-gnueabihf/mali400-egl-x11
+ConditionPathExists=!/var/lib/flatpak/extension/org.freedesktop.Platform.GL.host/arm/1.6
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-link-host-mali-driver
+
+[Install]
+WantedBy=multi-user.target
