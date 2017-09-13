@@ -1,0 +1,27 @@
+[Unit]
+Description=Set /ostree/repo config option core.add-remotes-config-dir false
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only needed if /ostree/repo exists
+ConditionPathIsDirectory=/ostree/repo
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+# Try to run before any ostree clients so that they all see the updated
+# repo option
+Before=eos-autoupdater.service eos-updater.service
+Before=eos-updater-avahi.service eos-update-server.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-ostree-remotes-config
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,9 @@ After=local-fs.target
 Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=/var
 
+# Wait until the core.add-remotes-config-dir repo option is set
+After=eos-ostree-remotes-config.service
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
