@@ -18,6 +18,7 @@ m4_define([no_systemdsystempresetdir_error],
 m4_define([no_udev_error],
           [m4_normalize([Could not get udevdir setting from udev]
                         [pkg-config file])])
+
 AC_ARG_WITH([systemdunitdir],
             [AS_HELP_STRING([--with-systemdunitdir],
                             [Path to the system directory for systemd units])],
@@ -46,6 +47,11 @@ AC_ARG_WITH([udevdir],
             [PKG_CHECK_VAR([udevdir], [udev],
                            [udevdir], [],
                            [AC_MSG_ERROR(no_udev_error)])])
+AC_ARG_WITH([modprobedir],
+            [AS_HELP_STRING([--with-modprobedir],
+                            [Path to the system modprobe.d directory])],
+            [modprobedir="$withval"], [modprobedir="/lib/modprobe.d"])
+AC_SUBST(modprobedir)
 
 AC_CONFIG_FILES([
 	Makefile

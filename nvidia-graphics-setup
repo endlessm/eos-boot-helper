@@ -1,0 +1,79 @@
+#!/bin/bash
+set -e
+
+NV_CURRENT=/usr/lib/nvidia/current
+NV_KERNEL_OBJ=${NV_CURRENT}/kernel-obj
+MODULE_DIR=/var/lib/endless-external-drivers/nvidia
+
+NV_DEVICE=$(lspci -mn | awk '{ gsub("\"",""); if (($2 == "0300" || $2 == "0302") && ($3 == "10de" || $3 == "12d2")) { print toupper($3)toupper($4) } }' | head -n 1)
+
+if [[ -z ${NV_DEVICE} ]]; then
+  exit 0
+fi
+
+echo "Found nvidia device ${NV_DEVICE}"
+
+# Build the nvidia module if we haven't already built the current
+# ostree-shipped driver version for the currently running kernel.
+build_nvidia_if_needed() {
+  local running_kernel_version=$(uname -r)
+  local nvidia_ostree_version
+  local built_driver_version
+  local built_kernel_version
+
+  if [[ -e "${NV_KERNEL_OBJ}/version" ]]; then
+    nvidia_ostree_version=$(<${NV_KERNEL_OBJ}/version)
+  fi
+  if [[ -e "${MODULE_DIR}/driver-version" ]]; then
+    built_driver_version=$(<${MODULE_DIR}/driver-version)
+  fi
+  if [[ -e "${MODULE_DIR}/kernel-version" ]]; then
+    built_kernel_version=$(<${MODULE_DIR}/kernel-version)
+  fi
+
+  echo "Kernel version: running=${running_kernel_version} built=${built_kernel_version}"
+  echo "Driver version: shipped=${nvidia_ostree_version} built=${built_driver_version}"
+
+  # If we've built the driver for the kernel we're running, and it's the same
+  # driver version as the one in the ostree, then we have nothing to do
+  if [[ "${built_kernel_version}" == "$(uname -r)" ]] &&
+     [[ "${built_driver_version}" == "${nvidia_ostree_version}" ]]; then
+    return
+  fi
+
+  # Otherwise, build needed.
+  echo "Building driver"
+  rm -rf "${MODULE_DIR}"
+  mkdir -p "${MODULE_DIR}"
+  OUTPREFIX="${MODULE_DIR}/" "${NV_KERNEL_OBJ}/build" || return
+  uname -r > "${MODULE_DIR}/kernel-version"
+  cp "${NV_KERNEL_OBJ}/version" "${MODULE_DIR}/driver-version"
+}
+
+if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
+   grep --quiet -F ${NV_DEVICE} ${NV_CURRENT}/nvidia.ids; then
+
+  build_nvidia_if_needed
+  echo "Loading nvidia modules"
+  insmod "${MODULE_DIR}"/nvidia.ko || :
+  insmod "${MODULE_DIR}"/nvidia-modeset.ko || :
+  insmod "${MODULE_DIR}"/nvidia-drm.ko || :
+  if [[ -e "/sys/module/nvidia_drm" ]]; then
+    echo "nvidia loaded successfully"
+    exit 0
+  fi
+
+  # Try to unload anything that loaded
+  echo "nvidia load failed"
+  ls /sys/module
+  rmmod nvidia-drm
+  rmmod nvidia-modeset
+  rmmod nvidia
+fi
+
+# nouveau selected, or we want to use nouveau because nvidia build/load failed
+
+# nouveau claims all devices based on the nvidia vendor IDs so we don't
+# need to do a specific product ID lookup here, just load it.
+echo "Loading nouveau"
+modprobe nouveau
