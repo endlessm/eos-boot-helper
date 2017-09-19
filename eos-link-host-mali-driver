@@ -22,14 +22,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 EXTENSION_REF=org.freedesktop.Platform.GL.host/arm/1.6
-MALI_DIR=/usr/lib/arm-linux-gnueabihf/mali400-egl-x11
+MALI_DIR=/usr/lib/mali400/arm-linux-gnueabihf
 
 DEST_DIR="/var/lib/flatpak/extension/$EXTENSION_REF"
 mkdir -p $(dirname "$DEST_DIR")
-ln -s "$MALI_DIR" "$DEST_DIR"
+ln -sf "$MALI_DIR" "$DEST_DIR"
 
 if test -d /var/endless-extra/flatpak; then
     DEST_DIR="/var/endless-extra/flatpak/extension/$EXTENSION_REF"
     mkdir -p $(dirname "$DEST_DIR")
-    ln -s "$MALI_DIR" "$DEST_DIR"
+    ln -sf "$MALI_DIR" "$DEST_DIR"
 fi

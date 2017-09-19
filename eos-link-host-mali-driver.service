@@ -10,7 +10,7 @@ Before=multi-user.target
 
 # Only run on ARM systems with the Mali driver where we haven't run before
 ConditionArchitecture=arm
-ConditionPathExists=/usr/lib/arm-linux-gnueabihf/mali400-egl-x11
+ConditionPathExists=/usr/lib/mali400/arm-linux-gnueabihf
 ConditionPathExists=!/var/lib/flatpak/extension/org.freedesktop.Platform.GL.host/arm/1.6
 
 [Service]
