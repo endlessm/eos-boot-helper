@@ -8,6 +8,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdgeneratordir='$${prefix}/lib/systemd/system-generators' \
 	--with-systemdpresetdir='$${prefix}/lib/systemd/system-preset' \
 	--with-udevdir='$${prefix}/lib/udev' \
+	--with-modprobedir='$${prefix}/lib/modprobe.d' \
 	$(NULL)
 
 dist_systemdunit_DATA = \
@@ -26,6 +27,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-remove-legacy-external-apps.service \
+	nvidia-graphics.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
@@ -34,6 +36,10 @@ dist_systemdgenerator_SCRIPTS = \
 
 dist_systemdpreset_DATA = \
 	50-eos.preset \
+	$(NULL)
+
+dist_modprobe_DATA = \
+	nouveau.conf \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which
@@ -87,4 +93,6 @@ dist_sbin_SCRIPTS = \
 	eos-migrate-image-defaults \
 	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
+	nvidia-graphics-cleanup \
+	nvidia-graphics-setup \
 	$(NULL)
