@@ -1,0 +1,11 @@
+[Unit]
+Description=Xapian Bridge from Flatpak
+ConditionPathExists=|/var/endless-extra/flatpak/app/com.endlessm.XapianBridge/current/active/files/bin/xapian-bridge
+ConditionPathExists=|/var/lib/flatpak/app/com.endlessm.XapianBridge/current/active/files/bin/xapian-bridge
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/flatpak run --no-desktop --command="xapian-bridge" com.endlessm.XapianBridge
+
+PrivateTmp=yes
+Restart=on-failure

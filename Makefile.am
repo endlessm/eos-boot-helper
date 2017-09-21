@@ -22,6 +22,7 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-fix-flatpak-branches.service \
 	eos-fix-home-dir-permissions.service \
+	eos-flatpak-xapian-bridge.service \
 	eos-image-boot-dm-setup.service \
 	eos-link-host-mali-driver.service \
 	eos-live-boot-overlayfs-setup.service \
