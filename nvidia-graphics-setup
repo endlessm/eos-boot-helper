@@ -65,10 +65,9 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
 
   # Try to unload anything that loaded
   echo "nvidia load failed"
-  ls /sys/module
-  rmmod nvidia-drm
-  rmmod nvidia-modeset
-  rmmod nvidia
+  rmmod nvidia-drm || :
+  rmmod nvidia-modeset || :
+  rmmod nvidia || :
 fi
 
 # nouveau selected, or we want to use nouveau because nvidia build/load failed
