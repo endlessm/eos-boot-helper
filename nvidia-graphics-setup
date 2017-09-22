@@ -13,6 +13,16 @@ fi
 
 echo "Found nvidia device ${NV_DEVICE}"
 
+# Load a module from a .ko file after first trying to load it's dependencies
+# using modprobe.
+load_module() {
+	local deps=$(modinfo -F depends "$1")
+	if [[ -n $deps ]]; then
+		modprobe -a -q ${deps//,/ } || :
+	fi
+	insmod "$1" || :
+}
+
 # Build the nvidia module if we haven't already built the current
 # ostree-shipped driver version for the currently running kernel.
 build_nvidia_if_needed() {
@@ -55,9 +65,9 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
 
   build_nvidia_if_needed
   echo "Loading nvidia modules"
-  insmod "${MODULE_DIR}"/nvidia.ko || :
-  insmod "${MODULE_DIR}"/nvidia-modeset.ko || :
-  insmod "${MODULE_DIR}"/nvidia-drm.ko || :
+  load_module "${MODULE_DIR}"/nvidia.ko
+  load_module "${MODULE_DIR}"/nvidia-modeset.ko
+  load_module "${MODULE_DIR}"/nvidia-drm.ko
   if [[ -e "/sys/module/nvidia_drm" ]]; then
     echo "nvidia loaded successfully"
     exit 0
