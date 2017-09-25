@@ -4,17 +4,24 @@
 #
 # When booting from an image file hosted on a filesystem, this program maps the
 # host filesystem to a dm-device with holes where the image file lives.
-
-for i in $(</proc/cmdline); do
-  case $i in
-  endless.image.device=*)
-    host_device=${i//endless.image.device=}
-    ;;
-  endless.image.path=*)
-    image_path=${i//endless.image.path=}
-    ;;
-  esac
-done
+if [ $# -ge 1 ]; then
+  # For testing
+  host_device="$1"
+  image_path="${2:?image path parameter missing}"
+  target_device_name="${3:?target device name parameter missing}"
+else
+  target_device_name=endless-image-device
+  for i in $(</proc/cmdline); do
+    case $i in
+    endless.image.device=*)
+      host_device=${i//endless.image.device=}
+      ;;
+    endless.image.path=*)
+      image_path=${i//endless.image.path=}
+      ;;
+    esac
+  done
+fi
 
 [ -z "${host_device}" -o -z "${image_path}" ] && exit 1
 
@@ -86,7 +93,7 @@ if [ ${i} -lt ${host_device_size} ]; then
   echo "${i} $((host_device_size - i)) linear ${host_device} ${i}" >> /tmp/dmtable
 fi
 
-dmsetup create endless-image-device < /tmp/dmtable
+dmsetup create "$target_device_name" < /tmp/dmtable
 if [ $? != 0 ]; then
   echo "Failed to set up a device map for ${host_device}"
   exit 1

@@ -19,11 +19,13 @@ from .util import (
     needs_root,
     partprobe,
     sfdisk,
+    system_script,
     udevadm_settle,
 )
 
 EOS_MAP_IMAGE_FILE = dracut_script('image-boot', 'eos-map-image-file')
 EOS_IMAGE_BOOT_SETUP = dracut_script('image-boot', 'eos-image-boot-setup')
+EOS_IMAGE_BOOT_DM_SETUP = system_script('eos-image-boot-dm-setup')
 
 
 class ImageTestCase(BaseTestCase):
@@ -236,5 +238,50 @@ class TestMapImageFile(ImageTestCase):
                     self.assertEqual(mapped_data, image_data)
 
                 self.assert_readonly(dm_path, readonly)
+            finally:
+                subprocess.check_call(['dmsetup', 'remove', dm_name])
+
+
+class TestImageBootDMSetup(ImageTestCase):
+    '''Tests eos-image-boot-dm-setup can correctly map the image host device,
+    with holes punched out for the image file.'''
+
+    @needs_root
+    def test_map_exfat(self):
+        '''Tests mapping an exFAT filesystem, with holes punched for the image
+        file.'''
+        self._go('exfat')
+
+    @needs_root
+    def test_map_ntfs(self):
+        '''Tests mapping an NTFS filesystem, with holes punched for the image
+        file.'''
+        self._go('ntfs')
+
+    def _go(self, filesystem):
+        image_path = 'foo'
+        image_data = b'0123456789abcdef' * 256
+        image_size = len(image_data)
+
+        with self.make_host_device(filesystem) as host_device:
+            with mount(host_device) as host_mount:
+                full_path = os.path.join(host_mount, image_path)
+                with open(full_path, 'wb') as image:
+                    image.write(image_data)
+
+            # Assumes that the temp file's basename is not in use in
+            # device-mapper -- quite a safe assumption but not guaranteed.
+            dm_name = os.path.basename(host_device)
+            dm_path = os.path.join('/dev/mapper', dm_name)
+
+            args = [EOS_IMAGE_BOOT_DM_SETUP, host_device, image_path, dm_name]
+            subprocess.check_call(args)
+
+            try:
+                with mount(dm_path) as host_mount:
+                    full_path = os.path.join(host_mount, image_path)
+                    with open(full_path, 'rb') as mapped_image:
+                        mapped_data = mapped_image.read()
+                        self.assertEqual(mapped_data, b'\x00' * image_size)
             finally:
                 subprocess.check_call(['dmsetup', 'remove', dm_name])
