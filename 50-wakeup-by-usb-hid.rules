@@ -1,0 +1,7 @@
+# only support USB, else ignore
+SUBSYSTEM!="usb", GOTO="wake_hid_end"
+
+#Enable remote wakeup for all mouse devices supporting boot protocol on Desktop
+ATTRS{bInterfaceClass}=="03",ATTRS{bInterfaceSubClass}=="01",ATTRS{bInterfaceProtocol}=="02",ATTR{[dmi/id]chassis_type}=="3",RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../power/wakeup'"
+
+LABEL="wake_hid_end"
