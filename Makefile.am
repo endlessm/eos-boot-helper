@@ -69,7 +69,10 @@ uninstall-hook:
 	rm -f '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 
 udevrulesdir = $(udevdir)/rules.d
-dist_udevrules_DATA = 50-meson-vdec.rules
+dist_udevrules_DATA = \
+	50-meson-vdec.rules \
+	50-usb-mouse-wakeup.rules \
+	$(NULL)
 
 polkitrulesdir = $(datadir)/polkit-1/rules.d
 dist_polkitrules_DATA = \
