@@ -96,6 +96,5 @@ dist_sbin_SCRIPTS = \
 	eos-migrate-image-defaults \
 	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
-	nvidia-graphics-cleanup \
 	nvidia-graphics-setup \
 	$(NULL)
