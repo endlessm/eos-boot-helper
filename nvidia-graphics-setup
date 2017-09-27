@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+shopt -s nullglob
 
 NV_CURRENT=/usr/lib/nvidia/current
 NV_KERNEL_OBJ=${NV_CURRENT}/kernel-obj
@@ -60,6 +61,16 @@ build_nvidia_if_needed() {
   cp "${NV_KERNEL_OBJ}/version" "${MODULE_DIR}/driver-version"
 }
 
+# If no user accounts are available, assume we're still in the factory
+# and hence properietary drivers should be erased
+first_boot_cleanup_modules()
+{
+  local homedirs=( /home/* )
+  if [[ ${#homedirs[@]} == 0 ]]; then
+    rm -rf /var/lib/endless-external-drivers/nvidia
+  fi
+}
+
 if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
    grep --quiet -F ${NV_DEVICE} ${NV_CURRENT}/nvidia.ids; then
 
@@ -68,6 +79,7 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
   load_module "${MODULE_DIR}"/nvidia.ko
   load_module "${MODULE_DIR}"/nvidia-modeset.ko
   load_module "${MODULE_DIR}"/nvidia-drm.ko
+  first_boot_cleanup_modules
   if [[ -e "/sys/module/nvidia_drm" ]]; then
     echo "nvidia loaded successfully"
     exit 0

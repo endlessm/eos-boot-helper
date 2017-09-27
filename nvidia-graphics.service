@@ -6,7 +6,6 @@ Before=gdm.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/nvidia-graphics-setup
-ExecStop=/usr/sbin/nvidia-graphics-cleanup
 
 [Install]
 WantedBy=graphical.target
