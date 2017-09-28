@@ -14,6 +14,25 @@ fi
 
 echo "Found nvidia device ${NV_DEVICE}"
 
+create_flatpak_extension() {
+	local NVIDIA_FLATPAK_DIR=/usr/lib/nvidia/flatpak
+	local EXTENSION_REF=org.freedesktop.Platform.GL.host/x86_64/1.6
+	local EXTENSION_PATH="/var/lib/flatpak/extension/$EXTENSION_REF"
+
+	if [[ ! -d $NVIDIA_FLATPAK_DIR ]]; then
+		return
+	fi
+
+	mkdir -p $(dirname "$EXTENSION_PATH")
+	ln -sf "$NVIDIA_FLATPAK_DIR" "$EXTENSION_PATH"
+
+	if [[ -d /var/endless-extra/flatpak ]]; then
+		EXTENSION_PATH="/var/endless-extra/flatpak/extension/$EXTENSION_REF"
+		mkdir -p $(dirname "$EXTENSION_PATH")
+		ln -sf "$NVIDIA_FLATPAK_DIR" "$EXTENSION_PATH"
+	fi
+}
+
 # Load a module from a .ko file after first trying to load it's dependencies
 # using modprobe.
 load_module() {
@@ -82,6 +101,7 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
   first_boot_cleanup_modules
   if [[ -e "/sys/module/nvidia_drm" ]]; then
     echo "nvidia loaded successfully"
+    create_flatpak_extension
     exit 0
   fi
 
