@@ -26,6 +26,7 @@ dist_systemdunit_DATA = \
 	eos-link-host-mali-driver.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
+	eos-ostree-remotes-config.service \
 	eos-remove-legacy-external-apps.service \
 	nvidia-graphics.service \
 	$(NULL)
@@ -94,6 +95,7 @@ dist_sbin_SCRIPTS = \
 	eos-link-host-mali-driver \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
+	eos-ostree-remotes-config \
 	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
 	nvidia-graphics-setup \
