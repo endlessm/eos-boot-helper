@@ -1,7 +1,8 @@
-# Add the stable GNOME flatpak repositories after an OS upgrade
+# Clean up the flatpak repositories after an OS upgrade
+# so that existing users match our current default configuration
 
 [Unit]
-Description=Configure the stable GNOME flatpak repositories
+Description=Configure default flatpak repositories
 DefaultDependencies=no
 Conflicts=shutdown.target
 Wants=local-fs.target
@@ -9,7 +10,8 @@ After=local-fs.target
 
 # Only run on updates
 Before=multi-user.target systemd-update-done.service
-ConditionNeedsUpdate=/etc
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
 
 # Wait until the core.add-remotes-config-dir repo option is set
 After=eos-ostree-remotes-config.service
@@ -17,7 +19,7 @@ After=eos-ostree-remotes-config.service
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/sbin/eos-add-flatpak-gnome-repos
+ExecStart=/usr/sbin/eos-update-flatpak-repos
 
 [Install]
 WantedBy=multi-user.target
