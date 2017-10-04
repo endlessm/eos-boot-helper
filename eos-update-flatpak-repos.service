@@ -16,6 +16,9 @@ ConditionNeedsUpdate=|/var
 # Wait until the core.add-remotes-config-dir repo option is set
 After=eos-ostree-remotes-config.service
 
+# Ensure that the extra disk for a split-disk system has been mounted
+RequiresMountsFor=/var/lib/flatpak /var/endless-extra/flatpak
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
