@@ -12,9 +12,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
-	eos-add-flatpak-apps-repos.service \
-	eos-add-flatpak-flathub-repos.service \
-	eos-add-flatpak-gnome-repos.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
@@ -27,7 +24,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-ostree-remotes-config.service \
-	eos-remove-legacy-external-apps.service \
+	eos-update-flatpak-repos.service \
 	nvidia-graphics.service \
 	$(NULL)
 
@@ -98,5 +95,6 @@ dist_sbin_SCRIPTS = \
 	eos-ostree-remotes-config \
 	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
+	eos-update-flatpak-repos \
 	nvidia-graphics-setup \
 	$(NULL)
