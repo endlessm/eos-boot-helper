@@ -1,0 +1,20 @@
+[Unit]
+Description=Remove old Flatpak unmanaged extensions directory from /var/endless-extra/flatpak
+DefaultDependencies=false
+Conflicts=shutdown.target
+Before=systemd-tmpfiles-setup.service
+After=local-fs.target
+Wants=local-fs.target
+
+# Only run on ARM systems where the old directory exists
+ConditionArchitecture=arm
+ConditionPathIsDirectory=/var/endless-extra/flatpak/extension
+ConditionPathIsSymbolicLink=!/var/endless-extra/flatpak/extension
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/rm -rf /var/endless-extra/flatpak/extension
+
+[Install]
+WantedBy=multi-user.target
