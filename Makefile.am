@@ -23,8 +23,8 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-ostree-remotes-config.service \
-	eos-remove-old-flatpak-extension.service \
-	eos-remove-old-flatpak-extension-extra.service \
+	eos-remove-old-flatpak-extension-dir.service \
+	eos-remove-old-flatpak-extension-dir-extra.service \
 	eos-update-flatpak-repos.service \
 	nvidia-graphics.service \
 	$(NULL)
