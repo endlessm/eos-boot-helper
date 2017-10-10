@@ -59,6 +59,20 @@ def _add_flatpak_repo():
         subprocess.check_call(['flatpak', 'remote-add', '--if-not-exists',
                                '--from', 'eos-sdk', repo_file.name])
 
+def _replace_runtime_subpaths(runtime_id, arch_branch,
+                              old_subpaths, new_subpaths):
+    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
+                        FLATPAK_SYSTEM_INSTALLATION]:
+        deploy_file_path = os.path.join(flatpak_dir, 'runtime', runtime_id,
+                                        arch_branch, 'active', 'deploy')
+
+        if not os.path.isfile(deploy_file_path):
+            logging.debug("{}/{} not deployed in {}, skipping"
+                          .format(runtime_id, arch_branch, flatpak_dir))
+            continue
+
+        _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths,
+                                             new_subpaths)
 
 def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
                                            arch_branch='current'):
@@ -77,7 +91,10 @@ def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
 def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
     _update_deploy_file(deploy_file_path, 0, new_remote_name)
 
-def _update_deploy_file(deploy_file_path, idx, new_val):
+def _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths, new_subpaths):
+    _update_deploy_file(deploy_file_path, 2, new_subpaths, old_subpaths)
+
+def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
     logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
 
     src_file_contents = None
@@ -95,6 +112,17 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
        (isinstance(cur_val, list) and isinstance(new_val, list) and \
         set(cur_val) == set(new_val)):
         logging.info('Nothing to do, {}[{}] already set to: {}'. format(deploy_file_path, idx, new_val))
+        return
+
+    bail = False
+    if old_val:
+       if isinstance(old_val, list) and isinstance(cur_val, list):
+           if set(old_val) != set(cur_val):
+               bail = True
+       elif cur_val != old_val:
+           bail = True
+    if bail:
+        logging.info('Not doing anything, {}[{}] not expected old value: {}'. format(deploy_file_path, idx, old_val))
         return
 
     builder = GLib.VariantBuilder.new(variant_type)
@@ -137,3 +165,7 @@ if __name__ == '__main__':
             _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
                                                    kind='runtime',
                                                    arch_branch=arch_branch)
+            if runtime.endswith('.Locale'):
+                _replace_runtime_subpaths(runtime, arch_branch,
+                                          ['/en,id,th,vi'],
+                                          ['/en', '/id', '/th', '/vi'])
