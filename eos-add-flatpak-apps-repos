@@ -28,6 +28,8 @@ import shutil
 import subprocess
 import tempfile
 
+from systemd import journal
+
 import gi
 gi.require_version('Flatpak', '1.0')
 from gi.repository import Flatpak
@@ -102,8 +104,8 @@ def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
 
     # Write the new GVariant to a temporary file and replace the original one.
     with tempfile.NamedTemporaryFile() as tmp_deploy_file:
-        logging.info("Building new deploy file at {}, pointing to remote '{}'..."
-                     .format(tmp_deploy_file.name, new_remote_name))
+        logging.info("Building new deploy file for {}, setting [{}] to: {}"
+                     .format(deploy_file_path, idx, new_val))
 
         # Write temporary file to disk and overwrite the original one with it.
         dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
@@ -115,6 +117,10 @@ def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
         shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
 
 if __name__ == '__main__':
+    # Send logging messages both to the console and the journal
+    logging.basicConfig(level=logging.INFO)
+    logging.root.addHandler(journal.JournalHandler())
+
     _add_flatpak_repo()
     _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
     for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
