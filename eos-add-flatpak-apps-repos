@@ -28,6 +28,8 @@ import shutil
 import subprocess
 import tempfile
 
+from systemd import journal
+
 import gi
 gi.require_version('Flatpak', '1.0')
 from gi.repository import Flatpak
@@ -57,6 +59,20 @@ def _add_flatpak_repo():
         subprocess.check_call(['flatpak', 'remote-add', '--if-not-exists',
                                '--from', 'eos-sdk', repo_file.name])
 
+def _replace_runtime_subpaths(runtime_id, arch_branch,
+                              old_subpaths, new_subpaths):
+    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
+                        FLATPAK_SYSTEM_INSTALLATION]:
+        deploy_file_path = os.path.join(flatpak_dir, 'runtime', runtime_id,
+                                        arch_branch, 'active', 'deploy')
+
+        if not os.path.isfile(deploy_file_path):
+            logging.debug("{}/{} not deployed in {}, skipping"
+                          .format(runtime_id, arch_branch, flatpak_dir))
+            continue
+
+        _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths,
+                                             new_subpaths)
 
 def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
                                            arch_branch='current'):
@@ -73,6 +89,12 @@ def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
         _update_deploy_file_with_remote(deploy_file_path, new_remote_name)
 
 def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
+    _update_deploy_file(deploy_file_path, 0, new_remote_name)
+
+def _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths, new_subpaths):
+    _update_deploy_file(deploy_file_path, 2, new_subpaths, old_subpaths)
+
+def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
     logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
 
     src_file_contents = None
@@ -85,25 +107,39 @@ def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
     orig_variant = GLib.Variant.new_from_bytes(variant_type, src_file_contents, False)
     logging.debug("Original variant: {}".format(str(orig_variant)))
 
-    if orig_variant[0] == new_remote_name:
-        logging.debug('Nothing to do')
+    cur_val = orig_variant[idx]
+    if cur_val == new_val or \
+       (isinstance(cur_val, list) and isinstance(new_val, list) and \
+        set(cur_val) == set(new_val)):
+        logging.info('Nothing to do, {}[{}] already set to: {}'. format(deploy_file_path, idx, new_val))
+        return
+
+    bail = False
+    if old_val:
+       if isinstance(old_val, list) and isinstance(cur_val, list):
+           if set(old_val) != set(cur_val):
+               bail = True
+       elif cur_val != old_val:
+           bail = True
+    if bail:
+        logging.info('Not doing anything, {}[{}] not expected old value: {}'. format(deploy_file_path, idx, old_val))
         return
 
     builder = GLib.VariantBuilder.new(variant_type)
-    for idx, val in enumerate(orig_variant):
-        # We just need to replace the first element in the Variant.
-        if idx == 0:
-            builder.add_value(GLib.Variant.new_string(new_remote_name))
+    for i, val in enumerate(orig_variant):
+        child = orig_variant.get_child_value(i)
+        if i == idx:
+            builder.add_value(GLib.Variant(child.get_type_string(), new_val))
         else:
-            builder.add_value(orig_variant.get_child_value(idx))
+            builder.add_value(child)
 
     new_variant = builder.end()
     logging.debug("New variant: {}".format(str(new_variant)))
 
     # Write the new GVariant to a temporary file and replace the original one.
     with tempfile.NamedTemporaryFile() as tmp_deploy_file:
-        logging.info("Building new deploy file at {}, pointing to remote '{}'..."
-                     .format(tmp_deploy_file.name, new_remote_name))
+        logging.info("Building new deploy file for {}, setting [{}] to: {}"
+                     .format(deploy_file_path, idx, new_val))
 
         # Write temporary file to disk and overwrite the original one with it.
         dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
@@ -115,6 +151,10 @@ def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
         shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
 
 if __name__ == '__main__':
+    # Send logging messages both to the console and the journal
+    logging.basicConfig(level=logging.INFO)
+    logging.root.addHandler(journal.JournalHandler())
+
     _add_flatpak_repo()
     _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
     for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
@@ -125,3 +165,7 @@ if __name__ == '__main__':
             _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
                                                    kind='runtime',
                                                    arch_branch=arch_branch)
+            if runtime.endswith('.Locale'):
+                _replace_runtime_subpaths(runtime, arch_branch,
+                                          ['/en,id,th,vi'],
+                                          ['/en', '/id', '/th', '/vi'])
