@@ -1,0 +1,11 @@
+[Unit]
+Description=Setup flatpak extension directory on extra storage
+ConditionPathExists=/var/endless-extra/flatpak
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/ln -snf /var/lib/flatpak/extension /var/endless-extra/flatpak/extension
+
+[Install]
+WantedBy=multi-user.target
