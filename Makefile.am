@@ -40,6 +40,7 @@ dist_systemdpreset_DATA = \
 
 dist_modprobe_DATA = \
 	nouveau.conf \
+	nvidia.conf \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which
