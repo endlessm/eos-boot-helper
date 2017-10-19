@@ -25,6 +25,7 @@ dist_systemdunit_DATA = \
 	eos-ostree-remotes-config.service \
 	eos-remove-old-flatpak-extension-dir.service \
 	eos-remove-old-flatpak-extension-dir-extra.service \
+	eos-setup-flatpak-extension-dir-extra.service \
 	eos-update-flatpak-repos.service \
 	nvidia-graphics.service \
 	$(NULL)
