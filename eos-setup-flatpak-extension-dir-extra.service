@@ -1,6 +1,8 @@
 [Unit]
-Description=Setup flatpak extension directory on extra storage
+Description=Setup Flatpak extension directory on extra storage
+ConditionPathIsMountPoint=/var/endless-extra
 ConditionPathExists=/var/endless-extra/flatpak
+ConditionPathIsSymbolicLink=!/var/endless-extra/flatpak/extension
 
 [Service]
 Type=oneshot
