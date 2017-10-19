@@ -7,7 +7,7 @@ ConditionPathIsSymbolicLink=!/var/endless-extra/flatpak/extension
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/ln -snf /var/lib/flatpak/extension /var/endless-extra/flatpak/extension
+ExecStart=/usr/bin/ln -snf -t /var/endless-extra/flatpak /var/lib/flatpak/extension
 
 [Install]
 WantedBy=multi-user.target
