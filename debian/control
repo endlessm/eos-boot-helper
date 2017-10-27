@@ -20,5 +20,12 @@ Depends: ${misc:Depends},
          xinit,
          xterm,
          iptables,
+         ostree,
+         flatpak,
+         gir1.2-flatpak-1.0,
+         gir1.2-glib-2.0,
+         python3,
+         python3-gi,
+         python3-systemd,
 Breaks: systemd (<= 232+dev145.a41a4e3-23)
 Replaces: systemd (<= 232+dev145.a41a4e3-23)
