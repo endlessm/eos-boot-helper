@@ -1,0 +1,22 @@
+[Unit]
+Description=Install default flatpak extensions
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+# Wait until the flatpak repos are updated
+After=eos-update-flatpak-repos.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-install-flatpak-extensions
+
+[Install]
+WantedBy=multi-user.target

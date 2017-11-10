@@ -1,0 +1,9 @@
+#!/bin/bash -e
+# Copyright (C) 2017 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+# Install flatpak extensions
+extensions=(org.freedesktop.Platform.Icontheme.EndlessOS)
+for extension in ${extensions[@]}; do
+	flatpak install eos-sdk $extension || true
+done
