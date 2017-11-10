@@ -20,6 +20,7 @@ dist_systemdunit_DATA = \
 	eos-fix-flatpak-branches.service \
 	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
+	eos-install-flatpak-extensions.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-ostree-remotes-config.service \
@@ -92,6 +93,7 @@ dist_sbin_SCRIPTS = \
 	eos-fix-flatpak-branches \
 	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \
+	eos-install-flatpak-extensions \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
 	eos-ostree-remotes-config \
