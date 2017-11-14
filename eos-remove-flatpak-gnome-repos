@@ -1,0 +1,12 @@
+#!/bin/bash -e
+# Copyright (C) 2017 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+# The GNOME Flatpak remotes have been replaced by the Flathub ones.
+# So we should remove the GNOME remotes we've previously added.
+
+gnome_apps_remote=gnome-apps
+gnome_runtimes_remote=gnome
+
+flatpak remote-delete --force --system $gnome_apps_remote || true
+flatpak remote-delete --force --system $gnome_runtimes_remote || true
