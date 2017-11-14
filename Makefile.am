@@ -83,7 +83,6 @@ dist_polkitrules_DATA = \
 dist_sbin_SCRIPTS = \
 	eos-add-flatpak-apps-repos \
 	eos-add-flatpak-flathub-repos \
-	eos-add-flatpak-gnome-repos \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \
@@ -95,6 +94,7 @@ dist_sbin_SCRIPTS = \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
 	eos-ostree-remotes-config \
+	eos-remove-flatpak-gnome-repos \
 	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
