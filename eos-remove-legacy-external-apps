@@ -17,7 +17,7 @@ ext_apps_repo=/var/lib/flatpak-external-apps
 ext_apps_remote=eos-external-apps
 
 # Remove the 'eos-external-apps' remote
-flatpak remote-delete $ext_apps_remote || true
+flatpak remote-delete --force --system $ext_apps_remote || true
 
 # Remove the 'eos-external-apps' repo
 if [ -d $ext_apps_repo ]; then
