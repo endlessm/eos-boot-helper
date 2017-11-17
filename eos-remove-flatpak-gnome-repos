@@ -6,7 +6,5 @@
 # So we should remove the GNOME remotes we've previously added.
 
 gnome_apps_remote=gnome-apps
-gnome_runtimes_remote=gnome
 
 flatpak remote-delete --force --system $gnome_apps_remote || true
-flatpak remote-delete --force --system $gnome_runtimes_remote || true
