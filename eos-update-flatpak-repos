@@ -8,3 +8,4 @@
 /usr/sbin/eos-remove-flatpak-gnome-repos
 /usr/sbin/eos-add-flatpak-apps-repos
 /usr/sbin/eos-add-flatpak-flathub-repos
+/usr/sbin/eos-add-flatpak-gnome-repos
