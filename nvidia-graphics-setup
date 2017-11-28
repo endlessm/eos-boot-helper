@@ -57,6 +57,13 @@ build_nvidia_if_needed() {
   rm -rf "${MODULE_DIR}"
   mkdir -p "${MODULE_DIR}"
   OUTPREFIX="${MODULE_DIR}/" "${NV_KERNEL_OBJ}/build" || return
+
+  # Append signatures, if we have them
+  local kmod
+  for kmod in ${MODULE_DIR}/*.ko; do
+    cat "${NV_KERNEL_OBJ}/$(basename $kmod).sig" >> ${kmod} 2>/dev/null || :
+  done
+
   uname -r > "${MODULE_DIR}/kernel-version"
   cp "${NV_KERNEL_OBJ}/version" "${MODULE_DIR}/driver-version"
 }
