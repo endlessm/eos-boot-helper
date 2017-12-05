@@ -10,25 +10,6 @@ fi
 
 root_disk="$1"
 
-# check if we passed the full device file path
-if [ "${root_disk//dev/}" = "${root_disk}" ]; then
-  echo "$0: Specify the full path for the root device file (i.e. /dev/sda)" >&2
-  exit 1
-fi
-
-# check if the root disk exists
-if [ ! -e "$root_disk" ]; then
-  echo "$0: $root_disk doesn't exist" >&2
-  exit 1
-fi
-
-# check it's a disk (not a partition or non-block device)
-type="$(lsblk -o type --nodeps --noheadings "$root_disk")"
-if [ "$type" != "disk" ]; then
-  echo "$0: $root_disk isn't a disk, but a $type" >&2
-  exit 1
-fi
-
 # udev might still be busy probing the disk, meaning that it will be in use.
 udevadm settle
 
@@ -56,8 +37,7 @@ check_partition_exists "Endless OS root" "$dps_root_guid"
 # will fail due to type=UUid being invalid with 'label: dos'
 
 # Reset partition indexes
-root_disk_dev=${root_disk#/dev/}
-parts=$(echo "$parts" | sed -e "s/${root_disk_dev}[^: ]\+//")
+parts=$(echo "$parts" | sed -e "s/^\/[^: ]\+//")
 
 # GPT -> DOS
 parts=$(echo "$parts" | sed -e "s/label: gpt/label: dos/")
