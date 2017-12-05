@@ -1,0 +1,9 @@
+[Unit]
+Description=EOS Companion App Service
+PartOf=eos-companion-app.service
+
+[Socket]
+ListenStream=1110
+
+[Install]
+WantedBy=sockets.target
