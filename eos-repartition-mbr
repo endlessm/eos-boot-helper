@@ -100,13 +100,3 @@ dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=1
 udevadm settle
 dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=${backup_gpt_offset}
 udevadm settle
-
-# Restore bootloader
-root_mountpoint=$(mktemp -d)
-mount "${root_part_base}$((root_partno - 1))" ${root_mountpoint}
-dd if=${root_mountpoint}/boot/grub/i386-pc/boot.img of=${root_disk} bs=446 count=1 conv=fsync
-udevadm settle
-dd if=${root_mountpoint}/boot/grub/i386-pc/core.img of=${root_disk} bs=512 seek=1 conv=fsync
-udevadm settle
-umount ${root_mountpoint}
-rmdir ${root_mountpoint}
