@@ -14,13 +14,13 @@ root_disk="$1"
 udevadm settle
 
 # take current partition table
-parts=$(sfdisk -d $root_disk)
+parts=$(sfdisk -d "$root_disk")
 
 check_partition_exists() {
-  local name=${1:?No name supplied to ${FUNCNAME}}
-  local guid=${2:?No GUID supplied to ${FUNCNAME}}
+  local name=${1:?No name supplied to ${FUNCNAME[0]}}
+  local guid=${2:?No GUID supplied to ${FUNCNAME[0]}}
 
-  if ! echo "$parts" | grep -iq "type=$2"; then
+  if ! echo "$parts" | grep -iq "type=$guid"; then
     echo "$0: $name partition not found" >&2
     exit 1
   fi
@@ -36,6 +36,10 @@ check_partition_exists "Endless OS root" "$dps_root_guid"
 # If any other partitions exist, the call to sfdisk with the modified table
 # will fail due to type=UUid being invalid with 'label: dos'
 
+# “See if you can use ${variable//search/replace} instead.” For some of these,
+# we cannot.
+# shellcheck disable=SC2001
+{
 # Reset partition indexes
 parts=$(echo "$parts" | sed -e "s/^\/[^: ]\+//")
 
@@ -52,31 +56,32 @@ parts=$(echo "$parts" | grep -v "$bios_boot_guid")
 parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83, bootable/")
 # Remove partition UUIDs and GPT attributes
 parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
+}
 
 echo "$parts"
-echo "$parts" | sfdisk --force --no-reread $root_disk
+echo "$parts" | sfdisk --force --no-reread "$root_disk"
 udevadm settle
 partprobe "${root_disk}"
 udevadm settle
 
 # Set marker on 4th partition so that the partition gets enlarged to fill the
 # disk on first boot
-printf "\xdd" | dd of=${root_disk} bs=1 count=1 seek=498 conv=notrunc
+printf "\xdd" | dd of="$root_disk" bs=1 count=1 seek=498 conv=notrunc
 udevadm settle
 
 # Remove GPT headers. It's a little tricky to work out where the backup one is
 # from sfdisk's output, but we can get it from the primary header:
 # https://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_table_header_.28LBA_1.29
 backup_gpt_offset=$(
-  dd if=${root_disk} bs=1 count=8 skip=$(( 512 + 0x20 )) | python -c \
+  dd if="$root_disk" bs=1 count=8 skip=$(( 512 + 0x20 )) | python -c \
     'import sys, struct; print struct.unpack("<Q", sys.stdin.read(8))[0]'
 )
-backup_gpt="$(dd if=${root_disk} bs=512 skip=${backup_gpt_offset} count=1)"
+backup_gpt="$(dd if="$root_disk" bs=512 skip="$backup_gpt_offset" count=1)"
 if [ "${backup_gpt::8}" != "EFI PART" ]; then
   echo "$0: couldn't find backup GPT header at ${backup_gpt_offset}" >&2
   exit 1
 fi
-dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=1
+dd if=/dev/zero of="$root_disk" conv=fsync bs=512 count=1 seek=1
 udevadm settle
-dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=${backup_gpt_offset}
+dd if=/dev/zero of="$root_disk" conv=fsync bs=512 count=1 seek="$backup_gpt_offset"
 udevadm settle
