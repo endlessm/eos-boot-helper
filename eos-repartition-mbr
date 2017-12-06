@@ -58,7 +58,6 @@ parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83, bootable/")
 parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
 }
 
-echo "$parts"
 echo "$parts" | sfdisk --force --no-reread "$root_disk"
 udevadm settle
 partprobe "${root_disk}"
