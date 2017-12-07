@@ -92,7 +92,6 @@ dist_sbin_SCRIPTS = \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
 	eos-ostree-remotes-config \
-	eos-remove-legacy-external-apps \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
 	nvidia-graphics-setup \

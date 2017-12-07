@@ -89,6 +89,55 @@ def _add_flatpak_repos():
             subprocess.check_call(['flatpak', 'remote-add', '--from', name,
                                    repo_file])
 
+REMOTES_TO_REMOVE = [
+    'eos-external-apps'
+]
+
+def _remove_remotes():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for name in REMOTES_TO_REMOVE:
+        if _flatpak_inst_get_remote(inst, name):
+            logging.info("Removing remote {} from {}"
+                          .format(name, inst.get_path().get_path()))
+
+            subprocess.check_call(['flatpak', 'remote-delete', '--force', name])
+
+EXT_APPS_REPO = '/var/lib/flatpak-external-apps'
+
+def _remove_old_external_apps_repo():
+    if os.path.isdir(EXT_APPS_REPO):
+        logging.info("Removing repo {}".format(EXT_APPS_REPO))
+        shutil.rmtree(EXT_APPS_REPO, ignore_errors=True)
+
+RUNTIMES_TO_REMOVE = {
+    'eos-external-apps' : {
+                            'com.dropbox.Client',
+                            'com.google.Chrome',
+                            'com.microsoft.Skype',
+                            'com.spotify.Client'
+                          }
+}
+
+def _remove_runtimes():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for ref in inst.list_installed_refs_by_kind(Flatpak.RefKind.RUNTIME):
+        origin = ref.get_origin()
+        if ref.get_origin() not in RUNTIMES_TO_REMOVE:
+            continue
+
+        name = ref.get_name()
+        if name not in RUNTIMES_TO_REMOVE[origin]:
+            continue
+
+        refspec = '{}/{}/{}'.format(name, ref.get_arch(), ref.get_branch())
+        logging.info("Removing runtime {} from {}"
+                     .format(refspec, inst.get_path().get_path()))
+        subprocess.check_call(['flatpak', 'uninstall', '--runtime', refspec])
+
 # Path to the flatpak system installations.
 FLATPAK_SYSTEM_INSTALLATION = '/var/lib/flatpak'
 FLATPAK_EXTERNAL_INSTALLATION = '/var/endless-extra/flatpak'
@@ -336,6 +385,11 @@ if __name__ == '__main__':
 
     # ensure default remotes exist, such as eos-sdk and flathub
     _add_flatpak_repos()
+
+    # clear away legacy eos-external-apps remote, repo and runtimes (T14442)
+    _remove_remotes()
+    _remove_old_external_apps_repo()
+    _remove_runtimes()
 
     # move apps and runtimes between branches and origins as specified above (T20322)
     _migrate_installed_flatpaks()
