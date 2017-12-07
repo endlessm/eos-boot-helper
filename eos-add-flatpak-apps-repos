@@ -7,6 +7,7 @@
 # Authors:
 #  Mario Sanchez Prada <mario@endlessm.com>
 #  Philip Chimento <philip@endlessm.com>
+#  Robert McQueen <rob@endlessm.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -155,8 +156,14 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logging.root.addHandler(journal.JournalHandler())
 
+    # ensure eos-sdk remote exists
     _add_flatpak_repo()
+
+    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
     _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
+
+    # fix up image-builder bug where com.endlessm.apps.* runtimes were
+    # mistakenly installed with eos-runtimes origin (T18366)
     for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
                     'com.endlessm.apps.Platform.Locale',
                     'com.endlessm.apps.Sdk.Locale',
@@ -165,6 +172,9 @@ if __name__ == '__main__':
             _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
                                                    kind='runtime',
                                                    arch_branch=arch_branch)
+
+            # fix up image builder bug on 'sea' (south-east asia) which set
+            # an invalid subpath, causing no Locales to be installed (T19472)
             if runtime.endswith('.Locale'):
                 _replace_runtime_subpaths(runtime, arch_branch,
                                           ['/en,id,th,vi'],
