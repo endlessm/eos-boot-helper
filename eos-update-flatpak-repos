@@ -6,5 +6,3 @@
 # to avoid races in the flatpak configuration
 /usr/sbin/eos-remove-legacy-external-apps
 /usr/sbin/eos-add-flatpak-apps-repos
-/usr/sbin/eos-add-flatpak-flathub-repos
-/usr/sbin/eos-add-flatpak-gnome-repos

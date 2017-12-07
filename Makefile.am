@@ -82,8 +82,6 @@ dist_polkitrules_DATA = \
 
 dist_sbin_SCRIPTS = \
 	eos-add-flatpak-apps-repos \
-	eos-add-flatpak-flathub-repos \
-	eos-add-flatpak-gnome-repos \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \
