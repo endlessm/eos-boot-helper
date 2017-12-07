@@ -156,20 +156,6 @@ def _replace_runtime_subpaths(runtime_id, arch_branch,
         _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths,
                                              new_subpaths)
 
-def _update_deploy_file_for_app_and_remote(app_id, new_remote_name, kind='app',
-                                           arch_branch='current'):
-    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
-                        FLATPAK_SYSTEM_INSTALLATION]:
-        deploy_file_path = os.path.join(flatpak_dir, kind, app_id, arch_branch,
-                                        'active', 'deploy')
-
-        if not os.path.isfile(deploy_file_path):
-            logging.debug("{}/{} not deployed in {}, skipping"
-                          .format(app_id, arch_branch, flatpak_dir))
-            continue
-
-        _update_deploy_file_with_remote(deploy_file_path, new_remote_name)
-
 def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
     _update_deploy_file(deploy_file_path, 0, new_remote_name)
 
@@ -233,6 +219,28 @@ def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
         shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
 
 FLATPAKS_TO_MIGRATE = [
+    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
+    {
+        'name': 'com.endlessm.EknServices',
+        'kind': Flatpak.RefKind.APP,
+        'old-origin': 'eos-apps',
+        'new-origin': 'eos-sdk'
+    },
+    # fix up image-builder bug where com.endlessm.apps.* runtimes were
+    # mistakenly installed with eos-runtimes origin (T18366)
+    {
+        'name': 'com.endlessm.apps.Platform',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-runtimes',
+        'new-origin': 'eos-sdk'
+    },
+    {
+        'name': 'com.endlessm.apps.Sdk',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-runtimes',
+        'new-origin': 'eos-sdk'
+    },
+    # migrate Steam from eos-apps to flathub (T20322)
     {
         'name': 'com.valvesoftware.Steam',
         'kind': Flatpak.RefKind.APP,
@@ -357,23 +365,12 @@ if __name__ == '__main__':
     _remove_old_external_apps_repo()
     _remove_runtimes()
 
-    # move apps and runtimes between branches and origins as specified above (T20322)
+    # move apps and runtimes between branches and origins as specified above
     _migrate_installed_flatpaks()
 
-    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
-    _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
-
-    # fix up image-builder bug where com.endlessm.apps.* runtimes were
-    # mistakenly installed with eos-runtimes origin (T18366)
-    for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
-                    'com.endlessm.apps.Platform.Locale',
-                    'com.endlessm.apps.Sdk.Locale',
-                    'com.endlessm.apps.Sdk.Debug'):
+    for runtime in ('com.endlessm.apps.Platform.Locale',
+                    'com.endlessm.apps.Sdk.Locale'):
         for arch_branch in ('x86_64/1', 'x86_64/master', 'arm/1', 'arm/master'):
-            _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
-                                                   kind='runtime',
-                                                   arch_branch=arch_branch)
-
             # fix up image builder bug on 'sea' (south-east asia) which set
             # an invalid subpath, causing no Locales to be installed (T19472)
             if runtime.endswith('.Locale'):
