@@ -59,6 +59,7 @@ AC_CONFIG_FILES([
 	dracut/image-boot/Makefile
 	dracut/repartition/Makefile
 	dracut/customization/Makefile
+	flatpak-repos/Makefile
 	tests/Makefile
 ])
 AC_OUTPUT
