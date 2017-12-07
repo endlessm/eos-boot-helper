@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (C) 2016 Endless Mobile, Inc.
+# Copyright (C) 2016-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 
 # arguments checking
@@ -10,125 +10,77 @@ fi
 
 root_disk="$1"
 
-# check if we passed the full device file path
-if [ "${root_disk//dev/}" = "${root_disk}" ]; then
-  echo "$0: Specify the full path for the root device file (i.e. /dev/sda)" >&2
-  exit 1
-fi
-
-# check if the root disk exists
-if [ ! -e "$root_disk" ]; then
-  echo "$0: $root_disk doesn't exist" >&2
-  exit 1
-fi
-
-# check it's a disk (not a partition or non-block device)
-type="$(lsblk -o type --nodeps --noheadings "$root_disk")"
-if [ "$type" != "disk" ]; then
-  echo "$0: $root_disk isn't a disk, but a $type" >&2
-  exit 1
-fi
-
 # udev might still be busy probing the disk, meaning that it will be in use.
 udevadm settle
 
 # take current partition table
-parts=$(sfdisk -d $root_disk)
+parts=$(sfdisk -d "$root_disk")
 
-find_partition_device() {
-  local name=${1:?No name supplied to ${FUNCNAME}}
-  local guid=${2:?No GUID supplied to ${FUNCNAME}}
+check_partition_exists() {
+  local name=${1:?No name supplied to ${FUNCNAME[0]}}
+  local guid=${2:?No GUID supplied to ${FUNCNAME[0]}}
 
-  if ! echo "$parts" | grep -iq "type=$2"; then
+  if ! echo "$parts" | grep -iq "type=$guid"; then
     echo "$0: $name partition not found" >&2
     exit 1
   fi
-
-  echo "$parts" | grep -i "type=$2" | cut -d' ' -f1
 }
 
-find_and_remove_partition() {
-  local name=${1:?No name supplied to ${FUNCNAME}}
-  local guid=${2:?No GUID supplied to ${FUNCNAME}}
-
-  if ! echo "$parts" | grep -q "type=$guid"; then
-    echo "$0: $name partition not found" >&2
-    exit 1
-  fi
-
-  parts=$(echo "$parts" | grep -v "$guid")
-}
-
+esp_guid="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+bios_boot_guid="21686148-6449-6E6F-744E-656564454649"
 dps_root_guid="4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709"
-root_part=$(find_partition_device "Endless OS root" "$dps_root_guid")
-root_partno="${root_part: -1}"
-root_part_base="${root_part:: -1}"
 
-swap_partno=$((root_partno + 1))
-swap_part="${root_part_base}${swap_partno}"
+check_partition_exists "ESP" "$esp_guid"
+check_partition_exists "BIOS boot" "$bios_boot_guid"
+check_partition_exists "Endless OS root" "$dps_root_guid"
+# If any other partitions exist, the call to sfdisk with the modified table
+# will fail due to type=UUid being invalid with 'label: dos'
 
-# check the last partition on the disk
-lastpart=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
-
-if [ $lastpart -eq $swap_partno ]; then
-  # already have an extra partition, perhaps we were halfway through creating
-  # a swap partition but didn't finish. Remove it to try again below.
-  parts=$(echo "$parts" | sed '$d')
-elif [ $lastpart -gt $swap_partno ]; then
-  echo "repartition: found $lastpart partitions?" >&2
-  exit 1
-fi
-
-find_and_remove_partition "ESP" "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-find_and_remove_partition "BIOS boot" "21686148-6449-6E6F-744E-656564454649"
-
+# “See if you can use ${variable//search/replace} instead.” For some of these,
+# we cannot.
+# shellcheck disable=SC2001
+{
 # Reset partition indexes
-root_disk_dev=${root_disk#/dev/}
-parts=$(echo "$parts" | sed -e "s/${root_disk_dev}[^: ]\+//")
+parts=$(echo "$parts" | sed -e "s/^\/[^: ]\+//")
 
 # GPT -> DOS
 parts=$(echo "$parts" | sed -e "s/label: gpt/label: dos/")
 
-# Set MBR partition type and mark as bootable (not strictly true, but our MBR
-# does not care - some BIOSes don't consider a drive to be bootable without it)
+# Set ESP partition type to EF
+parts=$(echo "$parts" | sed -e "s/, type=$esp_guid/, type=EF/")
+# Remove BIOS boot partition (but leave its former contents intact)
+parts=$(echo "$parts" | grep -v "$bios_boot_guid")
+# Set MBR partition type on root partition, and mark as bootable (not strictly
+# true, but our MBR does not care - some BIOSes don't consider a drive to be
+# bootable without it)
 parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83, bootable/")
 # Remove partition UUIDs and GPT attributes
 parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
+}
 
-echo "$parts"
-echo "$parts" | sfdisk --force --no-reread $root_disk
+echo "$parts" | sfdisk --force --no-reread "$root_disk"
 udevadm settle
 partprobe "${root_disk}"
 udevadm settle
 
 # Set marker on 4th partition so that the partition gets enlarged to fill the
 # disk on first boot
-printf "\xdd" | dd of=${root_disk} bs=1 count=1 seek=498 conv=notrunc
+printf "\xdd" | dd of="$root_disk" bs=1 count=1 seek=498 conv=notrunc
 udevadm settle
 
 # Remove GPT headers. It's a little tricky to work out where the backup one is
 # from sfdisk's output, but we can get it from the primary header:
 # https://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_table_header_.28LBA_1.29
 backup_gpt_offset=$(
-  dd if=${root_disk} bs=1 count=8 skip=$(( 512 + 0x20 )) | python -c \
+  dd if="$root_disk" bs=1 count=8 skip=$(( 512 + 0x20 )) | python -c \
     'import sys, struct; print struct.unpack("<Q", sys.stdin.read(8))[0]'
 )
-backup_gpt="$(dd if=${root_disk} bs=512 skip=${backup_gpt_offset} count=1)"
+backup_gpt="$(dd if="$root_disk" bs=512 skip="$backup_gpt_offset" count=1)"
 if [ "${backup_gpt::8}" != "EFI PART" ]; then
   echo "$0: couldn't find backup GPT header at ${backup_gpt_offset}" >&2
   exit 1
 fi
-dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=1
+dd if=/dev/zero of="$root_disk" conv=fsync bs=512 count=1 seek=1
 udevadm settle
-dd if=/dev/zero of=${root_disk} conv=fsync bs=512 count=1 seek=${backup_gpt_offset}
+dd if=/dev/zero of="$root_disk" conv=fsync bs=512 count=1 seek="$backup_gpt_offset"
 udevadm settle
-
-# Restore bootloader
-root_mountpoint=$(mktemp -d)
-mount "${root_part_base}$((root_partno - 2))" ${root_mountpoint}
-dd if=${root_mountpoint}/boot/grub/i386-pc/boot.img of=${root_disk} bs=446 count=1 conv=fsync
-udevadm settle
-dd if=${root_mountpoint}/boot/grub/i386-pc/core.img of=${root_disk} bs=512 seek=1 conv=fsync
-udevadm settle
-umount ${root_mountpoint}
-rmdir ${root_mountpoint}
