@@ -137,32 +137,13 @@ def _remove_runtimes():
                      .format(refspec, inst.get_path().get_path()))
         subprocess.check_call(['flatpak', 'uninstall', '--runtime', refspec])
 
-# Path to the flatpak system installations.
-FLATPAK_SYSTEM_INSTALLATION = '/var/lib/flatpak'
-FLATPAK_EXTERNAL_INSTALLATION = '/var/endless-extra/flatpak'
+def _update_deploy_file_with_origin(deploy_file_path, new_origin_name):
+    _update_deploy_file(deploy_file_path, 0, new_origin_name)
 
-def _replace_runtime_subpaths(runtime_id, arch_branch,
-                              old_subpaths, new_subpaths):
-    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
-                        FLATPAK_SYSTEM_INSTALLATION]:
-        deploy_file_path = os.path.join(flatpak_dir, 'runtime', runtime_id,
-                                        arch_branch, 'active', 'deploy')
+def _update_deploy_file_with_subpaths(deploy_file_path, new_subpaths):
+    _update_deploy_file(deploy_file_path, 2, new_subpaths)
 
-        if not os.path.isfile(deploy_file_path):
-            logging.debug("{}/{} not deployed in {}, skipping"
-                          .format(runtime_id, arch_branch, flatpak_dir))
-            continue
-
-        _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths,
-                                             new_subpaths)
-
-def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
-    _update_deploy_file(deploy_file_path, 0, new_remote_name)
-
-def _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths, new_subpaths):
-    _update_deploy_file(deploy_file_path, 2, new_subpaths, old_subpaths)
-
-def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
+def _update_deploy_file(deploy_file_path, idx, new_val):
     logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
 
     src_file_contents = None
@@ -180,17 +161,6 @@ def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
        (isinstance(cur_val, list) and isinstance(new_val, list) and \
         set(cur_val) == set(new_val)):
         logging.info('Nothing to do, {}[{}] already set to: {}'. format(deploy_file_path, idx, new_val))
-        return
-
-    bail = False
-    if old_val:
-       if isinstance(old_val, list) and isinstance(cur_val, list):
-           if set(old_val) != set(cur_val):
-               bail = True
-       elif cur_val != old_val:
-           bail = True
-    if bail:
-        logging.info('Not doing anything, {}[{}] not expected old value: {}'. format(deploy_file_path, idx, old_val))
         return
 
     builder = GLib.VariantBuilder.new(variant_type)
@@ -240,6 +210,20 @@ FLATPAKS_TO_MIGRATE = [
         'old-origin': 'eos-runtimes',
         'new-origin': 'eos-sdk'
     },
+    # fix up image builder bug on 'sea' (south-east asia) which set
+    # an invalid subpath, causing no Locales to be installed (T19472)
+    {
+        'name': 'com.endlessm.apps.Platform.Locale',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-subpaths': ['/en,id,th,vi'],
+        'new-subpaths': ['/en', '/id', '/th', '/vi']
+    },
+    {
+        'name': 'com.endlessm.apps.Sdk.Locale',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-subpaths': ['/en,id,th,vi'],
+        'new-subpaths': ['/en', '/id', '/th', '/vi']
+    },
     # migrate Steam from eos-apps to flathub (T20322)
     {
         'name': 'com.valvesoftware.Steam',
@@ -252,7 +236,7 @@ FLATPAKS_TO_MIGRATE = [
 ]
 
 def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
-                 branch=None, origin=None):
+                 branch=None, origin=None, subpaths=None):
     ret = []
     for ref in refs:
         if kind and kind != ref.get_kind():
@@ -267,6 +251,8 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
             continue
         if origin and origin != ref.get_origin():
             continue
+        if subpaths and set(subpaths) != set(ref.get_subpaths()):
+            continue
         ret += [ref]
     return ret
 
@@ -280,14 +266,17 @@ def _migrate_installed_flatpaks():
         kind = migrate['kind']
         old_branch = migrate.get('old-branch')
         old_origin = migrate.get('old-origin')
+        old_subpaths = migrate.get('old-subpaths')
 
         matching_refs = _filter_refs(refs, name=name, kind=kind,
-                                     branch=old_branch, origin=old_origin)
+                                     branch=old_branch, origin=old_origin,
+                                     subpaths=old_subpaths)
         # also search for name.* runtimes to migrate to catch extensions
         prefix = name + '.'
         matching_refs += _filter_refs(refs, prefix=prefix,
                                       kind=Flatpak.RefKind.RUNTIME,
-                                      branch=old_branch, origin=old_origin)
+                                      branch=old_branch, origin=old_origin,
+                                      subpaths=old_subpaths)
         if len(matching_refs) == 0:
             logging.debug('Found no matches to migrate for {}'.format(name))
             continue
@@ -347,10 +336,15 @@ def _migrate_installed_flatpaks():
                 branch = new_branch
                 deploy_dir = new_deploy_dir
 
+            deploy = os.path.join(deploy_dir, 'deploy')
+
             new_origin = migrate.get('new-origin')
             if new_origin:
-                deploy = os.path.join(deploy_dir, 'deploy')
-                _update_deploy_file_with_remote(deploy, new_origin)
+                _update_deploy_file_with_origin(deploy, new_origin)
+
+            new_subpaths = migrate.get('new-subpaths')
+            if new_subpaths:
+                _update_deploy_file_with_subpaths(deploy, new_subpaths)
 
 if __name__ == '__main__':
     # Send logging messages both to the console and the journal
@@ -367,13 +361,3 @@ if __name__ == '__main__':
 
     # move apps and runtimes between branches and origins as specified above
     _migrate_installed_flatpaks()
-
-    for runtime in ('com.endlessm.apps.Platform.Locale',
-                    'com.endlessm.apps.Sdk.Locale'):
-        for arch_branch in ('x86_64/1', 'x86_64/master', 'arm/1', 'arm/master'):
-            # fix up image builder bug on 'sea' (south-east asia) which set
-            # an invalid subpath, causing no Locales to be installed (T19472)
-            if runtime.endswith('.Locale'):
-                _replace_runtime_subpaths(runtime, arch_branch,
-                                          ['/en,id,th,vi'],
-                                          ['/en', '/id', '/th', '/vi'])
