@@ -300,7 +300,8 @@ def _update_branch(ref, new_branch, refs):
             os.rename(current_tmp, current)
     except Exception:
         shutil.rmtree(new_branch_dir, ignore_errors=True)
-        os.unlink(current_tmp)
+        if os.path.exists(current_tmp):
+            os.unlink(current_tmp)
         raise
 
     # this is unsafe whilst flatpaks are running
