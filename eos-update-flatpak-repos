@@ -253,7 +253,7 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
             continue
         if subpaths and set(subpaths) != set(ref.get_subpaths()):
             continue
-        ret += [ref]
+        ret.append(ref)
     return ret
 
 def _migrate_installed_flatpaks():
@@ -325,7 +325,7 @@ def _migrate_installed_flatpaks():
                     if kind == Flatpak.RefKind.APP:
                         os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
                         os.rename(current_tmp, current)
-                except:
+                except Exception:
                     shutil.rmtree(new_branch_dir, ignore_errors=True)
                     os.unlink(current_tmp)
                     raise
