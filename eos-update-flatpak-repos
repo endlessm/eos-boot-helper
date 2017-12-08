@@ -256,6 +256,61 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
         ret.append(ref)
     return ret
 
+
+def _update_branch(ref, new_branch, refs):
+    kind = ref.get_kind()
+    name = ref.get_name()
+    arch = ref.get_arch()
+    branch = ref.get_branch()
+    deploy_dir = ref.get_deploy_dir()
+
+    clashing_refs = _filter_refs(refs, name=name, kind=kind,
+                                 arch=arch, branch=new_branch)
+    if len(clashing_refs) > 0:
+        logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
+                        .format(name, arch, branch, new_branch))
+        raise FileExistsError
+
+    logging.info('Migrating {}/{}/{} to new branch {}'
+                 .format(name, arch, branch, new_branch))
+
+    # .../${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
+    old_branch_dir, ref_dir = os.path.split(deploy_dir)
+
+    # .../${kind}/${name}/${arch}
+    arch_dir = os.path.dirname(old_branch_dir)
+
+    # .../${kind}/${name}
+    name_dir = os.path.dirname(arch_dir)
+    current = os.path.join(name_dir, 'current')
+    current_tmp = current + '.tmp'
+
+    # .../${kind}/${name}/${arch}/${new_branch}
+    new_branch_dir = os.path.join(arch_dir, new_branch)
+
+    # .../${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
+    new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
+
+    try:
+        os.mkdir(new_branch_dir, mode=0o755)
+        subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
+        os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
+        if kind == Flatpak.RefKind.APP:
+            os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
+            os.rename(current_tmp, current)
+    except Exception:
+        shutil.rmtree(new_branch_dir, ignore_errors=True)
+        os.unlink(current_tmp)
+        raise
+
+    # this is unsafe whilst flatpaks are running
+    # however: this is a startup job
+    shutil.rmtree(old_branch_dir, ignore_errors=True)
+
+    ref.set_property("branch", new_branch)
+    ref.set_property("deploy-dir", new_deploy_dir)
+
+
 def _migrate_installed_flatpaks():
     insts = Flatpak.get_system_installations()
     inst = insts[0]
@@ -282,70 +337,32 @@ def _migrate_installed_flatpaks():
             continue
 
         for ref in matching_refs:
-            kind = ref.get_kind()
             name = ref.get_name()
             arch = ref.get_arch()
             branch = ref.get_branch()
-            deploy_dir = ref.get_deploy_dir()
-            logging.info('Found {}/{}/{} to migrate'.format(name, arch, branch))
+            logging.info('Found {}/{}/{} to migrate'
+                         .format(name, arch, branch))
 
-            new_branch = migrate.get('new-branch')
-            if new_branch:
-                clashing_refs = _filter_refs(refs, name=name, kind=kind,
-                                             arch=arch, branch=new_branch)
-                if len(clashing_refs) > 0:
-                    logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
-                                    .format(name, arch, branch, new_branch))
-                    continue
+            try:
+                new_branch = migrate.get('new-branch')
+                if new_branch:
+                    _update_branch(ref, new_branch, refs)
 
-                logging.info('Migrating {}/{}/{} to new branch {}'
-                             .format(name, arch, branch, new_branch))
+                deploy_dir = ref.get_deploy_dir()
+                deploy = os.path.join(deploy_dir, 'deploy')
 
-                # /var/lib/flatpak/${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
-                (old_branch_dir, ref_dir) = os.path.split(deploy_dir)
+                new_origin = migrate.get('new-origin')
+                if new_origin:
+                    _update_deploy_file_with_origin(deploy, new_origin)
 
-                # /var/lib/flatpak/${kind}/${name}/${arch}
-                arch_dir = os.path.dirname(old_branch_dir)
+                new_subpaths = migrate.get('new-subpaths')
+                if new_subpaths:
+                    _update_deploy_file_with_subpaths(deploy, new_subpaths)
+            except Exception:
+                logging.exception('Failure applying migration to {}'
+                                  .format(name))
+                continue
 
-                # /var/lib/flatpak/${kind}/${name}
-                name_dir = os.path.dirname(arch_dir)
-                current = os.path.join(name_dir, 'current')
-                current_tmp = current + '.tmp'
-
-                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}
-                new_branch_dir = os.path.join(arch_dir, new_branch)
-
-                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
-                new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
-
-                try:
-                    os.mkdir(new_branch_dir, mode=0o755)
-                    subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
-                    os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
-                    if kind == Flatpak.RefKind.APP:
-                        os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
-                        os.rename(current_tmp, current)
-                except Exception:
-                    shutil.rmtree(new_branch_dir, ignore_errors=True)
-                    os.unlink(current_tmp)
-                    raise
-                else:
-                    # this is unsafe whilst flatpaks are running, but: this is a startup job
-                    shutil.rmtree(old_branch_dir, ignore_errors=True)
-
-                # update variables for origin migration
-                branch = new_branch
-                deploy_dir = new_deploy_dir
-
-            deploy = os.path.join(deploy_dir, 'deploy')
-
-            new_origin = migrate.get('new-origin')
-            if new_origin:
-                _update_deploy_file_with_origin(deploy, new_origin)
-
-            new_subpaths = migrate.get('new-subpaths')
-            if new_subpaths:
-                _update_deploy_file_with_subpaths(deploy, new_subpaths)
 
 if __name__ == '__main__':
     # Send logging messages both to the console and the journal
