@@ -1,4 +1,4 @@
-SUBDIRS = dracut tests
+SUBDIRS = dracut flatpak-repos tests
 EXTRA_DIST = debian
 
 # Install systemd units, generators, preset files, and udev rules
