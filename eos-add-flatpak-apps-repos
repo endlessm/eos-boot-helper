@@ -7,6 +7,7 @@
 # Authors:
 #  Mario Sanchez Prada <mario@endlessm.com>
 #  Philip Chimento <philip@endlessm.com>
+#  Robert McQueen <rob@endlessm.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +23,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import glob
 import logging
 import os
 import shutil
@@ -150,13 +152,167 @@ def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
         os.chmod(tmp_deploy_file.name, 0o644)
         shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
 
+FLATPAKS_TO_MIGRATE = [
+    {
+        'name': 'com.valvesoftware.Steam',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    }
+]
+
+def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
+                 branch=None, origin=None):
+    ret = []
+    for ref in refs:
+        if kind and kind != ref.get_kind():
+            continue
+        if name and name != ref.get_name():
+            continue
+        if prefix and not ref.get_name().startswith(prefix):
+            continue
+        if arch and arch != ref.get_arch():
+            continue
+        if branch and branch != ref.get_branch():
+            continue
+        if origin and origin != ref.get_origin():
+            continue
+        ret += [ref]
+    return ret
+
+def _replace_in_file(path, old, new):
+    (fd, tmpfile) = tempfile.mkstemp(dir=os.path.dirname(path))
+    try:
+        data = open(path).read()
+        out = os.fdopen(fd, mode='w')
+        out.write(data.replace(old, new))
+        out.flush()
+        os.fsync(fd)
+        out.close()
+
+        os.chmod(tmpfile, 0o644)
+        os.rename(tmpfile, path)
+    except:
+        os.unlink(tmpfile)
+        raise
+
+def _migrate_installed_flatpaks():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    refs = inst.list_installed_refs()
+    for migrate in FLATPAKS_TO_MIGRATE:
+        name = migrate['name']
+        kind = migrate['kind']
+        old_branch = migrate.get('old-branch')
+        old_origin = migrate.get('old-origin')
+
+        matching_refs = _filter_refs(refs, name=name, kind=kind,
+                                     branch=old_branch, origin=old_origin)
+        # also search for name.* runtimes to migrate to catch extensions
+        prefix = name + '.'
+        matching_refs += _filter_refs(refs, prefix=prefix,
+                                      kind=Flatpak.RefKind.RUNTIME,
+                                      branch=old_branch, origin=old_origin)
+        if len(matching_refs) == 0:
+            logging.debug('Found no matches to migrate for {}'.format(name))
+            continue
+
+        for ref in matching_refs:
+            kind = ref.get_kind()
+            name = ref.get_name()
+            arch = ref.get_arch()
+            branch = ref.get_branch()
+            deploy_dir = ref.get_deploy_dir()
+            logging.info('Found {}/{}/{} to migrate'.format(name, arch, branch))
+
+            new_branch = migrate.get('new-branch')
+            if new_branch:
+                clashing_refs = _filter_refs(refs, name=name, kind=kind,
+                                             arch=arch, branch=new_branch)
+                if len(clashing_refs) > 0:
+                    logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
+                                    .format(name, arch, branch, new_branch))
+                    continue
+
+                logging.info('Migrating {}/{}/{} to new branch {}'
+                             .format(name, arch, branch, new_branch))
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
+                (old_branch_dir, ref_dir) = os.path.split(deploy_dir)
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}
+                arch_dir = os.path.dirname(old_branch_dir)
+
+                # /var/lib/flatpak/${kind}/${name}
+                name_dir = os.path.dirname(arch_dir)
+                current = os.path.join(name_dir, 'current')
+                current_tmp = current + '.tmp'
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}
+                new_branch_dir = os.path.join(arch_dir, new_branch)
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
+                new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
+
+                try:
+                    os.mkdir(new_branch_dir, mode=0o755)
+                    subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
+                    os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
+                    if kind == Flatpak.RefKind.APP:
+                        # update current symlink (specific to apps - runtimes
+                        # always have a specified branch)
+                        os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
+                        os.rename(current_tmp, current)
+
+                        # update Exec= line in exported .desktop and .service files
+                        old_exec = '/flatpak run --branch={} --arch={}'.format(old_branch, arch)
+                        new_exec = '/flatpak run --branch={} --arch={}'.format(new_branch, arch)
+
+                        for path in glob.glob(os.path.join(new_deploy_dir,
+                          'export/share/applications/*.desktop')):
+                            logging.debug('Updating branch in {}'.format(path))
+                            _replace_in_file(path, old_exec, new_exec)
+
+                        for path in glob.glob(os.path.join(new_deploy_dir,
+                          'export/share/dbus-1/services/*.service')):
+                            logging.debug('Updating branch in {}'.format(path))
+                            _replace_in_file(path, old_exec, new_exec)
+
+                    # this is unsafe whilst flatpaks are running, but: this is a startup job
+                    shutil.rmtree(old_branch_dir, ignore_errors=True)
+                except:
+                    shutil.rmtree(new_branch_dir, ignore_errors=True)
+                    os.unlink(current_tmp)
+                    raise
+
+                # update variables for origin migration
+                branch = new_branch
+                deploy_dir = new_deploy_dir
+
+            new_origin = migrate.get('new-origin')
+            if new_origin:
+                deploy = os.path.join(deploy_dir, 'deploy')
+                _update_deploy_file_with_remote(deploy, new_origin)
+
 if __name__ == '__main__':
     # Send logging messages both to the console and the journal
     logging.basicConfig(level=logging.INFO)
     logging.root.addHandler(journal.JournalHandler())
 
+    # ensure eos-sdk remote exists
     _add_flatpak_repo()
+
+    # move apps and runtimes between branches and origins as specified above (T20322)
+    _migrate_installed_flatpaks()
+
+    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
     _update_deploy_file_for_app_and_remote('com.endlessm.EknServices', 'eos-sdk')
+
+    # fix up image-builder bug where com.endlessm.apps.* runtimes were
+    # mistakenly installed with eos-runtimes origin (T18366)
     for runtime in ('com.endlessm.apps.Platform', 'com.endlessm.apps.Sdk',
                     'com.endlessm.apps.Platform.Locale',
                     'com.endlessm.apps.Sdk.Locale',
@@ -165,6 +321,9 @@ if __name__ == '__main__':
             _update_deploy_file_for_app_and_remote(runtime, 'eos-sdk',
                                                    kind='runtime',
                                                    arch_branch=arch_branch)
+
+            # fix up image builder bug on 'sea' (south-east asia) which set
+            # an invalid subpath, causing no Locales to be installed (T19472)
             if runtime.endswith('.Locale'):
                 _replace_runtime_subpaths(runtime, arch_branch,
                                           ['/en,id,th,vi'],
