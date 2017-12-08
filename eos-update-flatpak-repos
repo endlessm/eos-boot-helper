@@ -38,6 +38,7 @@ from gi.repository import Flatpak
 from gi.repository import Gio
 from gi.repository import GLib
 
+
 def _flatpak_inst_get_remote(inst, name):
     try:
         remote = inst.get_remote_by_name(name)
@@ -46,7 +47,9 @@ def _flatpak_inst_get_remote(inst, name):
 
     return remote
 
+
 FLATPAK_REPO_DIR = '/usr/share/eos-boot-helper/flatpak-repos'
+
 
 def _add_flatpak_repos():
     insts = Flatpak.get_system_installations()
@@ -77,20 +80,22 @@ def _add_flatpak_repos():
                 title = c['Flatpak Repo']['Title']
 
                 logging.info("Setting missing title \"{}\" on remote {} in {}"
-                              .format(title, name, inst.get_path().get_path()))
+                             .format(title, name, inst.get_path().get_path()))
 
                 subprocess.check_call(['flatpak', 'remote-modify',
                                        '--title', title, name])
         else:
             logging.info("Adding remote {} to {} from {}"
-                          .format(name, inst.get_path().get_path(), repo_file))
+                         .format(name, inst.get_path().get_path(), repo_file))
 
             subprocess.check_call(['flatpak', 'remote-add', '--from', name,
                                    repo_file])
 
+
 REMOTES_TO_REMOVE = [
     'eos-external-apps'
 ]
+
 
 def _remove_remotes():
     insts = Flatpak.get_system_installations()
@@ -99,25 +104,30 @@ def _remove_remotes():
     for name in REMOTES_TO_REMOVE:
         if _flatpak_inst_get_remote(inst, name):
             logging.info("Removing remote {} from {}"
-                          .format(name, inst.get_path().get_path()))
+                         .format(name, inst.get_path().get_path()))
 
-            subprocess.check_call(['flatpak', 'remote-delete', '--force', name])
+            subprocess.check_call(['flatpak', 'remote-delete',
+                                   '--force', name])
+
 
 EXT_APPS_REPO = '/var/lib/flatpak-external-apps'
+
 
 def _remove_old_external_apps_repo():
     if os.path.isdir(EXT_APPS_REPO):
         logging.info("Removing repo {}".format(EXT_APPS_REPO))
         shutil.rmtree(EXT_APPS_REPO, ignore_errors=True)
 
+
 RUNTIMES_TO_REMOVE = {
-    'eos-external-apps' : {
-                            'com.dropbox.Client',
-                            'com.google.Chrome',
-                            'com.microsoft.Skype',
-                            'com.spotify.Client'
-                          }
+    'eos-external-apps': {
+        'com.dropbox.Client',
+        'com.google.Chrome',
+        'com.microsoft.Skype',
+        'com.spotify.Client'
+    }
 }
+
 
 def _remove_runtimes():
     insts = Flatpak.get_system_installations()
@@ -137,14 +147,18 @@ def _remove_runtimes():
                      .format(refspec, inst.get_path().get_path()))
         subprocess.check_call(['flatpak', 'uninstall', '--runtime', refspec])
 
+
 def _update_deploy_file_with_origin(deploy_file_path, new_origin_name):
     _update_deploy_file(deploy_file_path, 0, new_origin_name)
+
 
 def _update_deploy_file_with_subpaths(deploy_file_path, new_subpaths):
     _update_deploy_file(deploy_file_path, 2, new_subpaths)
 
+
 def _update_deploy_file(deploy_file_path, idx, new_val):
-    logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
+    logging.debug("Reading data from the deploy file at {}..."
+                  .format(deploy_file_path))
 
     src_file_contents = None
     with open(deploy_file_path, 'rb') as f:
@@ -153,14 +167,16 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
     # We need to read the GVariant in the deploy file and generate a
     # new one with all the same content but the right remote set.
     variant_type = GLib.VariantType.new('(ssasta{sv})')
-    orig_variant = GLib.Variant.new_from_bytes(variant_type, src_file_contents, False)
+    orig_variant = GLib.Variant.new_from_bytes(variant_type,
+                                               src_file_contents, False)
     logging.debug("Original variant: {}".format(str(orig_variant)))
 
     cur_val = orig_variant[idx]
-    if cur_val == new_val or \
-       (isinstance(cur_val, list) and isinstance(new_val, list) and \
-        set(cur_val) == set(new_val)):
-        logging.info('Nothing to do, {}[{}] already set to: {}'. format(deploy_file_path, idx, new_val))
+    if cur_val == new_val or (isinstance(cur_val, list) and
+                              isinstance(new_val, list) and
+                              set(cur_val) == set(new_val)):
+        logging.info('Nothing to do, {}[{}] already set to: {}'
+                     .format(deploy_file_path, idx, new_val))
         return
 
     builder = GLib.VariantBuilder.new(variant_type)
@@ -186,10 +202,12 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
         out_stream.close()
 
         os.chmod(tmp_deploy_file.name, 0o644)
-        shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
+        shutil.copy(tmp_deploy_file.name, deploy_file_path,
+                    follow_symlinks=True)
+
 
 FLATPAKS_TO_MIGRATE = [
-    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
+    # migrate EknServices from old eos-apps remote to eos-sdk (T17863)
     {
         'name': 'com.endlessm.EknServices',
         'kind': Flatpak.RefKind.APP,
@@ -234,6 +252,7 @@ FLATPAKS_TO_MIGRATE = [
         'new-origin': 'flathub'
     }
 ]
+
 
 def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
                  branch=None, origin=None, subpaths=None):
