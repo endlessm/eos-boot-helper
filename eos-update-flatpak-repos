@@ -24,6 +24,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import configparser
+import glob
 import logging
 import os
 import shutil
@@ -276,6 +277,23 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
     return ret
 
 
+def _replace_in_file(path, old, new):
+    (fd, tmpfile) = tempfile.mkstemp(dir=os.path.dirname(path))
+    try:
+        data = open(path).read()
+        out = os.fdopen(fd, mode='w')
+        out.write(data.replace(old, new))
+        out.flush()
+        os.fsync(fd)
+        out.close()
+
+        os.chmod(tmpfile, 0o644)
+        os.rename(tmpfile, path)
+    except:
+        os.unlink(tmpfile)
+        raise
+
+
 def _update_branch(ref, new_branch, refs):
     kind = ref.get_kind()
     name = ref.get_name()
@@ -315,8 +333,27 @@ def _update_branch(ref, new_branch, refs):
         subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
         os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
         if kind == Flatpak.RefKind.APP:
+            # update current symlink (specific to apps - runtimes
+            # always have a specified branch)
             os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
             os.rename(current_tmp, current)
+
+            # update Exec= line in exported .desktop and .service files
+            old_exec = '/flatpak run --branch={} --arch={}'.format(branch,
+                                                                   arch)
+            new_exec = '/flatpak run --branch={} --arch={}'.format(new_branch,
+                                                                   arch)
+
+            for path in glob.glob(os.path.join(new_deploy_dir,
+                                  'export/share/applications/*.desktop')):
+                logging.debug('Updating branch in {}'.format(path))
+                _replace_in_file(path, old_exec, new_exec)
+
+            for path in glob.glob(os.path.join(new_deploy_dir,
+                                  'export/share/dbus-1/services/*.service')):
+                logging.debug('Updating branch in {}'.format(path))
+                _replace_in_file(path, old_exec, new_exec)
+
     except Exception:
         shutil.rmtree(new_branch_dir, ignore_errors=True)
         if os.path.exists(current_tmp):
