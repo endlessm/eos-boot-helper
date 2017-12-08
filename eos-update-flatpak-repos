@@ -1,10 +1,379 @@
-#!/bin/bash -e
+#!/usr/bin/python3
+#
+# eos-update-flatpak-repos: adds standard flatpak repos, removes legacy remotes,
+# migrates installed flatpaks between origins, and other fix-ups/workarounds
+#
 # Copyright (C) 2017 Endless Mobile, Inc.
-# Licensed under the GPLv2
+# Authors:
+#  Mario Sanchez Prada <mario@endlessm.com>
+#  Philip Chimento <philip@endlessm.com>
+#  Robert McQueen <rob@endlessm.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-# Sequence these scripts rather than run as separate services
-# to avoid races in the flatpak configuration
-/usr/sbin/eos-remove-legacy-external-apps
-/usr/sbin/eos-add-flatpak-apps-repos
-/usr/sbin/eos-add-flatpak-flathub-repos
-/usr/sbin/eos-add-flatpak-gnome-repos
+import configparser
+import logging
+import os
+import shutil
+import subprocess
+import tempfile
+
+from systemd import journal
+
+import gi
+gi.require_version('Flatpak', '1.0')
+from gi.repository import Flatpak
+from gi.repository import Gio
+from gi.repository import GLib
+
+def _flatpak_inst_get_remote(inst, name):
+    try:
+        remote = inst.get_remote_by_name(name)
+    except GLib.Error:
+        remote = None
+
+    return remote
+
+FLATPAK_REPO_DIR = '/usr/share/eos-flatpak-repos'
+
+def _add_flatpak_repos():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for f in os.listdir(FLATPAK_REPO_DIR):
+        if not f.endswith('.flatpakrepo'):
+            continue
+
+        name = f[:-12]
+
+        repo_file = os.path.join(FLATPAK_REPO_DIR, f)
+
+        if not os.path.isfile(repo_file):
+            continue
+
+        remote = _flatpak_inst_get_remote(inst, name)
+
+        if remote:
+            logging.debug("Remote {} already configured in {}"
+                          .format(name, inst.get_path().get_path()))
+
+            if not remote.get_title():
+                # update title if it's missing, as EOS versions prior to 3.1.2
+                # added the GNOME remote with no title (T15580)
+                c = configparser.ConfigParser()
+                c.read(repo_file)
+                title = c['Flatpak Repo']['Title']
+
+                logging.info("Setting missing title \"{}\" on remote {} in {}"
+                              .format(title, name, inst.get_path().get_path()))
+
+                subprocess.check_call(['flatpak', 'remote-modify',
+                                       '--title', title, name])
+        else:
+            logging.info("Adding remote {} to {} from {}"
+                          .format(name, inst.get_path().get_path(), repo_file))
+
+            subprocess.check_call(['flatpak', 'remote-add', '--from', name,
+                                   repo_file])
+
+REMOTES_TO_REMOVE = [
+    'eos-external-apps'
+]
+
+def _remove_remotes():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for name in REMOTES_TO_REMOVE:
+        if _flatpak_inst_get_remote(inst, name):
+            logging.info("Removing remote {} from {}"
+                          .format(name, inst.get_path().get_path()))
+
+            subprocess.check_call(['flatpak', 'remote-delete', '--force', name])
+
+EXT_APPS_REPO = '/var/lib/flatpak-external-apps'
+
+def _remove_old_external_apps_repo():
+    if os.path.isdir(EXT_APPS_REPO):
+        logging.info("Removing repo {}".format(EXT_APPS_REPO))
+        shutil.rmtree(EXT_APPS_REPO, ignore_errors=True)
+
+RUNTIMES_TO_REMOVE = {
+    'eos-external-apps' : {
+                            'com.dropbox.Client',
+                            'com.google.Chrome',
+                            'com.microsoft.Skype',
+                            'com.spotify.Client'
+                          }
+}
+
+def _remove_runtimes():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for ref in inst.list_installed_refs_by_kind(Flatpak.RefKind.RUNTIME):
+        origin = ref.get_origin()
+        if ref.get_origin() not in RUNTIMES_TO_REMOVE:
+            continue
+
+        name = ref.get_name()
+        if name not in RUNTIMES_TO_REMOVE[origin]:
+            continue
+
+        refspec = '{}/{}/{}'.format(name, ref.get_arch(), ref.get_branch())
+        logging.info("Removing runtime {} from {}"
+                     .format(refspec, inst.get_path().get_path()))
+        subprocess.check_call(['flatpak', 'uninstall', '--runtime', refspec])
+
+# Path to the flatpak system installations.
+FLATPAK_SYSTEM_INSTALLATION = '/var/lib/flatpak'
+FLATPAK_EXTERNAL_INSTALLATION = '/var/endless-extra/flatpak'
+
+def _replace_runtime_subpaths(runtime_id, arch_branch,
+                              old_subpaths, new_subpaths):
+    for flatpak_dir in [FLATPAK_EXTERNAL_INSTALLATION,
+                        FLATPAK_SYSTEM_INSTALLATION]:
+        deploy_file_path = os.path.join(flatpak_dir, 'runtime', runtime_id,
+                                        arch_branch, 'active', 'deploy')
+
+        if not os.path.isfile(deploy_file_path):
+            logging.debug("{}/{} not deployed in {}, skipping"
+                          .format(runtime_id, arch_branch, flatpak_dir))
+            continue
+
+        _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths,
+                                             new_subpaths)
+
+def _update_deploy_file_with_remote(deploy_file_path, new_remote_name):
+    _update_deploy_file(deploy_file_path, 0, new_remote_name)
+
+def _update_deploy_file_replace_subpaths(deploy_file_path, old_subpaths, new_subpaths):
+    _update_deploy_file(deploy_file_path, 2, new_subpaths, old_subpaths)
+
+def _update_deploy_file(deploy_file_path, idx, new_val, old_val=None):
+    logging.debug("Reading data from the deploy file at {}...".format(deploy_file_path))
+
+    src_file_contents = None
+    with open(deploy_file_path, 'rb') as f:
+        src_file_contents = GLib.Bytes.new(f.read())
+
+    # We need to read the GVariant in the deploy file and generate a
+    # new one with all the same content but the right remote set.
+    variant_type = GLib.VariantType.new('(ssasta{sv})')
+    orig_variant = GLib.Variant.new_from_bytes(variant_type, src_file_contents, False)
+    logging.debug("Original variant: {}".format(str(orig_variant)))
+
+    cur_val = orig_variant[idx]
+    if cur_val == new_val or \
+       (isinstance(cur_val, list) and isinstance(new_val, list) and \
+        set(cur_val) == set(new_val)):
+        logging.info('Nothing to do, {}[{}] already set to: {}'. format(deploy_file_path, idx, new_val))
+        return
+
+    bail = False
+    if old_val:
+       if isinstance(old_val, list) and isinstance(cur_val, list):
+           if set(old_val) != set(cur_val):
+               bail = True
+       elif cur_val != old_val:
+           bail = True
+    if bail:
+        logging.info('Not doing anything, {}[{}] not expected old value: {}'. format(deploy_file_path, idx, old_val))
+        return
+
+    builder = GLib.VariantBuilder.new(variant_type)
+    for i, val in enumerate(orig_variant):
+        child = orig_variant.get_child_value(i)
+        if i == idx:
+            builder.add_value(GLib.Variant(child.get_type_string(), new_val))
+        else:
+            builder.add_value(child)
+
+    new_variant = builder.end()
+    logging.debug("New variant: {}".format(str(new_variant)))
+
+    # Write the new GVariant to a temporary file and replace the original one.
+    with tempfile.NamedTemporaryFile() as tmp_deploy_file:
+        logging.info("Building new deploy file for {}, setting [{}] to: {}"
+                     .format(deploy_file_path, idx, new_val))
+
+        # Write temporary file to disk and overwrite the original one with it.
+        dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
+        out_stream = dest_file.append_to(Gio.FileCreateFlags.NONE, None)
+        out_stream.write_bytes(new_variant.get_data_as_bytes())
+        out_stream.close()
+
+        os.chmod(tmp_deploy_file.name, 0o644)
+        shutil.copy(tmp_deploy_file.name, deploy_file_path, follow_symlinks=True)
+
+FLATPAKS_TO_MIGRATE = [
+    # switch EknServices to eos-sdk remote, migrating from old eos-apps remote (T17863)
+    {
+        'name': 'com.endlessm.EknServices',
+        'kind': Flatpak.RefKind.APP,
+        'old-origin': 'eos-apps',
+        'new-origin': 'eos-sdk'
+    },
+    # fix up image-builder bug where com.endlessm.apps.* runtimes were
+    # mistakenly installed with eos-runtimes origin (T18366)
+    {
+        'name': 'com.endlessm.apps.Platform',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-runtimes',
+        'new-origin': 'eos-sdk'
+    },
+    {
+        'name': 'com.endlessm.apps.Sdk',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-runtimes',
+        'new-origin': 'eos-sdk'
+    },
+    # migrate Steam from eos-apps to flathub (T20322)
+    {
+        'name': 'com.valvesoftware.Steam',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    }
+]
+
+def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
+                 branch=None, origin=None):
+    ret = []
+    for ref in refs:
+        if kind and kind != ref.get_kind():
+            continue
+        if name and name != ref.get_name():
+            continue
+        if prefix and not ref.get_name().startswith(prefix):
+            continue
+        if arch and arch != ref.get_arch():
+            continue
+        if branch and branch != ref.get_branch():
+            continue
+        if origin and origin != ref.get_origin():
+            continue
+        ret += [ref]
+    return ret
+
+def _migrate_installed_flatpaks():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    refs = inst.list_installed_refs()
+    for migrate in FLATPAKS_TO_MIGRATE:
+        name = migrate['name']
+        kind = migrate['kind']
+        old_branch = migrate.get('old-branch')
+        old_origin = migrate.get('old-origin')
+
+        matching_refs = _filter_refs(refs, name=name, kind=kind,
+                                     branch=old_branch, origin=old_origin)
+        # also search for name.* runtimes to migrate to catch extensions
+        prefix = name + '.'
+        matching_refs += _filter_refs(refs, prefix=prefix,
+                                      kind=Flatpak.RefKind.RUNTIME,
+                                      branch=old_branch, origin=old_origin)
+        if len(matching_refs) == 0:
+            logging.debug('Found no matches to migrate for {}'.format(name))
+            continue
+
+        for ref in matching_refs:
+            kind = ref.get_kind()
+            name = ref.get_name()
+            arch = ref.get_arch()
+            branch = ref.get_branch()
+            deploy_dir = ref.get_deploy_dir()
+            logging.info('Found {}/{}/{} to migrate'.format(name, arch, branch))
+
+            new_branch = migrate.get('new-branch')
+            if new_branch:
+                clashing_refs = _filter_refs(refs, name=name, kind=kind,
+                                             arch=arch, branch=new_branch)
+                if len(clashing_refs) > 0:
+                    logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
+                                    .format(name, arch, branch, new_branch))
+                    continue
+
+                logging.info('Migrating {}/{}/{} to new branch {}'
+                             .format(name, arch, branch, new_branch))
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
+                (old_branch_dir, ref_dir) = os.path.split(deploy_dir)
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}
+                arch_dir = os.path.dirname(old_branch_dir)
+
+                # /var/lib/flatpak/${kind}/${name}
+                name_dir = os.path.dirname(arch_dir)
+                current = os.path.join(name_dir, 'current')
+                current_tmp = current + '.tmp'
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}
+                new_branch_dir = os.path.join(arch_dir, new_branch)
+
+                # /var/lib/flatpak/${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
+                new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
+
+                try:
+                    os.mkdir(new_branch_dir, mode=0o755)
+                    subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
+                    os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
+                    if kind == Flatpak.RefKind.APP:
+                        os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
+                        os.rename(current_tmp, current)
+                    # this is unsafe whilst flatpaks are running, but: this is a startup job
+                    shutil.rmtree(old_branch_dir, ignore_errors=True)
+                except:
+                    shutil.rmtree(new_branch_dir, ignore_errors=True)
+                    os.unlink(current_tmp)
+                    raise
+
+                # update variables for origin migration
+                branch = new_branch
+                deploy_dir = new_deploy_dir
+
+            new_origin = migrate.get('new-origin')
+            if new_origin:
+                deploy = os.path.join(deploy_dir, 'deploy')
+                _update_deploy_file_with_remote(deploy, new_origin)
+
+if __name__ == '__main__':
+    # Send logging messages both to the console and the journal
+    logging.basicConfig(level=logging.INFO)
+    logging.root.addHandler(journal.JournalHandler())
+
+    # ensure default remotes exist, such as eos-sdk and flathub
+    _add_flatpak_repos()
+
+    # clear away legacy eos-external-apps remote, repo and runtimes (T14442)
+    _remove_remotes()
+    _remove_old_external_apps_repo()
+    _remove_runtimes()
+
+    # move apps and runtimes between branches and origins as specified above
+    _migrate_installed_flatpaks()
+
+    for runtime in ('com.endlessm.apps.Platform.Locale',
+                    'com.endlessm.apps.Sdk.Locale'):
+        for arch_branch in ('x86_64/1', 'x86_64/master', 'arm/1', 'arm/master'):
+            # fix up image builder bug on 'sea' (south-east asia) which set
+            # an invalid subpath, causing no Locales to be installed (T19472)
+            if runtime.endswith('.Locale'):
+                _replace_runtime_subpaths(runtime, arch_branch,
+                                          ['/en,id,th,vi'],
+                                          ['/en', '/id', '/th', '/vi'])
