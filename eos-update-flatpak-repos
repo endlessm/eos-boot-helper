@@ -29,14 +29,12 @@ import logging
 import os
 import shutil
 import subprocess
-import tempfile
 
 from systemd import journal
 
 import gi
 gi.require_version('Flatpak', '1.0')
 from gi.repository import Flatpak
-from gi.repository import Gio
 from gi.repository import GLib
 
 
@@ -191,20 +189,11 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
     new_variant = builder.end()
     logging.debug("New variant: {}".format(str(new_variant)))
 
-    # Write the new GVariant to a temporary file and replace the original one.
-    with tempfile.NamedTemporaryFile() as tmp_deploy_file:
-        logging.info("Building new deploy file for {}, setting [{}] to: {}"
-                     .format(deploy_file_path, idx, new_val))
-
-        # Write temporary file to disk and overwrite the original one with it.
-        dest_file = Gio.File.new_for_path(tmp_deploy_file.name)
-        out_stream = dest_file.append_to(Gio.FileCreateFlags.NONE, None)
-        out_stream.write_bytes(new_variant.get_data_as_bytes())
-        out_stream.close()
-
-        os.chmod(tmp_deploy_file.name, 0o644)
-        shutil.copy(tmp_deploy_file.name, deploy_file_path,
-                    follow_symlinks=True)
+    # Replace the original deploy file with the new GVariant
+    logging.info("Writing new deploy file for {}, setting [{}] to: {}"
+                 .format(deploy_file_path, idx, new_val))
+    GLib.file_set_contents(deploy_file_path,
+                           new_variant.get_data_as_bytes().get_data())
 
 
 FLATPAKS_TO_MIGRATE = [
@@ -278,20 +267,8 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
 
 
 def _replace_in_file(path, old, new):
-    (fd, tmpfile) = tempfile.mkstemp(dir=os.path.dirname(path))
-    try:
-        data = open(path).read()
-        out = os.fdopen(fd, mode='w')
-        out.write(data.replace(old, new))
-        out.flush()
-        os.fsync(fd)
-        out.close()
-
-        os.chmod(tmpfile, 0o644)
-        os.rename(tmpfile, path)
-    except:
-        os.unlink(tmpfile)
-        raise
+    data = GLib.file_get_contents(path)
+    GLib.file_set_contents(path, data.replace(old, new))
 
 
 def _update_branch(ref, new_branch, refs):
