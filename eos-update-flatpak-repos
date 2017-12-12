@@ -251,6 +251,23 @@ FLATPAKS_TO_MIGRATE = [
         'old-branch': 'stable',
         'old-origin': 'gnome-apps',
         'new-origin': 'flathub'
+    },
+    # migrate Teeworlds and MegaGlest from eos-apps to flathub (T20411)
+    {
+        'name': 'com.teeworlds.Teeworlds',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.megaglest.MegaGlest',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
