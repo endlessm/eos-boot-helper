@@ -278,8 +278,10 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
 
 
 def _replace_in_file(path, old, new):
-    data = GLib.file_get_contents(path)
-    GLib.file_set_contents(path, data.replace(old, new))
+    _, data = GLib.file_get_contents(path)
+    assert data
+    GLib.file_set_contents(path, data.replace(old.encode('utf-8'),
+                                              new.encode('utf-8')))
 
 
 def _update_branch(ref, new_branch, refs):
