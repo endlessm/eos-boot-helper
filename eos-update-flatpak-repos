@@ -301,6 +301,119 @@ FLATPAKS_TO_MIGRATE = [
         'old-branch': '3.26',
         'old-origin': 'gnome',
         'new-origin': 'flathub'
+    },
+    # migrate eos-apps to flathub where the app ID is the same (T20724)
+    {
+        'name': 'com.google.AndroidStudio',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'com.slack.Slack',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'com.spotify.Client',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'com.transmissionbt.Transmission',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.minetest.Minetest',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.freeciv.Freeciv',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Builder',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Genius',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Gnote',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.inkscape.Inkscape',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.pitivi.Pitivi',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.tuxpaint.Tuxpaint',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.videolan.VLC',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.wesnoth.Wesnoth',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
