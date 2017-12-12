@@ -92,7 +92,10 @@ def _add_flatpak_repos():
 
 
 REMOTES_TO_REMOVE = [
-    'eos-external-apps'
+    # legacy eos-external-apps local repo (T14442)
+    'eos-external-apps',
+    # legacy gnome-apps repo (T19898)
+    'gnome-apps'
 ]
 
 
@@ -240,6 +243,14 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate org.gnome.* from gnome-apps to flathub (T19898)
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'stable',
+        'old-origin': 'gnome-apps',
+        'new-origin': 'flathub'
     }
 ]
 
@@ -351,21 +362,27 @@ def _migrate_installed_flatpaks():
 
     refs = inst.list_installed_refs()
     for migrate in FLATPAKS_TO_MIGRATE:
-        name = migrate['name']
         kind = migrate['kind']
+        name = migrate.get('name')
+        prefix = migrate.get('prefix')
+        assert name or prefix
+
         old_branch = migrate.get('old-branch')
         old_origin = migrate.get('old-origin')
         old_subpaths = migrate.get('old-subpaths')
 
-        matching_refs = _filter_refs(refs, name=name, kind=kind,
+        matching_refs = _filter_refs(refs, name=name, prefix=prefix, kind=kind,
                                      branch=old_branch, origin=old_origin,
                                      subpaths=old_subpaths)
+
         # also search for name.* runtimes to migrate to catch extensions
-        prefix = name + '.'
+        if not prefix:
+            prefix = name + '.'
         matching_refs += _filter_refs(refs, prefix=prefix,
                                       kind=Flatpak.RefKind.RUNTIME,
                                       branch=old_branch, origin=old_origin,
                                       subpaths=old_subpaths)
+
         if len(matching_refs) == 0:
             logging.debug('Found no matches to migrate for {}'.format(name))
             continue
@@ -406,8 +423,10 @@ if __name__ == '__main__':
     # ensure default remotes exist, such as eos-sdk and flathub
     _add_flatpak_repos()
 
-    # clear away legacy eos-external-apps remote, repo and runtimes (T14442)
+    # remove unused remotes, such as eos-external-apps and gnome-apps
     _remove_remotes()
+
+    # clear away legacy eos-external-apps repo and runtimes (T14442)
     _remove_old_external_apps_repo()
     _remove_runtimes()
 
