@@ -12,6 +12,8 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	eos-companion-app.service \
+	eos-companion-app.socket \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
@@ -77,6 +79,11 @@ dist_udevrules_DATA = \
 polkitrulesdir = $(datadir)/polkit-1/rules.d
 dist_polkitrules_DATA = \
 	10-allow-mounting-endless-image-device.rules \
+	$(NULL)
+
+tmpfilesddir = $(prefix)/lib/tmpfiles.d
+dist_tmpfilesd_DATA = \
+	tmpfiles.d/eos-companion-app-helper.conf \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
