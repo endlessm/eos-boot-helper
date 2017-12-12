@@ -251,6 +251,23 @@ FLATPAKS_TO_MIGRATE = [
         'old-branch': 'stable',
         'old-origin': 'gnome-apps',
         'new-origin': 'flathub'
+    },
+    # migrate Teeworlds and MegaGlest from eos-apps to flathub (T20411)
+    {
+        'name': 'com.teeworlds.Teeworlds',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.megaglest.MegaGlest',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
@@ -278,8 +295,10 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
 
 
 def _replace_in_file(path, old, new):
-    data = GLib.file_get_contents(path)
-    GLib.file_set_contents(path, data.replace(old, new))
+    _, data = GLib.file_get_contents(path)
+    assert data
+    GLib.file_set_contents(path, data.replace(old.encode('utf-8'),
+                                              new.encode('utf-8')))
 
 
 def _update_branch(ref, new_branch, refs):
