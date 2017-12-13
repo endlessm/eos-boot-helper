@@ -428,12 +428,15 @@ def _migrate_installed_flatpaks():
                                      subpaths=old_subpaths)
 
         # also search for name.* runtimes to migrate to catch extensions
-        if not prefix:
-            prefix = name + '.'
-        matching_refs += _filter_refs(refs, prefix=prefix,
-                                      kind=Flatpak.RefKind.RUNTIME,
-                                      branch=old_branch, origin=old_origin,
-                                      subpaths=old_subpaths)
+        # unless we are already searching runtimes by prefix - in this case
+        # we will already have found the matching extensions
+        if name or kind == Flatpak.RefKind.APP:
+            if not prefix:
+                prefix = name + '.'
+            matching_refs += _filter_refs(refs, prefix=prefix,
+                                          kind=Flatpak.RefKind.RUNTIME,
+                                          branch=old_branch, origin=old_origin,
+                                          subpaths=old_subpaths)
 
         if len(matching_refs) == 0:
             logging.debug('Found no matches to migrate for {}'.format(name))
