@@ -95,7 +95,9 @@ REMOTES_TO_REMOVE = [
     # legacy eos-external-apps local repo (T14442)
     'eos-external-apps',
     # legacy gnome-apps repo (T19898)
-    'gnome-apps'
+    'gnome-apps',
+    # legacy gnome runtimes repo (T20443)
+    'gnome'
 ]
 
 
@@ -276,6 +278,28 @@ FLATPAKS_TO_MIGRATE = [
         'old-branch': 'eos3',
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    # migrate gnome 3.2[46] and freedesktop 1.6 runtimes to flathub (T20443)
+    {
+        'prefix': 'org.freedesktop.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '1.6',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '3.24',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '3.26',
+        'old-origin': 'gnome',
         'new-origin': 'flathub'
     }
 ]
