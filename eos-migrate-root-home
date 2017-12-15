@@ -1,0 +1,97 @@
+#!/bin/bash -e
+
+# eos-migrate-root-home - Move root's home dir from /var/roothome
+#
+# Copyright (C) 2017 Endless Mobile, Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# The ostree builder was setup so that /root was a symlink to
+# /var/roothome, but this had no connection to the system wide
+# persistent /sysroot/root. Now it's been changed so that /root is a
+# symlink to /sysroot/root, but existing users may have content in
+# /var/roothome. Migrate it if /var/roothome exists and is not a symlink
+# to /sysroot/root.
+
+# Make sure tar pipeline fails if creation process fails
+set -o pipefail
+
+ROOT_HOME_SRC=/var/roothome
+ROOT_HOME_DST=/sysroot/root
+
+ARGS=$(getopt -n "$0" -o nh -l dry-run,help -- "$@")
+eval set -- "$ARGS"
+
+usage()
+{
+    cat <<EOF
+Usage: $0 [OPTION...]
+Migrate root's home contents from $ROOT_HOME_SRC to $ROOT_HOME_DST
+
+  -n, --dry-run		only show what would be done
+  -h, --help		display this help and exit
+EOF
+}
+
+DRY_RUN=false
+while true; do
+    case "$1" in
+        -n|--dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unrecognized option \"$1\"" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Check conditions
+if [ ! -d "$ROOT_HOME_SRC" ]; then
+    echo "$ROOT_HOME_SRC is not a directory" >&2
+    exit 1
+fi
+if [ ! -d "$ROOT_HOME_DST" ]; then
+    echo "$ROOT_HOME_DST is not a directory" >&2
+    exit 1
+fi
+if [ -L "$ROOT_HOME_SRC" ]; then
+    echo "$ROOT_HOME_SRC is already a symlink, nothing to do"
+    exit 0
+fi
+
+# "Merge" src contents to dst with tar
+echo "Merging $ROOT_HOME_SRC contents to $ROOT_HOME_DST"
+if ! $DRY_RUN; then
+    tar -C "$ROOT_HOME_SRC" -c . | tar -C "$ROOT_HOME_DST" -x
+fi
+
+# Remove src directory and replace with a symlink. The symlink is kept
+# in case someone rolls back to an old ostree that doesn't have the
+# /root -> /sysroot/root symlink.
+echo "Replacing $ROOT_HOME_SRC with symlink to $ROOT_HOME_DST"
+if ! $DRY_RUN; then
+    rm -rf "$ROOT_HOME_SRC"
+    ln -sfT "$ROOT_HOME_DST" "$ROOT_HOME_SRC"
+fi

@@ -1,0 +1,26 @@
+[Unit]
+Description=Migrate root's home from /var/roothome to /sysroot/root
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run if both /var/roothome and /sysroot/root are directories and
+# /var/roothome is not (yet) a symlink. On newer systems, /var/roothome
+# won't exist at all.
+ConditionPathIsDirectory=/var/roothome
+ConditionPathIsDirectory=/sysroot/root
+ConditionPathIsSymbolicLink=!/var/roothome
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-migrate-root-home
+
+[Install]
+WantedBy=multi-user.target
