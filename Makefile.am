@@ -12,6 +12,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	eos-chown-avahi-helper-to-writers.service \
 	eos-companion-app.service \
 	eos-companion-app.socket \
 	eos-enable-extra-upgrade.service \
@@ -87,6 +88,7 @@ dist_tmpfilesd_DATA = \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
+	eos-chown-avahi-helper-to-writers \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \

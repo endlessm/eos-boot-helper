@@ -1,0 +1,11 @@
+[Unit]
+Description=Change owner of Avahi Services
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-chown-vaahi-helper-to-writers
+
+[Install]
+WantedBy=multi-user.target
