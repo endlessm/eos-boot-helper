@@ -13,8 +13,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 dist_systemdunit_DATA = \
 	eos-chown-avahi-helper-to-writers.service \
-	eos-companion-app.service \
-	eos-companion-app.socket \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
