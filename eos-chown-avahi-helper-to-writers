@@ -1,0 +1,7 @@
+#!/bin/bash -e
+# Copyright (C) 2017 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+chown -r root:avahi-service-writers /etc/avahi/services
+chown g+rw /etc/avahi/services
+
