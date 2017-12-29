@@ -78,10 +78,64 @@ first_boot_cleanup_modules()
   fi
 }
 
+hdmi_audio_hw_check() {
+  local nv_dev=$1
+
+  # Allow forced override
+  [[ -e "${MODULE_DIR}"/force-enable-hdmi-audio ]] && return 0
+
+  local gpu_count=$(lspci -mn |
+    awk '{ gsub("\"",""); if ($2 == "0300" || $2 == "0302") { count++ } } END {print count}')
+
+  # If we have multiple GPUs, assume that the non-NVIDIA GPU drives HDMI.
+  [[ "${gpu_count}" == 1 ]] || return 1
+
+  # Only apply the quirk to devices where we have verified the 0x488 trick
+  local -a devs_to_quirk=(
+    10DE1BE1 # GeForce GTX 1070
+  )
+
+  local found=
+  for i in "${devs_to_quirk[@]}"; do
+    [ "$i" == "${NV_DEVICE}" ] && found=1
+  done
+  [[ -z "${found}" ]] && return 1
+
+  # Check if audio device was already enabled by the BIOS
+  local val=0x$(setpci -s ${nv_dev} 0x488.l)
+  [[ "$((val & 0x02000000))" != 0 ]] && return 1
+
+  return 0
+}
+
+# Some BIOSes boot with the HDMI audio device disabled.
+# Detect this condition and enable the audio device.
+# https://phabricator.endlessm.com/T20286
+enable_nvidia_hdmi_audio() {
+  local nv_dev=$(lspci -mn | awk '{ gsub("\"",""); if (($2 == "0300" || $2 == "0302") && ($3 == "10de" || $3 == "12d2")) { print $1 } }' | head -n 1)
+
+  hdmi_audio_hw_check "${nv_dev}" || return 0
+
+  # Check our assumption that the parent bridge is always 00:01.0
+  if ! [[ -e "/sys/devices/pci0000:00/0000:00:01.0/0000:${nv_dev}" ]]; then
+    echo "Not enabling HDMI audio, PCI parent bridge mismatch"
+    return 0
+  fi
+
+  echo "Force-enabling HDMI audio device"
+  setpci -s "${nv_dev}" 0x488.l=0x02000000:0x02000000
+  echo 1 > /sys/bus/pci/devices/0000:${nv_dev}/remove
+  echo 1 > /sys/bus/pci/devices/0000:00:01.0/rescan
+  return 0
+}
+
 if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
    grep --quiet -F ${NV_DEVICE} ${NV_CURRENT}/nvidia.ids; then
 
   build_nvidia_if_needed
+
+  enable_nvidia_hdmi_audio
+
   echo "Loading nvidia modules"
   load_module "${MODULE_DIR}"/nvidia.ko
   load_module "${MODULE_DIR}"/nvidia-modeset.ko
