@@ -17,6 +17,7 @@ dist_systemdunit_DATA = \
 	eos-extra-resize.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
+	eos-fix-external-appstream.service \
 	eos-fix-flatpak-branches.service \
 	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
@@ -80,6 +81,7 @@ dist_sbin_SCRIPTS = \
 	eos-extra-resize \
 	eos-firewall-localonly \
 	eos-firstboot \
+	eos-fix-external-appstream \
 	eos-fix-flatpak-branches \
 	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \

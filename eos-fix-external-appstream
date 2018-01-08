@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+# EOS downloads an external appstream file "eos-extra.xml" every time there's a refresh
+# and the server's file is younger than the cached one.
+#
+# We ship a version of eos-extra.xml in the images as a base point but the name used to
+# store the file no longer corresponds to the one GNOME Software generates: it should now
+# take an "org.gnome.Software-" prefix.
+#
+# This script hence attempts to remove an eventually dangling "eos-extra.xml" file.
+
+EXTERNAL_APPSTREAM_DIR=/var/cache/app-info/xmls
+OLD_EOS_EXTRA=${EXTERNAL_APPSTREAM_DIR}/eos-extra.xml.gz
+NEW_EOS_EXTRA=${EXTERNAL_APPSTREAM_DIR}/org.gnome.Software-eos-extra.xml.gz
+
+if [ -f ${OLD_EOS_EXTRA} ]; then
+    # Check if the org.gnome.Software-eos-extra.xml.gz doesn't exist yet, in which case
+    # we just rename the eos-extra.xml.gz file
+    if [ ! -f ${NEW_EOS_EXTRA} ]; then
+	mv ${OLD_EOS_EXTRA} ${NEW_EOS_EXTRA}
+    else
+	rm ${OLD_EOS_EXTRA}
+    fi
+fi
