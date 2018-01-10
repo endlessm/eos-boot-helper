@@ -60,6 +60,7 @@ AC_CONFIG_FILES([
 	dracut/repartition/Makefile
 	dracut/customization/Makefile
 	flatpak-repos/Makefile
+	nvidia/Makefile
 	tests/Makefile
 ])
 AC_OUTPUT

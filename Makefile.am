@@ -1,4 +1,4 @@
-SUBDIRS = dracut flatpak-repos tests
+SUBDIRS = dracut flatpak-repos nvidia tests
 EXTRA_DIST = debian
 
 # Install systemd units, generators, preset files, and udev rules
@@ -29,7 +29,6 @@ dist_systemdunit_DATA = \
 	eos-remove-old-flatpak-extension-dir-extra.service \
 	eos-setup-flatpak-extension-dir-extra.service \
 	eos-update-flatpak-repos.service \
-	nvidia-graphics.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
@@ -38,10 +37,6 @@ dist_systemdgenerator_SCRIPTS = \
 
 dist_systemdpreset_DATA = \
 	50-eos.preset \
-	$(NULL)
-
-dist_modprobe_DATA = \
-	nouveau.conf \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which
@@ -100,5 +95,4 @@ dist_sbin_SCRIPTS = \
 	eos-ostree-remotes-config \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
-	nvidia-graphics-setup \
 	$(NULL)
