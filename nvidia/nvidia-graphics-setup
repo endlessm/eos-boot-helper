@@ -5,6 +5,8 @@ shopt -s nullglob
 NV_CURRENT=/usr/lib/nvidia/current
 NV_KERNEL_OBJ=${NV_CURRENT}/kernel-obj
 MODULE_DIR=/var/lib/endless-external-drivers/nvidia
+DATA_DIR=/usr/share/endless-external-drivers/nvidia
+DATA_OVERRIDE_DIR=/etc/endless-external-drivers/nvidia
 
 NV_DEVICE=$(lspci -mn | awk '{ gsub("\"",""); if (($2 == "0300" || $2 == "0302") && ($3 == "10de" || $3 == "12d2")) { print toupper($3)toupper($4) } }' | head -n 1)
 
@@ -13,6 +15,32 @@ if [[ -z ${NV_DEVICE} ]]; then
 fi
 
 echo "Found nvidia device ${NV_DEVICE}"
+
+# Return 1 if nvidia is blacklisted
+nvidia_blacklist_check() {
+  # First try a user-defined dmi blacklist override, which would not ordinarily
+  # be present
+  local dmi_blacklist=${DATA_OVERRIDE_DIR}/dmi-blacklist
+  if ! [[ -e ${dmi_blacklist} ]]; then
+    # Fall back on the ostree-shipped DMI blacklist
+    dmi_blacklist=${DATA_DIR}/dmi-blacklist
+    [[ -e ${dmi_blacklist} ]] || return 0
+  fi
+
+  # Accurately parsing CSV in bash is impractical. Use python to do this right.
+  python3 -c "
+import csv, sys
+sys_vendor = open('/sys/class/dmi/id/sys_vendor').read().strip()
+product_name = open('/sys/class/dmi/id/product_name').read().strip()
+with open('${dmi_blacklist}', newline='') as fp:
+    # Filter out empty lines and comments
+    reader = csv.reader(row for row in fp if row.rstrip()
+                        and not row.startswith('#'))
+    sys.exit([sys_vendor, product_name] in reader)
+" || return 1
+
+  return 0
+}
 
 # Load a module from a .ko file after first trying to load it's dependencies
 # using modprobe.
@@ -130,7 +158,8 @@ enable_nvidia_hdmi_audio() {
 }
 
 if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
-   grep --quiet -F ${NV_DEVICE} ${NV_CURRENT}/nvidia.ids; then
+   grep --quiet -F ${NV_DEVICE} ${NV_CURRENT}/nvidia.ids &&
+   nvidia_blacklist_check; then
 
   build_nvidia_if_needed
 

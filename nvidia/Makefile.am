@@ -9,3 +9,7 @@ dist_sbin_SCRIPTS = \
 dist_modprobe_DATA = \
 	nouveau.conf \
 	$(NULL)
+
+nvidiadatadir = $(datadir)/endless-external-drivers/nvidia
+dist_nvidiadata_DATA = \
+	dmi-blacklist
