@@ -1,0 +1,11 @@
+[Unit]
+Description=Rename or remove the outdated external appstream file
+ConditionPathExists=/var/cache/app-info/xmls/eos-extra.xml.gz
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/eos-fix-external-appstream
+
+[Install]
+WantedBy=multi-user.target
