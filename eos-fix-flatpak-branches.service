@@ -10,6 +10,10 @@ After=local-fs.target
 Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=/var
 
+# Ensure that the extra disk for a split-disk system has been mounted
+Requires=eos-extra-settled.target
+After=eos-extra-settled.target
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
