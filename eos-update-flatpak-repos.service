@@ -17,7 +17,8 @@ ConditionNeedsUpdate=|/var
 After=eos-ostree-remotes-config.service
 
 # Ensure that the extra disk for a split-disk system has been mounted
-After=var-endless_x2dextra.mount
+Requires=eos-extra-settled.target
+After=eos-extra-settled.target
 
 [Service]
 Type=oneshot
