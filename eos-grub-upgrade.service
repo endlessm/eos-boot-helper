@@ -1,0 +1,21 @@
+# GRUB/SHIM updater
+
+[Unit]
+Description=Updater for GRUB/SHIM
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-grub-upgrade
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,276 @@
+#!/bin/bash
+# Copyright (C) 2018 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# Extracted from https://phabricator.endlessm.com/w/software/x86-64-boot-paths/
+#
+# +------+------------------------------------------+---------------+---------------------------------------------------------------+
+# | Type | Install type                             | Firmware / PT | GRUB / SHIM location                                          |
+# +------+------------------------------------------+---------------+---------------------------------------------------------------+
+# | A    | Standalone, since 3.1.0                  | EFI-64 / GPT  | GRUB_AMD64: \EFI\Endless\grubx64.efi in ESP on same disk as / |
+# |      |                                          |               | GRUB_IA32:  \EFI\BOOT\bootia32.efi in ESP                     |
+# |      |                                          |               | SHIM:       \EFI\BOOT\bootx64.efi and \EFI\endless\shim.efi   |
+# +------+------------------------------------------+---------------+---------------------------------------------------------------+
+# | B    | Standalone, since 3.0.0 and before 3.1.0 | EFI-64 / GPT  | GRUB_AMD64: \EFI\BOOT\grubx64.efi in ESP on same disk as /    |
+# |      |                                          |               | GRUB_IA32:  none                                              |
+# |      |                                          |               | SHIM:       \EFI\BOOT\bootx64.efi                             |
+# +------+------------------------------------------+---------------+---------------------------------------------------------------+
+# | C    | Standalone, before 3.0.0                 | EFI-64 / GPT  | GRUB:       \EFI\BOOT\bootx64.efi in ESP on same disk as /    |
+# |      |                                          |               | GRUB_IA32:  none                                              |
+# |      |                                          |               | SHIM:       none                                              |
+# +------+------------------------------------------+---------------+---------------------------------------------------------------+
+
+ESP_MOUNTPOINT=/boot/efi
+
+##########################################################################
+## UEFI
+##########################################################################
+
+## AMD64 GRUB
+declare -A GRUB_AMD64=(
+  [A]="${ESP_MOUNTPOINT}/EFI/endless/grubx64.efi"
+  [B]="${ESP_MOUNTPOINT}/EFI/BOOT/grubx64.efi"
+  [C]="${ESP_MOUNTPOINT}/EFI/BOOT/bootx64.efi"
+)
+NEW_GRUB_AMD64=/usr/lib/grub/images/x86_64-efi/grubx64.efi
+
+## SHIM
+declare -A SHIM=(
+  [A]="${ESP_MOUNTPOINT}/EFI/BOOT/bootx64.efi"
+  [B]="${ESP_MOUNTPOINT}/EFI/BOOT/bootx64.efi"
+)
+NEW_SHIM=/usr/lib/shim/shim.efi
+
+SHIM_COPY=${ESP_MOUNTPOINT}/EFI/endless/shim.efi
+NEW_SHIM_COPY=/usr/lib/shim/shim.efi
+
+## IA32 GRUB
+GRUB_IA32=${ESP_MOUNTPOINT}/EFI/BOOT/bootia32.efi
+NEW_GRUB_IA32=/usr/lib/grub/images/i386-efi/bootia32.efi
+
+## MokManager
+MOKMANAGER=${ESP_MOUNTPOINT}/EFI/endless/MokManager.efi
+NEW_MOKMANAGER=/usr/lib/shim/MokManager.efi
+
+## fallback
+FALLBACK=${ESP_MOUNTPOINT}/EFI/BOOT/fallback.efi
+NEW_FALLBACK=/usr/lib/shim/fallback.efi
+
+## BOOT.CSV
+BOOTCSV=${ESP_MOUNTPOINT}/EFI/endless/BOOT.CSV
+NEW_BOOTCSV=/usr/lib/shim/BOOT.CSV
+
+## grub.cfg
+GRUB_CFG=/boot/grub/grub.cfg
+NEW_GRUB_CFG=/usr/lib/grub/conf/grub.cfg
+
+EFI_LIST=( GRUB_AMD64 SHIM SHIM_COPY GRUB_IA32 MOKMANAGER FALLBACK BOOTCSV GRUB_CFG )
+
+##########################################################################
+
+umount_esp() {
+  umount ${ESP_MOUNTPOINT} 2> /dev/null
+}
+trap umount_esp EXIT
+
+get_last_char() {
+  local ret=$1
+
+  while [[ ${#ret} != "1" ]]; do
+    ret=${ret#?}
+  done
+
+  echo "${ret}"
+}
+
+get_root_disk() {
+  local root_part
+  root_part=$(systemctl show -p What sysroot.mount)
+  root_part=${root_part#What=}
+
+  if [[ -z ${root_part} ]]; then
+    echo "Couldn't identify root device"
+    exit 1
+  fi
+
+  # Get the root disk device file
+  local root_disk=
+  case ${root_part} in
+    /dev/sd??)
+      root_disk=${root_part%?}
+      ;;
+    /dev/*p[0-9])
+      root_disk=${root_part%p?}
+      ;;
+  esac
+
+  if [[ -z ${root_disk} ]]; then
+    echo "No root disk found for ${root_part}"
+    exit 1
+  fi
+
+  echo "${root_disk}"
+}
+
+# Returns "gpt" or "dos"
+get_partition_table() {
+  local root_disk=$1
+
+  local pt_label=$(blkid -o value -s PTTYPE "${root_disk}")
+  if [[ -z ${pt_label} ]]; then
+    echo "blkid -o value -s PTTYPE '${root_disk}' failed"
+    exit 1
+  fi
+
+  echo "${pt_label}"
+}
+
+get_firmware_type() {
+  if [[ -d /sys/firmware/efi ]]; then
+    echo "uefi"
+  else
+    echo "bios"
+  fi
+}
+
+mount_ESP() {
+  local root_disk=$1
+  local esp_guid="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+
+  # Check if ESP does exist and retrieve the partition name
+  local esp_part=$(sfdisk -d "${root_disk}" | grep -i type=${esp_guid} | sed 's/ .*//')
+  if [[ -z ${esp_part} ]]; then
+    echo "ESP not found"
+    exit 1
+  fi
+
+  # On Endless-only (not dual boot) UEFI installation the ESP is always the first
+  # partition on the booting disk
+  local esp_partno=$(get_last_char "${esp_part}")
+  if [[ ${esp_partno} != "1" ]]; then
+    echo "ESP is not the first partition (how?)"
+    exit 1
+  fi
+
+  # Mount the ESP
+  if ! mount "${esp_part}" ${ESP_MOUNTPOINT}; then
+    echo "Failed to mount ESP"
+    exit 1
+  fi
+}
+
+check_for_upgrade() {
+  local old=$1
+  local new=$2
+
+  # Check both are regular files
+  if [[ -f ${old} && -f ${new} ]]; then
+
+    # pesign returns 0 when the file is signed, 1 otherwise (also when the file
+    # is not an UEFI application)
+    pesign -S -i "${new}" &> /dev/null
+    local new_signed=$?
+
+    pesign -S -i "${old}" &> /dev/null
+    local old_signed=$?
+
+    # If we are going to upgrade a signed file we must be sure that also the
+    # new file is signed
+    if [[ ${new_signed} -eq 0 && ${new_signed} -ne ${old_signed} ]]; then
+      return
+    fi
+
+    # Compare the two files, if they are different copy the new file into a
+    # temporary ${old}.new file in the same directory (and partition) of the
+    # file to overwrite
+    if ! cmp --silent "${old}" "${new}"; then
+      cp -a "${new}" "${old}".new
+      echo "${old}"
+    fi
+  fi
+}
+
+# Get the installation type. It could embed a complex logic to determine the
+# installation type.
+get_installation_type() {
+  local firmware_type=$1
+  local partition_table=$2
+
+  if [[ ${firmware_type} == "uefi" && ${partition_table} == "gpt" ]]; then
+    local inst_type
+    for inst_type in "${!GRUB_AMD64[@]}"; do
+      if [[ -f ${GRUB_AMD64[$inst_type]} ]]; then
+        echo "${inst_type}"
+        return
+      fi
+    done
+  fi
+}
+
+do_uefi_upgrade() {
+  local root_disk=$1
+  local old_file
+  local new_file
+
+  # Mount the ESP
+  mount_ESP "${root_disk}"
+
+  # Get the installation type
+  local inst_type=$(get_installation_type "uefi" "gpt")
+  if [[ -z ${inst_type} ]]; then
+    echo "Installation type unknown"
+    exit 1
+  fi
+  echo "Installation type: ($inst_type)"
+
+  GRUB_AMD64=${GRUB_AMD64[$inst_type]}
+  SHIM=${SHIM[$inst_type]}
+
+  # Check if the files need to be upgraded
+  local files_to_upgrade=( )
+  local f
+  for f in "${EFI_LIST[@]}"; do
+    eval old_file=\$"$f"
+    eval new_file=\$"NEW_$f"
+    local cur=$(check_for_upgrade "$old_file" "$new_file")
+    if [[ ! -z ${cur} ]]; then
+      echo "Preparing to upgrade: ${cur}"
+      files_to_upgrade+=( "${cur}" )
+    fi
+  done
+
+  if [[ "${#files_to_upgrade[@]}" -eq 0 ]]; then
+    echo "Nothing to upgrade"
+    return
+  fi
+
+  # Let's try to do this atomically using mv because the old and the new
+  # files are now in the same partition
+  local file
+  for file in "${files_to_upgrade[@]}"; do
+    mv -f "${file}.new" "${file}"
+  done
+
+  # Cleanup
+  for file in "${files_to_upgrade[@]}"; do
+    rm -f "${file}.new"
+  done
+
+  echo "All done!"
+}
+
+root_disk=$(get_root_disk)
+echo "Booting disk: ${root_disk}"
+
+partition_table=$(get_partition_table "${root_disk}")
+echo "Partition table: ${partition_table}"
+
+firmware_type=$(get_firmware_type)
+echo "Firmware type: ${firmware_type}"
+
+if [[ ${firmware_type} == "uefi" ]]; then
+  echo "Starting UEFI upgrade"
+  do_uefi_upgrade "${root_disk}"
+fi
+
+exit 0
