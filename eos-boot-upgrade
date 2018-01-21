@@ -1,0 +1,278 @@
+#!/usr/bin/python3 -u
+#
+# Copyright (C) 2018 Endless Mobile, Inc.
+# Author:
+#  Carlo Caione <carlo@endlessm.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+# USA.
+
+import contextlib
+import distutils.dir_util
+import filecmp
+import json
+import os
+import re
+import shutil
+import subprocess
+
+
+class BootUpgradeException(Exception):
+    def __init__(self, *args):
+        super(BootUpgradeException, self).__init__(args)
+        self.msg = ' '.join(map(str, args))
+
+    def __str__(self):
+        return str(self.msg)
+
+
+class Partition(object):
+    def __init__(self, part_number, disk, **kwargs):
+        self.disk = disk
+        self.number = part_number
+
+        for config_name in kwargs:
+            setattr(self, config_name, kwargs[config_name])
+
+    @staticmethod
+    def parse(config, disk):
+        '''Parse the partition data passed by sfdisk json data'''
+        if 'node' not in config:
+            raise BootUpgradeException('"node" missing from sfdisk partition info:',
+                                       config)
+
+        part_number = re.match('^.*([0-9]+)$',
+                               config['node']).group(1)
+        part_config = {
+            'device': config['node'],
+            'uuid': config.get('uuid'),
+            'type': config.get('type')
+        }
+        return Partition(part_number, disk, **part_config)
+
+
+class Disk(object):
+    def __init__(self, device):
+        self.label = None
+        self.partitions = {}
+        self.device = device
+        self._read_partition_table()
+
+    def _read_partition_table(self):
+        '''Read partition table using sfdisk json data'''
+        sfdisk_json = subprocess.check_output(['sfdisk',
+                                               '--json',
+                                               self.device]).decode('utf-8')
+        disk_config = json.loads(sfdisk_json)
+
+        self.label = disk_config['partitiontable']['label'] or None
+
+        for part_config in disk_config['partitiontable']['partitions']:
+            part = Partition.parse(part_config, self)
+            self.partitions[part.number] = part
+
+    def get_partition_by_guid(self, guid):
+        '''Get partition by GUID / partition type'''
+        for part_num, conf in self.partitions.items():
+            if conf.type == guid:
+                return conf
+        return None
+
+    @classmethod
+    def get_booting_device(cls):
+        '''Get the booting device'''
+        root_part_device = subprocess.check_output([
+            'systemctl', 'show', '-p', 'What', 'sysroot.mount'
+            ]).decode('utf-8').strip()
+
+        root_part_device = root_part_device[5:]
+        if not root_part_device:
+            raise BootUpgradeException('Could not identify root device')
+
+        boot_disk_device = re.sub(r'p?[0-9]+$', "", root_part_device)
+        return cls(boot_disk_device)
+
+
+@contextlib.contextmanager
+def mount(device, mount_point):
+    '''Mount device on mount_point'''
+    subprocess.check_call(['mount', device, mount_point])
+    try:
+        yield mount_point
+    finally:
+        subprocess.check_call(['umount', mount_point])
+
+
+def parse_cmdline():
+    '''Parse /proc/cmdline'''
+    options = {}
+    with open('/proc/cmdline', 'r') as f:
+        for option in f.readline().strip().split():
+            fields = option.split("=", 1)
+            if len(fields) == 1:
+                options[fields[0]] = True
+            else:
+                options[fields[0]] = fields[1]
+    return options
+
+
+def get_disk():
+    '''Get the booting disk'''
+    disk = Disk.get_booting_device()
+    print('[*] Booting disk: ' + disk.device)
+
+    if disk.label != 'gpt':
+        raise BootUpgradeException('[!] Partition table is not GPT')
+
+    root_partition = disk.get_partition_by_guid('4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709')
+    if not root_partition:
+        raise BootUpgradeException('[!] root partition not found (or wrong GUID)')
+
+    print('[*] Root partition: ' + root_partition.device)
+    return disk
+
+
+def get_esp(disk):
+    '''Get the ESP partition data'''
+    esp_partition = disk.get_partition_by_guid('C12A7328-F81F-11D2-BA4B-00A0C93EC93B')
+    if not esp_partition:
+        raise BootUpgradeException('[!] ESP partition not found (or wrong GUID)')
+    if not esp_partition.device.endswith('1'):
+        raise BootUpgradeException('[!] ESP is not the first partition')
+
+    print('[*] ESP partition: ' + esp_partition.device)
+    return esp_partition
+
+
+def get_dir_size(dir_path):
+    '''Get the directory size'''
+    total_size = 0
+    for (dirpath, _, filenames) in os.walk(dir_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+    return total_size
+
+
+def check_esp_space(esp_mount, ostree_boot_efi_path):
+    '''Check that we have enough space in the ESP to copy the new data'''
+    ostree_boot_efi_size = get_dir_size(ostree_boot_efi_path)
+    esp_free_space = shutil.disk_usage(esp_mount).free
+    return esp_free_space > ostree_boot_efi_size
+
+
+def dir_cmp(dcmp):
+    '''Helper for directories comparison'''
+    if dcmp.diff_files or dcmp.right_only:
+        return True
+
+    for sub_dcmp in dcmp.subdirs.values():
+        if dir_cmp(sub_dcmp):
+            return True
+    return False
+
+
+def check_for_upgrade(esp_mount, ostree_boot_efi_path):
+    '''Recursively compare the files to upgrade'''
+    dcmp = filecmp.dircmp(esp_mount, ostree_boot_efi_path)
+    return dir_cmp(dcmp)
+
+
+def do_uefi_upgrade(esp_mount, ostree_boot_efi_path):
+    '''Actually start the UEFI upgrade copying the files'''
+    esp_mount_tmp = os.path.join(esp_mount, 'EFI.new')
+
+    print('[*] Updated:')
+    try:
+        file_list = distutils.dir_util.copy_tree(ostree_boot_efi_path,
+                                                 esp_mount_tmp)
+        os.sync()
+
+        for f_source in file_list:
+            f_rp = os.path.relpath(f_source, esp_mount_tmp)
+            f_dest = os.path.join(esp_mount, f_rp)
+
+            if not os.path.isfile(f_dest) or not filecmp.cmp(f_source, f_dest):
+                shutil.move(f_source, f_dest)
+                print(f_rp)
+    finally:
+        if os.path.exists(esp_mount_tmp):
+            distutils.dir_util.remove_tree(esp_mount_tmp)
+
+
+def start_uefi_upgrade():
+    '''Start the UEFI files upgrade'''
+    esp_mount = '/boot/efi'
+    ostree_boot_efi_path = os.path.join(cmdline['ostree'], 'boot/efi')
+
+    if not os.path.isdir(esp_mount):
+        raise BootUpgradeException('[!] ESP mountpoint',
+                                   esp_mount, 'does not exist')
+
+    disk = get_disk()
+    esp_partition = get_esp(disk)
+
+    with mount(esp_partition.device, esp_mount) as esp_mount:
+        if not check_for_upgrade(esp_mount, ostree_boot_efi_path):
+            print('[*] No UEFI files to upgrade')
+            return
+
+        if not check_esp_space(esp_mount, ostree_boot_efi_path):
+            raise BootUpgradeException('[!] Not enough space in the ESP')
+
+        do_uefi_upgrade(esp_mount, ostree_boot_efi_path)
+
+
+def start_conf_upgrade():
+    '''Start the GRUB configuration upgrade'''
+    conf_path = '/boot/grub/grub.cfg'
+    conf_path_tmp = conf_path + '.tmp'
+    conf_path_new = '/usr/lib/grub/conf/grub.cfg'
+
+    if filecmp.cmp(conf_path, conf_path_new):
+        print('[*] No configuration file to upgrade')
+        return
+
+    try:
+        shutil.copy2(conf_path_new, conf_path_tmp)
+        os.sync()
+
+        shutil.move(conf_path_tmp, conf_path)
+    finally:
+        if os.path.isfile(conf_path_tmp):
+            os.remove(conf_path_tmp)
+
+    print('[*] Updated:')
+    print(conf_path)
+
+
+if __name__ == '__main__':
+    cmdline = parse_cmdline()
+
+    if 'endless.image.device' in cmdline:
+        print('[!] Dual boot detected. Bailing out.')
+        exit(0)
+
+    if 'ostree' not in cmdline:
+        print('[!] Not an ostree system?')
+        exit(0)
+
+    if not os.path.exists('/sys/firmware/efi'):
+        print('[!] BIOS upgrade not yet implemented')
+        exit(0)
+
+    print('==> Starting UEFI/configuration upgrade...')
+    start_uefi_upgrade()
+    start_conf_upgrade()
