@@ -75,11 +75,6 @@ dist_polkitrules_DATA = \
 	10-allow-mounting-endless-image-device.rules \
 	$(NULL)
 
-tmpfilesddir = $(prefix)/lib/tmpfiles.d
-dist_tmpfilesd_DATA = \
-	tmpfiles.d/eos-companion-app-helper.conf \
-	$(NULL)
-
 dist_sbin_SCRIPTS = \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
