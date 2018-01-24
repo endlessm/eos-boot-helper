@@ -1,3 +1,3 @@
-# On desktop/mini pc systems, enable USB-HID mouse devices supporting boot protocol
+# On desktop/AIO/mini pc/stick pc systems, enable USB-HID mouse devices supporting boot protocol
 # as a wakeup source.
-SUBSYSTEM=="usb", ATTRS{bInterfaceClass}=="03", ATTRS{bInterfaceSubClass}=="01", ATTRS{bInterfaceProtocol}=="02", ATTR{[dmi/id]chassis_type}=="3|35", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../power/wakeup'"
+SUBSYSTEM=="usb", ATTRS{bInterfaceClass}=="03", ATTRS{bInterfaceSubClass}=="01", ATTRS{bInterfaceProtocol}=="02", ATTR{[dmi/id]chassis_type}=="3|13|35|36", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../power/wakeup'"
