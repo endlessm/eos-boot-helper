@@ -92,3 +92,8 @@ dist_sbin_SCRIPTS = \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
 	$(NULL)
+
+tmpfilesdir = $(prefix)/lib/tmpfiles.d
+dist_tmpfiles_DATA = \
+	tmpfiles.d/avahi-service-writers.conf \
+	$(NULL)
