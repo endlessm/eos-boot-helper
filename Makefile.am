@@ -31,6 +31,7 @@ dist_systemdunit_DATA = \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
+	eos-extra-target-generator \
 	eos-live-boot-generator \
 	$(NULL)
 
