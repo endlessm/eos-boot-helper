@@ -70,25 +70,13 @@ def _add_flatpak_repos():
         if remote:
             logging.debug("Remote {} already configured in {}"
                           .format(name, inst.get_path().get_path()))
+            continue
 
-            if not remote.get_title():
-                # update title if it's missing, as EOS versions prior to 3.1.2
-                # added the GNOME remote with no title (T15580)
-                c = configparser.ConfigParser()
-                c.read(repo_file)
-                title = c['Flatpak Repo']['Title']
+        logging.info("Adding remote {} to {} from {}"
+                     .format(name, inst.get_path().get_path(), repo_file))
 
-                logging.info("Setting missing title \"{}\" on remote {} in {}"
-                             .format(title, name, inst.get_path().get_path()))
-
-                subprocess.check_call(['flatpak', 'remote-modify',
-                                       '--title', title, name])
-        else:
-            logging.info("Adding remote {} to {} from {}"
-                         .format(name, inst.get_path().get_path(), repo_file))
-
-            subprocess.check_call(['flatpak', 'remote-add', '--from', name,
-                                   repo_file])
+        subprocess.check_call(['flatpak', 'remote-add', '--from', name,
+                               repo_file])
 
 
 REMOTES_TO_REMOVE = [
