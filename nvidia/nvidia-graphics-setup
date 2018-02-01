@@ -9,6 +9,7 @@ DATA_DIR=/usr/share/endless-external-drivers/nvidia
 DATA_OVERRIDE_DIR=/etc/endless-external-drivers/nvidia
 
 NV_DEVICE=$(lspci -mn | awk '{ gsub("\"",""); if (($2 == "0300" || $2 == "0302") && ($3 == "10de" || $3 == "12d2")) { print toupper($3)toupper($4) } }' | head -n 1)
+NV_SUBVENDOR=$(lspci -mn | awk '{ gsub("\"",""); if (($2 == "0300" || $2 == "0302") && ($3 == "10de" || $3 == "12d2")) { print toupper($6) } }' | head -n 1)
 
 if [[ -z ${NV_DEVICE} ]]; then
   exit 0
@@ -24,11 +25,11 @@ nvidia_blacklist_check() {
   if ! [[ -e ${dmi_blacklist} ]]; then
     # Fall back on the ostree-shipped DMI blacklist
     dmi_blacklist=${DATA_DIR}/dmi-blacklist
-    [[ -e ${dmi_blacklist} ]] || return 0
   fi
 
   # Accurately parsing CSV in bash is impractical. Use python to do this right.
-  python3 -c "
+  if [[ -e ${dmi_blacklist} ]]; then
+    python3 -c "
 import csv, sys
 sys_vendor = open('/sys/class/dmi/id/sys_vendor').read().strip()
 product_name = open('/sys/class/dmi/id/product_name').read().strip()
@@ -38,6 +39,19 @@ with open('${dmi_blacklist}', newline='') as fp:
                         and not row.startswith('#'))
     sys.exit([sys_vendor, product_name] in reader)
 " || return 1
+  fi
+
+  # Then try a blacklist override specific to ASUS PCI IDs
+  local asus_pci_blacklist=${DATA_OVERRIDE_DIR}/asus-pci-blacklist
+  if ! [[ -e ${asus_pci_blacklist} ]]; then
+    # Fall back on the ostree-shipped ASUS PCI blacklist
+    asus_pci_blacklist=${DATA_DIR}/asus-pci-blacklist
+  fi
+
+  if [[ -e ${asus_pci_blacklist} ]] &&
+     [[ "1043" == "${NV_SUBVENDOR}" ]]; then
+    grep --quiet -F ${NV_DEVICE} ${asus_pci_blacklist} && return 1
+  fi
 
   return 0
 }
