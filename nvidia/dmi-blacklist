@@ -5,29 +5,8 @@
 # delimiter: ,
 # Quote character: "
 
-# Hangs upon S3 resume (940MX) (T20647)
-ASUSTeK COMPUTER INC.,ASUSPRO P1440UF
-
-# Hangs upon S3 resume (940MX) (T20647)
-ASUSTeK COMPUTER INC.,ASUSPRO P2440UF
-
-# Hangs upon S3 resume (940MX) (T20647)
-ASUSTeK COMPUTER INC.,X542UQ
-
 # Hangs upon S3 resume (940MX) (T20281)
 ASUSTeK COMPUTER INC.,X555UQ
 
 # Hangs upon S3 resume (940MX) (T18554)
 ASUSTeK COMPUTER INC.,X705UQ
-
-# Hangs upon S3 resume (T20647)
-ASUSTeK COMPUTER INC.,VivoBook S14 X411UF
-
-# Hangs upon S3 resume (T20647)
-ASUSTeK COMPUTER INC.,VivoBook S15 X510UF
-
-# Hangs upon S3 resume (T20647)
-ASUSTeK COMPUTER INC.,VivoBook 15_ASUS Laptop X542UF
-
-# Hangs upon S3 resume (T20647)
-ASUSTeK COMPUTER INC.,VivoBook 15_ASUS Laptop X540UB
