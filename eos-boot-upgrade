@@ -13,35 +13,60 @@ class BootUpgradeException(Exception):
     def __str__(self):
         return str(self.msg)
 
-def get_root_partition():
-    root_part = subprocess.check_output([
-        'systemctl', 'show', '-p', 'What', 'sysroot.mount'
-        ]).decode('utf-8').strip()
+class Partition(object):
+    def __init__(self, part_number, disk):
+        self.disk = disk
+        self.partition_number = part_number
 
-    root_part = 'What=/dev/sda1'
-    root_part = root_part[5:]
-    if not root_part:
-        raise BootUpgradeException('Could not identify root device')
+    @staticmethod
+    def parse(config, disk):
+        part_number = re.match('^.*([0-9]+)$', config['node']).group(1)
+        part_config = {
+            'node': config['node'],
+            'uuid': config['uuid'] if 'uuid' in config else None,
+            'type': config['type'] if 'type' in config else None
+        }
+        return Partition(part_number, disk)
 
-    return root_part
+    def get_partition_number(self):
+        return self.partition_number
 
-def get_root_device(root_part):
-    root_dev = re.sub('(p[0-9]+)$', "", root_part)
-    if root_dev != root_part:
-        return root_dev
+class BootingDisk(object):
+    def __init__(self):
+        self.boot_device = None
+        self.root_device = None
+        self.label = None
+        self.partitions = {}
 
-    return re.sub('([0-9]+)$', "", root_part)
+        self._get_booting_device()
+        self._read_partition_table()
 
-# TODO: move to json sfdisk
-def get_partition_table(root_dev):
-    pt_label = subprocess.check_output([
-        'blkid', '-o', 'value', '-s', 'PTTYPE', root_dev
-        ]).decode('utf-8').strip()
+    def _get_booting_device(self):
+        root_dev = subprocess.check_output([
+            'systemctl', 'show', '-p', 'What', 'sysroot.mount'
+            ]).decode('utf-8').strip()
+    
+        root_dev = root_dev[5:]
+        if not root_dev:
+            raise BootUpgradeException('Could not identify root device')
 
-    if not pt_label:
-        raise BootUpgradeException('Could not identify partition table type')
+        self.root_device = root_dev
 
-    return pt_label
+        boot_dev = re.sub('(p[0-9]+)$', "", root_dev)
+        if root_dev != boot_dev:
+            self.boot_device = boot_dev
+        else:
+            self.boot_device = re.sub('([0-9]+)$', "", root_dev)
+
+    def _read_partition_table(self):
+        sfdisk_json = subprocess.check_output(['sfdisk', '--json', self.boot_device]).decode('utf-8');
+        disk_config = json.loads(sfdisk_json)
+
+        self.label = disk_config['partitiontable']['label'] or None
+
+        for part_config in disk_config['partitiontable']['partitions']:
+            part = Partition.parse(part_config, self)
+            self.partitions[part.get_partition_number()] = part
 
 def get_ESP(root_disk):
     esp_guid = 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B'
@@ -63,17 +88,10 @@ def get_ESP(root_disk):
 
 def do_uefi_upgrade():
     try:
-        root_part = get_root_partition()
-        print('[*] Root partition: ' + root_part)
-
-        root_dev = get_root_device(root_part)
-        print('[*] Booting disk: ' + root_dev)
-
-        pt_label = get_partition_table(root_dev)
-        print('[*] Partition table: ' + pt_label)
-
-        esp_part = get_ESP(root_dev)
-        print('[*] ESP: ' + esp_part)
+        disk = BootingDisk()
+        print('[*] Root partition: ' + disk.root_device)
+        print('[*] Booting disk: ' + disk.boot_device)
+        print('[*] Partition table: ' + disk.label)
 
     except BootUpgradeException as BUException:
         print(BUException)
