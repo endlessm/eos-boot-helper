@@ -14,52 +14,38 @@ class BootUpgradeException(Exception):
         return str(self.msg)
 
 class Partition(object):
-    def __init__(self, part_number, disk):
+    def __init__(self, part_number, disk, **kwargs):
         self.disk = disk
-        self.partition_number = part_number
+        self.number = part_number
+        for config_name in kwargs:
+            setattr(self, config_name, kwargs[config_name])
 
     @staticmethod
     def parse(config, disk):
+        if 'node' not in config:
+            raise BootUpgradeException('sfdisk error') 
+
         part_number = re.match('^.*([0-9]+)$', config['node']).group(1)
         part_config = {
-            'node': config['node'],
+            'device': config['node'],
             'uuid': config['uuid'] if 'uuid' in config else None,
             'type': config['type'] if 'type' in config else None
         }
-        return Partition(part_number, disk)
+        return Partition(part_number, disk, **part_config)
 
     def get_partition_number(self):
-        return self.partition_number
+        return self.number
 
-class BootingDisk(object):
-    def __init__(self):
-        self.boot_device = None
-        self.root_device = None
+class Disk(object):
+    def __init__(self, device):
         self.label = None
         self.partitions = {}
+        self.device = device
 
-        self._get_booting_device()
         self._read_partition_table()
 
-    def _get_booting_device(self):
-        root_dev = subprocess.check_output([
-            'systemctl', 'show', '-p', 'What', 'sysroot.mount'
-            ]).decode('utf-8').strip()
-    
-        root_dev = root_dev[5:]
-        if not root_dev:
-            raise BootUpgradeException('Could not identify root device')
-
-        self.root_device = root_dev
-
-        boot_dev = re.sub('(p[0-9]+)$', "", root_dev)
-        if root_dev != boot_dev:
-            self.boot_device = boot_dev
-        else:
-            self.boot_device = re.sub('([0-9]+)$', "", root_dev)
-
     def _read_partition_table(self):
-        sfdisk_json = subprocess.check_output(['sfdisk', '--json', self.boot_device]).decode('utf-8');
+        sfdisk_json = subprocess.check_output(['sfdisk', '--json', self.device]).decode('utf-8');
         disk_config = json.loads(sfdisk_json)
 
         self.label = disk_config['partitiontable']['label'] or None
@@ -68,30 +54,48 @@ class BootingDisk(object):
             part = Partition.parse(part_config, self)
             self.partitions[part.get_partition_number()] = part
 
-def get_ESP(root_disk):
-    esp_guid = 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B'
-    esp_part = None
+    def get_partition_by_guid(self, guid):
+        for part_num, conf in self.partitions.items():
+            if conf.type == guid:
+                return self.partitions[part_num]
+        return None
 
-    disk_config = json.loads(subprocess.check_output(['sfdisk', '--json', root_disk]).decode('utf-8'))
-    for partition_config in disk_config['partitiontable']['partitions']:
-        if partition_config['type'] == esp_guid:
-            esp_part = partition_config['node']
-            break
+class BootDisk(Disk):
+    def __init__(self):
+        super().__init__(self._get_booting_device())
 
-    if not esp_part:
-        raise BootUpgradeException('ESP not found')
+    def _get_booting_device(self):
+        root_part_device = subprocess.check_output([
+            'systemctl', 'show', '-p', 'What', 'sysroot.mount'
+            ]).decode('utf-8').strip()
+    
+        root_part_device = root_part_device[5:]
+        if not root_part_device:
+            raise BootUpgradeException('Could not identify root device')
 
-    if not re.match('.*1$', esp_part):
-        raise BootUpgradeException('ESP is not the first partition')
+        boot_disk_device = re.sub('(p[0-9]+)$', "", root_part_device)
+        if root_part_device == boot_disk_device:
+            boot_disk_device = re.sub('([0-9]+)$', "", root_part_device)
 
-    return esp_part
+        return boot_disk_device
 
 def do_uefi_upgrade():
     try:
-        disk = BootingDisk()
-        print('[*] Root partition: ' + disk.root_device)
-        print('[*] Booting disk: ' + disk.boot_device)
+        disk = BootDisk()
+        print('[*] Booting disk: ' + disk.device)
         print('[*] Partition table: ' + disk.label)
+
+        root_partition = disk.get_partition_by_guid('4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709')
+        if not root_partition:
+            raise BootUpgradeException('root partition not found')
+        print('[*] Root partition: ' + root_partition.device)
+
+        esp_partition = disk.get_partition_by_guid('C12A7328-F81F-11D2-BA4B-00A0C93EC93B')
+        if not esp_partition:
+            raise BootUpgradeException('ESP partition not found')
+        if not re.match('.*1$', esp_partition.device):
+            raise BootUpgradeException('ESP is not the first partition')
+        print('[*] ESP partition: ' + esp_partition.device)
 
     except BootUpgradeException as BUException:
         print(BUException)
