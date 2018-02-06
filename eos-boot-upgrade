@@ -5,6 +5,9 @@ import subprocess
 import re
 import sys
 import json
+import shutil
+import tempfile
+import contextlib
 
 class BootUpgradeException(Exception):
     def __init__(self, *args):
@@ -12,6 +15,37 @@ class BootUpgradeException(Exception):
 
     def __str__(self):
         return str(self.msg)
+
+@contextlib.contextmanager
+def TemporaryDirectory():
+    d = tempfile.mkdtemp()
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d)
+
+@contextlib.contextmanager
+def mount(device):
+    with TemporaryDirectory() as mount_point:
+        subprocess.check_call(['mount', device, mount_point])
+        try:
+            yield mount_point
+        finally:
+            subprocess.check_call(['umount', mount_point])
+
+class Cmdline(object):
+    def __init__(self):
+        self.options = {}
+        self.parse()
+
+    def parse(self):
+        with open('/proc/cmdline', 'r') as f:
+            for option in f.readline().strip().split():
+                fields = option.split("=")
+                if len(fields) == 1:
+                    self.options[fields[0]] = True
+                else:
+                    self.options[fields[0]] = fields[1]
 
 class Partition(object):
     def __init__(self, part_number, disk, **kwargs):
@@ -82,6 +116,8 @@ class BootDisk(Disk):
 def do_uefi_upgrade():
     try:
         disk = BootDisk()
+        if disk.label != 'gpt':
+            raise BootUpgradeException('GPT not found')
         print('[*] Booting disk: ' + disk.device)
         print('[*] Partition table: ' + disk.label)
 
@@ -97,21 +133,19 @@ def do_uefi_upgrade():
             raise BootUpgradeException('ESP is not the first partition')
         print('[*] ESP partition: ' + esp_partition.device)
 
-    except BootUpgradeException as BUException:
+        with mount(esp_partition.device) as esp_mount:
+            true
+
+    except (BootUpgradeException, subprocess.CalledProcessError) as BUException:
         print(BUException)
-    except subprocess.CalledProcessError as CPError:
-        print(CPError)
 
-def is_dual_boot():
-    with open('/proc/cmdline', 'r') as f:
-        line = f.readline()
-        if line:
-            line.strip().split('\0')
+eos_cmdline = Cmdline()
 
-    return 'endless.image.device' in line
-
-if is_dual_boot():
+if 'endless.image.device' in eos_cmdline.options:
     sys.exit('Dual boot detected. Bailing out.')
+
+if 'ostree' not in eos_cmdline.options:
+    sys.exit('Not an ostree system?')
 
 if os.path.exists('/sys/firmware/efi'):
     print('Starting UEFI upgrade...')
