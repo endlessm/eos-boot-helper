@@ -1,0 +1,98 @@
+#!/usr/bin/python3 -u
+
+import os
+import subprocess
+import re
+import sys
+import json
+
+class BootUpgradeException(Exception):
+    def __init__(self, *args):
+        self.msg = ' '.join(map(str, args))
+
+    def __str__(self):
+        return str(self.msg)
+
+def get_root_partition():
+    root_part = subprocess.check_output([
+        'systemctl', 'show', '-p', 'What', 'sysroot.mount'
+        ]).decode('utf-8').strip()
+
+    root_part = 'What=/dev/sda1'
+    root_part = root_part[5:]
+    if not root_part:
+        raise BootUpgradeException('Could not identify root device')
+
+    return root_part
+
+def get_root_device(root_part):
+    root_dev = re.sub('(p[0-9]+)$', "", root_part)
+    if root_dev != root_part:
+        return root_dev
+
+    return re.sub('([0-9]+)$', "", root_part)
+
+# TODO: move to json sfdisk
+def get_partition_table(root_dev):
+    pt_label = subprocess.check_output([
+        'blkid', '-o', 'value', '-s', 'PTTYPE', root_dev
+        ]).decode('utf-8').strip()
+
+    if not pt_label:
+        raise BootUpgradeException('Could not identify partition table type')
+
+    return pt_label
+
+def get_ESP(root_disk):
+    esp_guid = 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B'
+    esp_part = None
+
+    disk_config = json.loads(subprocess.check_output(['sfdisk', '--json', root_disk]).decode('utf-8'))
+    for partition_config in disk_config['partitiontable']['partitions']:
+        if partition_config['type'] == esp_guid:
+            esp_part = partition_config['node']
+            break
+
+    if not esp_part:
+        raise BootUpgradeException('ESP not found')
+
+    if not re.match('.*1$', esp_part):
+        raise BootUpgradeException('ESP is not the first partition')
+
+    return esp_part
+
+def do_uefi_upgrade():
+    try:
+        root_part = get_root_partition()
+        print('[*] Root partition: ' + root_part)
+
+        root_dev = get_root_device(root_part)
+        print('[*] Booting disk: ' + root_dev)
+
+        pt_label = get_partition_table(root_dev)
+        print('[*] Partition table: ' + pt_label)
+
+        esp_part = get_ESP(root_dev)
+        print('[*] ESP: ' + esp_part)
+
+    except BootUpgradeException as BUException:
+        print(BUException)
+    except subprocess.CalledProcessError as CPError:
+        print(CPError)
+
+def is_dual_boot():
+    with open('/proc/cmdline', 'r') as f:
+        line = f.readline()
+        if line:
+            line.strip().split('\0')
+
+    return 'endless.image.device' in line
+
+if is_dual_boot():
+    sys.exit('Dual boot detected. Bailing out.')
+
+if os.path.exists('/sys/firmware/efi'):
+    print('Starting UEFI upgrade...')
+    do_uefi_upgrade()
+else:
+    sys.exit('BIOS upgrade not yet implemented')
