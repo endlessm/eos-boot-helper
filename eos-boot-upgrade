@@ -9,7 +9,6 @@ import re
 import shutil
 import sys
 import subprocess
-import tempfile
 
 class BootUpgradeException(Exception):
     def __init__(self, *args):
@@ -210,10 +209,8 @@ def start_conf_upgrade():
         print('[*] Updated:')
         print(conf_path)
 
-    except BootUpgradeException as BUException:
+    except (BootUpgradeException, FileNotFoundError, OSError) as BUException:
         print(BUException)
-    except (FileNotFoundError, OSError) as FileError:
-        print(FileError)
     
 if __name__ == '__main__':
     eos_cmdline = Cmdline()
