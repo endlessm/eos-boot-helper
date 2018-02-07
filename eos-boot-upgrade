@@ -1,14 +1,15 @@
 #!/usr/bin/python3 -u
 
-import os
-import subprocess
-import re
-import sys
-import json
-import shutil
-import tempfile
 import contextlib
-import distutils
+import distutils.dir_util
+import filecmp
+import json
+import os
+import re
+import shutil
+import sys
+import subprocess
+import tempfile
 
 class BootUpgradeException(Exception):
     def __init__(self, *args):
@@ -18,21 +19,12 @@ class BootUpgradeException(Exception):
         return str(self.msg)
 
 @contextlib.contextmanager
-def TemporaryDirectory():
-    d = tempfile.mkdtemp()
+def mount(device, mount_point):
+    subprocess.check_call(['mount', device, mount_point])
     try:
-        yield d
+        yield mount_point
     finally:
-        shutil.rmtree(d)
-
-@contextlib.contextmanager
-def mount(device):
-    with TemporaryDirectory() as mount_point:
-        subprocess.check_call(['mount', device, mount_point])
-        try:
-            yield mount_point
-        finally:
-            subprocess.check_call(['umount', mount_point])
+        subprocess.check_call(['umount', mount_point])
 
 class Cmdline(object):
     def __init__(self):
@@ -42,7 +34,7 @@ class Cmdline(object):
     def parse(self):
         with open('/proc/cmdline', 'r') as f:
             for option in f.readline().strip().split():
-                fields = option.split("=")
+                fields = option.split("=", 1)
                 if len(fields) == 1:
                     self.options[fields[0]] = True
                 else:
@@ -113,14 +105,14 @@ class BootDisk(Disk):
 
 def get_disk():
         disk = BootDisk()
-        if disk.label != 'gpt':
-            raise BootUpgradeException('GPT not found')
         print('[*] Booting disk: ' + disk.device)
-        print('[*] Partition table: ' + disk.label)
+
+        if disk.label != 'gpt':
+            raise BootUpgradeException('[!] Partition table is not GPT')
 
         root_partition = disk.get_partition_by_guid('4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709')
         if not root_partition:
-            raise BootUpgradeException('root partition not found')
+            raise BootUpgradeException('[!] root partition not found (or wrong GUID)')
         print('[*] Root partition: ' + root_partition.device)
 
         return disk
@@ -128,9 +120,9 @@ def get_disk():
 def get_esp(disk):
         esp_partition = disk.get_partition_by_guid('C12A7328-F81F-11D2-BA4B-00A0C93EC93B')
         if not esp_partition:
-            raise BootUpgradeException('ESP partition not found')
+            raise BootUpgradeException('[!] ESP partition not found (or wrong GUID)')
         if not esp_partition.device.endswith('1'):
-            raise BootUpgradeException('ESP is not the first partition')
+            raise BootUpgradeException('[!] ESP is not the first partition')
         print('[*] ESP partition: ' + esp_partition.device)
 
         return esp_partition
@@ -145,48 +137,99 @@ def get_dir_size(dir_path):
     return total_size
 
 def get_partition_free_space(dir_path):
-    (total, used, free) = shutil.disk_usage(dir_path);
+    (_, _, free) = shutil.disk_usage(dir_path);
     return free
 
 def check_esp_space(esp_mount, ostree_boot_efi_path):
     ostree_boot_efi_size = get_dir_size(ostree_boot_efi_path);
-    print('[*] New EFI deployment size: {0} bytes'.format(ostree_boot_efi_size))
-
     esp_free_space = get_partition_free_space(esp_mount);
-    print('[*] ESP free space: {0} bytes'.format(esp_free_space))
 
     return esp_free_space > ostree_boot_efi_size
 
-def do_uefi_upgrade():
+def _dir_cmp(dcmp):
+    if dcmp.diff_files or dcmp.right_only:
+        return True
+    for sub_dcmp in dcmp.subdirs.values():
+        if _dir_cmp(sub_dcmp):
+            return True
+    return False
+
+def check_for_upgrade(esp_mount, ostree_boot_efi_path):
+    dcmp = filecmp.dircmp(esp_mount, ostree_boot_efi_path)
+    return _dir_cmp(dcmp)
+
+def do_uefi_upgrade(esp_mount, ostree_boot_efi_path):
+    tmp_dest_directory = os.path.join(esp_mount, 'new')
+
+    try:
+        distutils.dir_util.copy_tree(ostree_boot_efi_path, tmp_dest_directory)
+        upgrade_list = distutils.dir_util.copy_tree(ostree_boot_efi_path, esp_mount)
+        os.sync()
+    finally:
+        distutils.dir_util.remove_tree(tmp_dest_directory)
+
+    print('[*] Updated:')
+    print(*upgrade_list, sep='\n')
+
+def start_uefi_upgrade():
+    esp_mount = '/boot/efi'
+    ostree_boot_efi_path = os.path.join(eos_cmdline.options['ostree'], 'boot/efi')
+
     try:
         disk = get_disk();
         esp_partition = get_esp(disk);
 
-        with mount(esp_partition.device) as esp_mount:
-            ostree_boot_efi_path = os.path.join(eos_cmdline.options['ostree'], 'boot/efi')
-            if not check_esp_space(esp_mount, ostree_boot_efi_path):
-                raise BootUpgradeException('Not enough space in the ESP')
+        if not os.path.isdir(esp_mount):
+            raise BootUpgradeException('[!] ESP mountpoint', esp_mount, 'does not exist')
 
-            list = distutils.dir_util.copy_tree(ostree_boot_efi_path, 
+        with mount(esp_partition.device, esp_mount) as esp_mount:
+            if not check_for_upgrade(esp_mount, ostree_boot_efi_path):
+                print('[*] No UEFI files to upgrade')
+                return
+
+            if not check_esp_space(esp_mount, ostree_boot_efi_path):
+                raise BootUpgradeException('[!] Not enough space in the ESP')
+
+            do_uefi_upgrade(esp_mount, ostree_boot_efi_path)
 
     except (BootUpgradeException, subprocess.CalledProcessError) as BUException:
         print(BUException)
 
+def start_conf_upgrade():
+    conf_path = '/boot/grub/grub.cfg'
+    new_conf_path = '/usr/lib/grub/conf/grub.cfg'
+
+    try:
+        if filecmp.cmp(conf_path, new_conf_path):
+            print('[*] No configuration file to upgrade')
+            return
+
+        shutil.copyfile(new_conf_path, conf_path); 
+        os.sync()
+
+        print('[*] Updated:')
+        print(conf_path)
+
+    except BootUpgradeException as BUException:
+        print(BUException)
+    except (FileNotFoundError, OSError) as FileError:
+        print(FileError)
+    
 if __name__ == '__main__':
     eos_cmdline = Cmdline()
     
     if 'endless.image.device' in eos_cmdline.options:
-        print('Dual boot detected. Bailing out.')
+        print('[!] Dual boot detected. Bailing out.')
         sys.exit(0)
     
     if 'ostree' not in eos_cmdline.options:
-        print('Not an ostree system?')
+        print('[!] Not an ostree system?')
         sys.exit(0)
     
     if not os.path.exists('/sys/firmware/efi'):
-        print('BIOS upgrade not yet implemented')
+        print('[!] BIOS upgrade not yet implemented')
         sys.exit(0)
 
-    print('Starting UEFI upgrade...')
-    do_uefi_upgrade()
-
+    print('==> Starting UEFI/configuration upgrade...')
+    start_uefi_upgrade()
+    start_conf_upgrade()
