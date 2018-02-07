@@ -8,6 +8,7 @@ import json
 import shutil
 import tempfile
 import contextlib
+import distutils
 
 class BootUpgradeException(Exception):
     def __init__(self, *args):
@@ -62,13 +63,10 @@ class Partition(object):
         part_number = re.match('^.*([0-9]+)$', config['node']).group(1)
         part_config = {
             'device': config['node'],
-            'uuid': config['uuid'] if 'uuid' in config else None,
-            'type': config['type'] if 'type' in config else None
+            'uuid': config.get('uuid'),
+            'type': config.get('type')
         }
         return Partition(part_number, disk, **part_config)
-
-    def get_partition_number(self):
-        return self.number
 
 class Disk(object):
     def __init__(self, device):
@@ -86,7 +84,7 @@ class Disk(object):
 
         for part_config in disk_config['partitiontable']['partitions']:
             part = Partition.parse(part_config, self)
-            self.partitions[part.get_partition_number()] = part
+            self.partitions[part.number] = part
 
     def get_partition_by_guid(self, guid):
         for part_num, conf in self.partitions.items():
@@ -113,8 +111,7 @@ class BootDisk(Disk):
 
         return boot_disk_device
 
-def do_uefi_upgrade():
-    try:
+def get_disk():
         disk = BootDisk()
         if disk.label != 'gpt':
             raise BootUpgradeException('GPT not found')
@@ -126,29 +123,70 @@ def do_uefi_upgrade():
             raise BootUpgradeException('root partition not found')
         print('[*] Root partition: ' + root_partition.device)
 
+        return disk
+
+def get_esp(disk):
         esp_partition = disk.get_partition_by_guid('C12A7328-F81F-11D2-BA4B-00A0C93EC93B')
         if not esp_partition:
             raise BootUpgradeException('ESP partition not found')
-        if not re.match('.*1$', esp_partition.device):
+        if not esp_partition.device.endswith('1'):
             raise BootUpgradeException('ESP is not the first partition')
         print('[*] ESP partition: ' + esp_partition.device)
 
+        return esp_partition
+
+def get_dir_size(dir_path):
+    total_size = 0
+    for (dirpath, dirnames, filenames) in os.walk(dir_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += (os.path.getsize(fp) if os.path.isfile(fp) else 0)
+        
+    return total_size
+
+def get_partition_free_space(dir_path):
+    (total, used, free) = shutil.disk_usage(dir_path);
+    return free
+
+def check_esp_space(esp_mount, ostree_boot_efi_path):
+    ostree_boot_efi_size = get_dir_size(ostree_boot_efi_path);
+    print('[*] New EFI deployment size: {0} bytes'.format(ostree_boot_efi_size))
+
+    esp_free_space = get_partition_free_space(esp_mount);
+    print('[*] ESP free space: {0} bytes'.format(esp_free_space))
+
+    return esp_free_space > ostree_boot_efi_size
+
+def do_uefi_upgrade():
+    try:
+        disk = get_disk();
+        esp_partition = get_esp(disk);
+
         with mount(esp_partition.device) as esp_mount:
-            true
+            ostree_boot_efi_path = os.path.join(eos_cmdline.options['ostree'], 'boot/efi')
+            if not check_esp_space(esp_mount, ostree_boot_efi_path):
+                raise BootUpgradeException('Not enough space in the ESP')
+
+            list = distutils.dir_util.copy_tree(ostree_boot_efi_path, 
 
     except (BootUpgradeException, subprocess.CalledProcessError) as BUException:
         print(BUException)
 
-eos_cmdline = Cmdline()
+if __name__ == '__main__':
+    eos_cmdline = Cmdline()
+    
+    if 'endless.image.device' in eos_cmdline.options:
+        print('Dual boot detected. Bailing out.')
+        sys.exit(0)
+    
+    if 'ostree' not in eos_cmdline.options:
+        print('Not an ostree system?')
+        sys.exit(0)
+    
+    if not os.path.exists('/sys/firmware/efi'):
+        print('BIOS upgrade not yet implemented')
+        sys.exit(0)
 
-if 'endless.image.device' in eos_cmdline.options:
-    sys.exit('Dual boot detected. Bailing out.')
-
-if 'ostree' not in eos_cmdline.options:
-    sys.exit('Not an ostree system?')
-
-if os.path.exists('/sys/firmware/efi'):
     print('Starting UEFI upgrade...')
     do_uefi_upgrade()
-else:
-    sys.exit('BIOS upgrade not yet implemented')
+
