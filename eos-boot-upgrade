@@ -49,7 +49,7 @@ class Partition(object):
     @staticmethod
     def parse(config, disk):
         if 'node' not in config:
-            raise BootUpgradeException('sfdisk error') 
+            raise BootUpgradeException('sfdisk error')
 
         part_number = re.match('^.*([0-9]+)$', config['node']).group(1)
         part_config = {
@@ -91,7 +91,7 @@ class BootDisk(Disk):
         root_part_device = subprocess.check_output([
             'systemctl', 'show', '-p', 'What', 'sysroot.mount'
             ]).decode('utf-8').strip()
-    
+
         root_part_device = root_part_device[5:]
         if not root_part_device:
             raise BootUpgradeException('Could not identify root device')
@@ -132,7 +132,7 @@ def get_dir_size(dir_path):
         for f in filenames:
             fp = os.path.join(dirpath, f)
             total_size += (os.path.getsize(fp) if os.path.isfile(fp) else 0)
-        
+
     return total_size
 
 def get_partition_free_space(dir_path):
@@ -203,7 +203,7 @@ def start_conf_upgrade():
             print('[*] No configuration file to upgrade')
             return
 
-        shutil.copyfile(new_conf_path, conf_path); 
+        shutil.copyfile(new_conf_path, conf_path);
         os.sync()
 
         print('[*] Updated:')
@@ -211,18 +211,18 @@ def start_conf_upgrade():
 
     except (BootUpgradeException, FileNotFoundError, OSError) as BUException:
         print(BUException)
-    
+
 if __name__ == '__main__':
     eos_cmdline = Cmdline()
-    
+
     if 'endless.image.device' in eos_cmdline.options:
         print('[!] Dual boot detected. Bailing out.')
         sys.exit(0)
-    
+
     if 'ostree' not in eos_cmdline.options:
         print('[!] Not an ostree system?')
         sys.exit(0)
-    
+
     if not os.path.exists('/sys/firmware/efi'):
         print('[!] BIOS upgrade not yet implemented')
         sys.exit(0)
