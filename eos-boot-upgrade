@@ -172,14 +172,14 @@ def do_uefi_upgrade(esp_mount, ostree_boot_efi_path):
 
 def start_uefi_upgrade():
     esp_mount = '/boot/efi'
-    ostree_boot_efi_path = os.path.join(eos_cmdline.options['ostree'], 'boot/efi')
+    ostree_boot_efi_path = os.path.join(cmdline.options['ostree'], 'boot/efi')
+
+    if not os.path.isdir(esp_mount):
+        raise BootUpgradeException('[!] ESP mountpoint', esp_mount, 'does not exist')
 
     try:
         disk = get_disk();
         esp_partition = get_esp(disk);
-
-        if not os.path.isdir(esp_mount):
-            raise BootUpgradeException('[!] ESP mountpoint', esp_mount, 'does not exist')
 
         with mount(esp_partition.device, esp_mount) as esp_mount:
             if not check_for_upgrade(esp_mount, ostree_boot_efi_path):
@@ -213,13 +213,13 @@ def start_conf_upgrade():
         print(BUException)
 
 if __name__ == '__main__':
-    eos_cmdline = Cmdline()
+    cmdline = Cmdline()
 
-    if 'endless.image.device' in eos_cmdline.options:
+    if 'endless.image.device' in cmdline.options:
         print('[!] Dual boot detected. Bailing out.')
         sys.exit(0)
 
-    if 'ostree' not in eos_cmdline.options:
+    if 'ostree' not in cmdline.options:
         print('[!] Not an ostree system?')
         sys.exit(0)
 
