@@ -9,6 +9,8 @@ disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
 
 # Disable other unwanted units
+disable apt-daily.timer
+disable apt-daily-upgrade.timer
 disable bluetooth-init.service
 disable eos-firewall-localonly.service
 disable eos-update-server.service
