@@ -113,10 +113,14 @@ else
   swap_type="0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
 fi
 
-if [ "$marker" != "dd" ] && [ "$marker" != "GUID:55" ]; then
-  echo "repartition: marker not found"
-  exit 0
-fi
+case "$marker" in
+  *GUID:55* | dd)
+    ;;
+  *)
+    echo "repartition: marker not found"
+    exit 0
+    ;;
+esac
 
 # udev might still be busy probing the disk, meaning that it will be in use.
 udevadm settle
