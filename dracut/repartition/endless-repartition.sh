@@ -271,7 +271,7 @@ EOF
 # for a drop-in to fix the existing BindsTo= entry (a drop-in can only
 # append another value). So we override the whole unit.
 sed -e "s:$orig_root_part:$root_part:" \
-  -e "s:$(systemd-escape $orig_root_part):$(systemd-escape $root_part):" \
+  -e "s:dev-disk-by.*.device:$(systemd-escape -p --suffix=device $root_part):" \
   /run/systemd/generator/systemd-fsck-root.service \
   > /etc/systemd/system/systemd-fsck-root.service
 
