@@ -5,6 +5,12 @@
 # delimiter: ,
 # Quote character: "
 
+# Hangs upon S3 resume (GTX1050M) (T21413)
+ASUSTeK COMPUTER INC.,ASUS Gaming FX570UD
+
+# Hangs upon S3 resume (MX150) (T21413)
+ASUSTeK COMPUTER INC.,Vivo AIO 27 V272UN
+
 # Hangs upon S3 resume (940MX) (T20281)
 ASUSTeK COMPUTER INC.,X555UQ
 
