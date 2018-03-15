@@ -288,7 +288,9 @@ sed -e "s:$orig_root_part:$root_part:" \
 # In the MBR case the marker partition is removed as part of sfdisk rewriting
 # the partition table above
 if [ "$pt_label" = "gpt" ]; then
-  sfdisk --force --part-attrs $root_disk $partno ''
+  attrs=$(sfdisk --part-attrs $root_disk $partno)
+  attrs=${attrs/"GUID:55"}
+  sfdisk --force --part-attrs $root_disk $partno $attrs
 fi
 udevadm settle
 
