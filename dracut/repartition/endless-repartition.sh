@@ -203,7 +203,7 @@ fi
 # remove the last-lba line so that we fill the disk
 # + Randomize PARTUUIDs
 # + Randomize GPT disk UUID
-parts=$(echo "$parts" | sed -e '/^last-lba:/d;s/ uuid=.*//;/^label-id:/d')
+parts=$(echo "$parts" | sed -e '/^last-lba:/d;s/ uuid=[a-fA-F0-9-]\{36\},\{0,1\}//;/^label-id:/d')
 
 if [ $new_size -gt $part_size ]; then
   echo "Try to resize $root_part to fill $new_size sectors"
