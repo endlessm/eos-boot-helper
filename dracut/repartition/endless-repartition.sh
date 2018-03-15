@@ -269,9 +269,15 @@ EOF
 
 # systemd-fsck-root can't be fixed as above, because there's no way
 # for a drop-in to fix the existing BindsTo= entry (a drop-in can only
-# append another value). So we override the whole unit.
+# append another value). So we override the whole unit, using sed for the
+# required manipulations.
+# systemd-escape will escape "-" characters using backslashes, however
+# sed ordinarily interprets backslashes as a syntax item. To avoid this,
+# we must double up the backslashes first.
+orig_root_part_escaped=$(systemd-escape -p $orig_root_part | sed -e 's:\\:\\\\:g')
+root_part_escaped=$(systemd-escape -p $root_part | sed -e 's:\\:\\\\:g')
 sed -e "s:$orig_root_part:$root_part:" \
-  -e "s:$(systemd-escape $orig_root_part):$(systemd-escape $root_part):" \
+  -e "s:$orig_root_part_escaped:$root_part_escaped:" \
   /run/systemd/generator/systemd-fsck-root.service \
   > /etc/systemd/system/systemd-fsck-root.service
 
