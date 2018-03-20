@@ -203,7 +203,7 @@ fi
 # remove the last-lba line so that we fill the disk
 # + Randomize PARTUUIDs
 # + Randomize GPT disk UUID
-parts=$(echo "$parts" | sed -e '/^last-lba:/d;s/ uuid=.*//;/^label-id:/d')
+parts=$(echo "$parts" | sed -e '/^last-lba:/d;s/ uuid=[a-fA-F0-9-]\{36\},\{0,1\}//;/^label-id:/d')
 
 if [ $new_size -gt $part_size ]; then
   echo "Try to resize $root_part to fill $new_size sectors"
@@ -288,7 +288,9 @@ sed -e "s:$orig_root_part:$root_part:" \
 # In the MBR case the marker partition is removed as part of sfdisk rewriting
 # the partition table above
 if [ "$pt_label" = "gpt" ]; then
-  sfdisk --force --part-attrs $root_disk $partno ''
+  attrs=$(sfdisk --part-attrs $root_disk $partno)
+  attrs=$(echo "$attrs" | sed -e 's/GUID:55//g')
+  sfdisk --force --part-attrs $root_disk $partno "$attrs"
 fi
 udevadm settle
 
