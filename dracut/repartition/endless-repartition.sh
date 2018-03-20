@@ -181,10 +181,22 @@ else
 fi
 
 # If we find ourselves with >100GB free space, we'll use the final 4GB as
-# a swap partition
+# a swap partition. If a swap size was requested in /etc/eos-force-swap,
+# use that instead.
+if [ -f /etc/eos-force-swap ]; then
+  force_swap_size=$(cat /etc/eos-force-swap)
+else
+  force_swap_size=
+fi
+
 added_space=$(( new_size - part_size ))
-if [ $added_space -gt 209715200 ]; then
+if [ -n "$force_swap_size" ] && [ $added_space -gt $force_swap_size ]; then
+  swap_size=$force_swap_size
+elif [ $added_space -gt 209715200 ]; then
   swap_size=8388608
+fi
+
+if [ -n $swap_size ]; then
   new_size=$(( new_size - swap_size ))
   swap_start=$(( part_start + new_size ))
 
