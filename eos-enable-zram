@@ -1,31 +1,27 @@
 #!/bin/bash -e
-# Copyright (C) 2015 Endless Mobile, Inc.
+# Copyright (C) 2018 Endless Mobile, Inc.
 # Licensed under the GPLv2
 
-if [ $# -lt 1 ]; then
-	echo "Error: no size supplied" >&2
+if [ $# -lt 1 -o "$1" -lt 0 -o "$1" -gt 1 ]; then
+	echo "Error: 0 or 1 must be specified" >&2
 	exit 1
 fi
 
-if [ "${1:-0}" -lt 0 ]; then
-	echo "Error: invalid size $1" >&2
-	exit 1
-fi
-
-th_kb=$((1*1024*1024)) # 1GB
 ram_size_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
 
-if [ "$ram_size_kb" -le "$th_kb" ]; then
-	if [ "${1:-0}" -ne 0 ]; then
-		if [ ! -e /sys/block/zram0 ]; then
-			modprobe zram
-		fi
-		echo $1M > /sys/block/zram0/disksize
-		mkswap /dev/zram0
-		swapon /dev/zram0
-	else
-		swapoff /dev/zram0
-		echo 1 > /sys/block/zram0/reset
-	fi
+# Only enable zram if swap isn't enabled
+if [ $(wc -l /proc/swaps | cut -d ' ' -f 1) == 1 ]; then
+    if [ "$1" -ne 0 ]; then
+        if [ ! -e /sys/block/zram0 ]; then
+            modprobe zram
+        fi
+        echo lz4 > /sys/block/zram0/comp_algorithm
+        echo $(($ram_size_kb * 2))K > /sys/block/zram0/disksize
+        mkswap /dev/zram0
+        swapon /dev/zram0
+    else
+        swapoff /dev/zram0
+        echo 1 > /sys/block/zram0/reset
+    fi
 fi
 
