@@ -5,6 +5,9 @@
 # delimiter: ,
 # Quote character: "
 
+# Occasional hang upon S3 resume (GTX1060) (T21513)
+Acer,Nitro N50-600
+
 # Hangs upon S3 resume (GTX1050M) (T21413)
 ASUSTeK COMPUTER INC.,ASUS Gaming FX570UD
 
