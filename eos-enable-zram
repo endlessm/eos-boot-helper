@@ -15,7 +15,6 @@ if [ $(wc -l /proc/swaps | cut -d ' ' -f 1) == 1 ]; then
         if [ ! -e /sys/block/zram0 ]; then
             modprobe zram
         fi
-        echo lz4 > /sys/block/zram0/comp_algorithm
         echo $(($ram_size_kb * 2))K > /sys/block/zram0/disksize
         mkswap /dev/zram0
         swapon /dev/zram0
