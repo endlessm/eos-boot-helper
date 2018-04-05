@@ -1,0 +1,34 @@
+#!/bin/bash -e
+# Copyright (C) 2018 Endless Technologies, Inc.
+# Licensed under the GPLv2
+
+# if this dir exists, the journal will be persistently stored to it
+JOURNALDIR=/var/log/journal
+parentdir=$(dirname $JOURNALDIR)
+blockerfile=$parentdir/.no_journal_on_fragile_storage
+cmdname=$(basename $0)
+
+# get the device which will hold the journal
+device=$(df --output=source $parentdir | tail -n 1)
+
+# will contain non-empty string if this device is an MMC or SD device (both of
+# which are susceptible to damage with excessive writing)
+subsystem=$(lsblk --noheading -o SUBSYSTEMS ${device} | grep '^block:mmc' \
+    || true)
+
+if [ "x$subsystem" != "x" ]; then
+    echo "$cmdname: not enabling persistent journal: non-durable storage" \
+        "(MMC or SD)"
+    touch $blockerfile
+    exit 0
+fi
+
+if [ -e $blockerfile ]; then
+    echo "$cmdname: not enabling persistent journal: $blockerfile exists"
+    exit 0
+fi
+
+if [ ! -d $JOURNALDIR ]; then
+    echo "$cmdname: enabling persistent journal on durable storage"
+    mkdir $JOURNALDIR
+fi

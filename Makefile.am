@@ -12,6 +12,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 dist_systemdunit_DATA = \
+	eos-config-journal.service \
 	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
@@ -77,6 +78,7 @@ dist_polkitrules_DATA = \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
+	eos-config-journal \
 	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \
