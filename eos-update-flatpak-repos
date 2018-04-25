@@ -46,6 +46,44 @@ def _flatpak_inst_get_remote(inst, name):
     return remote
 
 
+FLATPAK_REMOTES_D = '/etc/flatpak/remotes.d'
+OSTREE_REMOTES_D = '/etc/ostree/remotes.d'
+
+# when we started dynamically creating Flatpak remotes on upgrades using
+# flatpak remote-add in boot scripts, we uncovered a bug in ostree's remote
+# configuration that meant ostree was creating entries in /etc/ostree/remotes.d
+# but flatpak was directly editing /ostree/repo/config, meaning that the
+# remote was created twice. this was fixed around 3.3.0 by setting
+# add-remotes-config-dir to false in an init script. (this was T19077)
+#
+# people who upgraded before this fix could still have broken entries in
+# remotes.d, so we forcibly remove these files and any config in the ostree
+# repo, and then allow the remotes to be dynamically re-added. the OS
+# (including this script, and more critically now the OS updater) relies on
+# these remotes being present for upgrades to take place. (T22258)
+def _clear_broken_remote_config(inst, name):
+    broken = False
+
+    flatpak_remotes_d_conf = os.path.join(FLATPAK_REMOTES_D, name + '.conf')
+    if os.path.exists(flatpak_remotes_d_conf):
+        broken = True
+        logging.info("Removing broken remote config: {}"
+                     .format(flatpak_remotes_d_conf))
+        os.unlink(flatpak_remotes_d_conf)
+
+    ostree_remotes_d_conf = os.path.join(OSTREE_REMOTES_D, name + '.conf')
+    if os.path.exists(ostree_remotes_d_conf):
+        broken = True
+        logging.info("Removing broken remote config: {}"
+                     .format(ostree_remotes_d_conf))
+        os.unlink(ostree_remotes_d_conf)
+
+    if broken:
+        subprocess.call(['flatpak', 'remote-delete', '--force', name])
+
+    inst.drop_caches()
+
+
 FLATPAK_REPO_DIR = '/usr/share/eos-boot-helper/flatpak-repos'
 
 
@@ -63,6 +101,8 @@ def _add_flatpak_repos():
 
         if not os.path.isfile(repo_file):
             continue
+
+        _clear_broken_remote_config(inst, name)
 
         remote = _flatpak_inst_get_remote(inst, name)
 
