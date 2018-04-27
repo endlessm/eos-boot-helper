@@ -18,6 +18,10 @@ disable eos-update-server.socket
 disable eos-updater-avahi.path
 disable eos-updater-avahi.service
 disable NetworkManager-wait-online.service
+disable openvpn-client@.service
+disable openvpn-server@.service
+disable openvpn.service
+disable openvpn@.service
 disable rtkit-daemon.service
 disable serial-getty@.service
 disable ssh*.service
