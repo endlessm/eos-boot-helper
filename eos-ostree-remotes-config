@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/python3
 
 # eos-ostree-remotes-config - configure /ostree/repo for safe remote adding
 #
@@ -28,16 +28,153 @@
 # This might only needed temporarily until ostree and flatpak get
 # updated to do sane remote modification.
 #
+# While here, look for any remotes configuration files that may have
+# ended up in /etc/ostree/remotes.d or /etc/flatpak/remotes.d. If there
+# are any, merge them into /ostree/repo/config and delete them.
+#
 # https://phabricator.endlessm.com/T19077
 # https://github.com/ostreedev/ostree/issues/1134
+# https://phabricator.endlessm.com/T22258
+
+from argparse import ArgumentParser
+from collections import OrderedDict
+from configparser import ConfigParser, ParsingError
+import glob
+import os
+import sys
+
+
+REMOTE_CONFIG_OPT = 'add-remotes-config-dir'
+REPO_PATH = '/ostree/repo'
+REPO_CONFIG_PATH = os.path.join(REPO_PATH, 'config')
+REPO_OBJECTS_PATH = os.path.join(REPO_PATH, 'objects')
+OSTREE_REMOTES_PATH = '/etc/ostree/remotes.d'
+FLATPAK_REMOTES_PATH = '/etc/flatpak/remotes.d'
+
+# Remotes added by eos-update-flatpak-repos
+FLATPAK_REPO_DIR = os.getenv('EOS_FLATPAK_REPO_DIR',
+                             '/usr/share/eos-boot-helper/flatpak-repos')
+
+
+def read_config_file(config, path):
+    """Read the file at path into config
+
+    Returns False if the file doesn't exist or could not be parsed.
+    """
+    try:
+        print('Parsing', path)
+        with open(path) as f:
+            config.read_file(f)
+        return True
+    except FileNotFoundError as err:
+        print('Warning:', path, 'does not exist', file=sys.stderr)
+        print(err, file=sys.stderr)
+        return False
+    except ParsingError as err:
+        print('Warning: could not parse', path, file=sys.stderr)
+        print(err, file=sys.stderr)
+        return False
+
+
+aparser = ArgumentParser(
+    description='Configure /ostree/repo for safe remote adding')
+aparser.add_argument('-n', '--dry-run', action='store_true',
+                     help='only show what would be done')
+args = aparser.parse_args()
+
 
 # Check that /ostree/repo looks like a real repo
-[ -d /ostree/repo ] || exit 0
-[ -f /ostree/repo/config ] || exit 0
-[ -d /ostree/repo/objects ] || exit 0
+if (not os.path.isdir(REPO_PATH) or
+    not os.path.isfile(REPO_CONFIG_PATH) or
+    not os.path.isdir(REPO_OBJECTS_PATH)):
+    sys.exit(0)
 
-# Only set the option if it hasn't been set yet
-CONFIG_OPT="core.add-remotes-config-dir"
-if ! ostree --repo=/ostree/repo config get "$CONFIG_OPT" &>/dev/null; then
-    ostree --repo=/ostree/repo config set "$CONFIG_OPT" false
-fi
+# Read repo config
+repo_config = ConfigParser()
+if not read_config_file(repo_config, REPO_CONFIG_PATH):
+    # This is bad...
+    print('Error: could not read', REPO_CONFIG_PATH, file=sys.stderr)
+    sys.exit(1)
+
+# Set the core.add-remotes-config-dir option and write back now in case
+# there are errors later
+value = repo_config.get('core', REMOTE_CONFIG_OPT, fallback=None)
+if value != 'false':
+    if not repo_config.has_section('core'):
+        repo_config.add_section('core')
+    print('Setting option core.{}=false'.format(REMOTE_CONFIG_OPT))
+    repo_config.set('core', REMOTE_CONFIG_OPT, 'false')
+    if not args.dry_run:
+        print('Writing', REPO_CONFIG_PATH)
+        with open(REPO_CONFIG_PATH, 'w') as f:
+            repo_config.write(f, space_around_delimiters=False)
+
+# Find what remotes will be added by eos-update-flatpak-repos
+managed_remotes = []
+if os.path.isdir(FLATPAK_REPO_DIR):
+    for path in os.listdir(FLATPAK_REPO_DIR):
+        if not path.endswith('.flatpakrepo'):
+            continue
+        remote = os.path.splitext(path)[0]
+        section = 'remote "{}"'.format(remote)
+        managed_remotes.append((remote, section))
+
+# Read all the ostree and flatpak remotes.d files into the
+# configuration. This has the effect of merging them into the repo
+# config.
+remotes_d_confs = []
+remove_remotes = []
+for remotes_dir in (OSTREE_REMOTES_PATH, FLATPAK_REMOTES_PATH):
+    print('Reading config files in', remotes_dir)
+    for path in glob.iglob(remotes_dir + '/*.conf'):
+        remotes_d_confs.append(path)
+        read_config_file(repo_config, path)
+
+        # Parse this config file. If it has configuration for a managed
+        # remote, remove that remote from the merged configuration.
+        remotes_config = ConfigParser()
+        if read_config_file(remotes_config, path):
+            for item in managed_remotes:
+                if remotes_config.has_section(item[1]):
+                    remove_remotes.append(item)
+
+# If there were no config files in the remotes.d dirs, we're done
+if len(remotes_d_confs) == 0:
+    sys.exit(0)
+
+# Read in the repo config file again so that settings from it take
+# precedence
+read_config_file(repo_config, REPO_CONFIG_PATH)
+
+# If there were any remotes to remove, do that now after the final
+# configuration has been assembled
+for remote, section in remove_remotes:
+    print('Removing potentially broken remote', remote)
+    repo_config.remove_section(section)
+
+    # Try to remove the GPG trustedkeys file, too
+    trusted_keys = os.path.join(REPO_PATH, remote + '.trustedkeys.gpg')
+    if not args.dry_run and os.path.isfile(trusted_keys):
+        print('Deleting', trusted_keys)
+        try:
+            os.unlink(trusted_keys)
+        except FileNotFoundError:
+            pass
+
+# Write out the updated configuration
+if args.dry_run:
+    print('Dry run, new', REPO_CONFIG_PATH, 'contents would be:')
+    repo_config.write(sys.stdout, space_around_delimiters=False)
+else:
+    print('Writing', REPO_CONFIG_PATH)
+    with open(REPO_CONFIG_PATH, 'w') as f:
+        repo_config.write(f, space_around_delimiters=False)
+
+# Now delete all the remotes.d conf files
+if not args.dry_run:
+    for path in remotes_d_confs:
+        print('Deleting', path)
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
