@@ -47,7 +47,8 @@ def _flatpak_inst_get_remote(inst, name):
     return remote
 
 
-FLATPAK_REPO_DIR = '/usr/share/eos-boot-helper/flatpak-repos'
+FLATPAK_REPO_DIR = os.getenv('EOS_FLATPAK_REPO_DIR',
+                             '/usr/share/eos-boot-helper/flatpak-repos')
 
 
 def _add_flatpak_repos():
