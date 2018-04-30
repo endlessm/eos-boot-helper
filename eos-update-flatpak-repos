@@ -81,14 +81,14 @@ def _add_flatpak_repos():
                 logging.info("Setting missing title \"{}\" on remote {} in {}"
                              .format(title, name, inst.get_path().get_path()))
 
-                subprocess.check_call(['flatpak', 'remote-modify',
+                subprocess.check_call(['flatpak', 'remote-modify', '--system',
                                        '--title', title, name])
         else:
             logging.info("Adding remote {} to {} from {}"
                          .format(name, inst.get_path().get_path(), repo_file))
 
-            subprocess.check_call(['flatpak', 'remote-add', '--from', name,
-                                   repo_file])
+            subprocess.check_call(['flatpak', 'remote-add', '--system',
+                                   '--from', name, repo_file])
 
 
 REMOTES_TO_REMOVE = [
@@ -111,7 +111,7 @@ def _remove_remotes():
                          .format(name, inst.get_path().get_path()))
 
             subprocess.check_call(['flatpak', 'remote-delete',
-                                   '--force', name])
+                                   '--system', '--force', name])
 
 
 EXT_APPS_REPO = '/var/lib/flatpak-external-apps'
@@ -149,7 +149,8 @@ def _remove_runtimes():
         refspec = '{}/{}/{}'.format(name, ref.get_arch(), ref.get_branch())
         logging.info("Removing runtime {} from {}"
                      .format(refspec, inst.get_path().get_path()))
-        subprocess.check_call(['flatpak', 'uninstall', '--runtime', refspec])
+        subprocess.check_call(['flatpak', 'uninstall', '--system',
+                               '--runtime', refspec])
 
 
 def _update_deploy_file_with_origin(deploy_file_path, new_origin_name):
