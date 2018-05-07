@@ -1,5 +1,8 @@
 [Unit]
 Description=Set /ostree/repo config option core.add-remotes-config-dir false
+
+# Even though this service doesn't need to run early, other update-only
+# services that run before sysinit.target want to run after it.
 DefaultDependencies=no
 Conflicts=shutdown.target
 Wants=local-fs.target
@@ -8,13 +11,9 @@ After=local-fs.target
 # Only needed if /ostree/repo exists
 ConditionPathIsDirectory=/ostree/repo
 
-# Only run on updates
-Before=multi-user.target systemd-update-done.service
-ConditionNeedsUpdate=|/etc
-ConditionNeedsUpdate=|/var
-
 # Try to run before any ostree clients so that they all see the updated
 # repo option
+Before=multi-user.target
 Before=eos-autoupdater.service eos-updater.service
 Before=eos-updater-avahi.service eos-update-server.service
 
