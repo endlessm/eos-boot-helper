@@ -13,10 +13,11 @@ Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=|/etc
 ConditionNeedsUpdate=|/var
 
-# Try to run before any ostree clients so that they all see the updated
-# repo option
+# Try to run before any ostree and flatpak clients so that they all see
+# the updated repo configuration
 Before=eos-autoupdater.service eos-updater.service
 Before=eos-updater-avahi.service eos-update-server.service
+Before=eos-updater-flatpak-installer.service
 
 [Service]
 Type=oneshot
