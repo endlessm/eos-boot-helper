@@ -14,6 +14,10 @@ ConditionNeedsUpdate=/var
 Requires=eos-extra-settled.target
 After=eos-extra-settled.target
 
+# Make sure to run before the flatpak installer so the installation
+# doesn't change underneath it
+Before=eos-updater-flatpak-installer.service
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
