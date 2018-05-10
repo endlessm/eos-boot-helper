@@ -24,6 +24,11 @@ After=eos-fix-flatpak-branches.service
 Requires=eos-extra-settled.target
 After=eos-extra-settled.target
 
+# In lieu of proper locking, we must not run at the same time as anything
+# else which touches flatpak configuration.
+Conflicts=eos-updater.service
+Before=eos-updater-flatpak-installer.service
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
