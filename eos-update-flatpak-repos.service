@@ -24,6 +24,12 @@ After=eos-fix-flatpak-branches.service
 Requires=eos-extra-settled.target
 After=eos-extra-settled.target
 
+# Try to run before any ostree and flatpak clients so that they all see
+# the updated repo configuration
+Before=eos-autoupdater.service eos-updater.service
+Before=eos-updater-avahi.service eos-update-server.service
+Before=eos-updater-flatpak-installer.service
+
 [Service]
 Type=oneshot
 RemainAfterExit=true
