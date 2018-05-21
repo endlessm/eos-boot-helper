@@ -1,62 +1,78 @@
-#!/bin/bash -e
-# Copyright (C) 2016-2017 Endless Mobile, Inc.
+#!/usr/bin/python3
+# Copyright (C) 2016-2018 Endless Mobile, Inc.
 # Licensed under the GPLv2
+import argparse
+import json
+import subprocess
 
-# arguments checking
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <EOS device>" >&2
-  exit 1
-fi
 
-root_disk="$1"
+class UnexpectedLayoutError(Exception):
+    pass
 
-# udev might still be busy probing the disk, meaning that it will be in use.
-udevadm settle
 
-# take current partition table
-parts=$(sfdisk -d "$root_disk")
+ESP_GUID = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+BIOS_BOOT_GUID = "21686148-6449-6E6F-744E-656564454649"
+DPS_ROOT_GUID = "4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709"
 
-check_partition_exists() {
-  local name=${1:?No name supplied to ${FUNCNAME[0]}}
-  local guid=${2:?No GUID supplied to ${FUNCNAME[0]}}
 
-  if ! echo "$parts" | grep -iq "type=$guid"; then
-    echo "$0: $name partition not found" >&2
-    exit 1
-  fi
-}
+def check_partitions(partitions, guids):
+    if len(partitions) != len(guids):
+        raise UnexpectedLayoutError(
+            'Expected {} partitions'.format(len(guids)))
 
-esp_guid="C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-bios_boot_guid="21686148-6449-6E6F-744E-656564454649"
-dps_root_guid="4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709"
+    for i, (partition, guid) in enumerate(zip(partitions, guids), 1):
+        if partition['type'] != guid:
+            raise UnexpectedLayoutError(
+                'Expected partition {} to have type {}'.format(i, guid))
 
-check_partition_exists "ESP" "$esp_guid"
-check_partition_exists "BIOS boot" "$bios_boot_guid"
-check_partition_exists "Endless OS root" "$dps_root_guid"
-# If any other partitions exist, the call to sfdisk with the modified table
-# will fail due to type=UUid being invalid with 'label: dos'
+    return partitions
 
-# “See if you can use ${variable//search/replace} instead.” For some of these,
-# we cannot.
-# shellcheck disable=SC2001
-{
-# Reset partition indexes
-parts=$(echo "$parts" | sed -e "s/^\/[^: ]\+//")
 
-# GPT -> DOS
-parts=$(echo "$parts" | sed -e "s/label: gpt/label: dos/")
+def munge_sfdisk_output(data):
+    partitiontable = data['partitiontable']
+    partitions = partitiontable['partitions']
 
-# Set ESP partition type to EF
-parts=$(echo "$parts" | sed -e "s/, type=$esp_guid/, type=EF/")
-# Remove BIOS boot partition (but leave its former contents intact)
-parts=$(echo "$parts" | grep -v "$bios_boot_guid")
-# Set MBR partition type on root partition, and mark as bootable (not strictly
-# true, but our MBR does not care - some BIOSes don't consider a drive to be
-# bootable without it)
-parts=$(echo "$parts" | sed -e "s/, type=$dps_root_guid/, type=83, bootable/")
-# Remove partition UUIDs and GPT attributes
-parts=$(echo "$parts" | sed -e "s/, \(uuid\|attrs\)=[^\s,]\+//g")
-}
+    guids = (ESP_GUID, BIOS_BOOT_GUID, DPS_ROOT_GUID)
+    esp, bios_boot, root = check_partitions(partitions, guids)
+
+    for partition in partitions:
+        del partition['node']
+        del partition['uuid']
+
+    # GPT -> DOS
+    partitiontable['label'] = 'dos'
+
+    esp['type'] = 'EF'
+    # Remove BIOS boot partition (but leave its former contents intact)
+    partitions.remove(bios_boot)
+    # Set MBR partition type on root partition, and mark as bootable (not strictly
+    # true, but our MBR does not care - some BIOSes don't consider a drive to be
+    # bootable without it)
+    root['type'] = '83'
+    root['bootable'] = True
+    del root['attrs']
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('root_disk')
+
+    args = parser.parse_args()
+    root_disk = args.root_disk
+
+    result = subprocess.run(('sfdisk', '--dump', '--json', args.root_disk),
+                            stdout=subprocess.PIPE, check=True)
+    data = json.loads(result.stdout)
+
+    try:
+        munge_sfdisk_output(data)
+    except UnexpectedLayoutError as e:
+        sys.stderr.write('Unexpected partition table layout: {}\n',
+                         ' '.join(e.args))
+        sys.stderr.write('sfdisk output was: {}\n'.format(result.stdout))
+        sys.exit(1)
+
+    result = subprocess.run(('sfdisk', '--force', '--no-reread', '--json'
 
 echo "$parts" | sfdisk --force --no-reread "$root_disk"
 udevadm settle
