@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 
-run_needs_root_tests = bool(os.environ.get('EBH_ROOT_TESTS'))
+run_needs_root_tests = True  #bool(os.environ.get('EBH_ROOT_TESTS'))
 needs_root = unittest.skipIf(not run_needs_root_tests,
                              "needs root; set EBH_ROOT_TESTS=1 to enable")
 

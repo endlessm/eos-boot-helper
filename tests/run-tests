@@ -2,8 +2,4 @@
 set -e
 
 cd "$(dirname "$0")"
-if pytest=$(which py.test-3); then
-    exec "$pytest" "$@"
-else
-    exec python3 -m unittest discover --top-level-directory .. "$@"
-fi
+exec py.test-3 "$@"
