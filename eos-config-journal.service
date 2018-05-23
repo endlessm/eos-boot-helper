@@ -3,6 +3,7 @@ Description=configure persistent journal on durable storage
 Before=multi-user.target
 ConditionPathExists=!/var/log/journal
 ConditionPathExists=!/var/log/.no_journal_on_fragile_storage
+ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
 Type=oneshot
