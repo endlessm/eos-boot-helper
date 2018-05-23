@@ -31,4 +31,5 @@ fi
 if [ ! -d $JOURNALDIR ]; then
     echo "$cmdname: enabling persistent journal on durable storage"
     mkdir $JOURNALDIR
+    systemd-tmpfiles --create --prefix $JOURNALDIR
 fi
