@@ -2,18 +2,18 @@
 # Copyright (C) 2018 Endless Technologies, Inc.
 # Licensed under the GPLv2
 
+parentdir=/var/log
 # if this dir exists, the journal will be persistently stored to it
-JOURNALDIR=/var/log/journal
-parentdir=$(dirname $JOURNALDIR)
+JOURNALDIR=$parentdir/journal
 blockerfile=$parentdir/.no_journal_on_fragile_storage
-cmdname=$(basename $0)
+cmdname=${0##*/}
 
 # get the device which will hold the journal
 device=$(df --output=source $parentdir | tail -n 1)
 
 # will contain non-empty string if this device is an MMC or SD device (both of
 # which are susceptible to damage with excessive writing)
-subsystem=$(lsblk --noheading -o SUBSYSTEMS ${device} | grep '^block:mmc' \
+subsystem=$(lsblk --noheading -o SUBSYSTEMS "$device" | grep '^block:mmc' \
     || true)
 
 if [ "x$subsystem" != "x" ]; then
