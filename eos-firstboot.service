@@ -9,7 +9,6 @@ ConditionPathExists=!/var/eos-booted
 ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
-Type=oneshot
 ExecStart=/usr/sbin/eos-firstboot
 StandardOutput=journal+console
 
