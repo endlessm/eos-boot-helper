@@ -5,8 +5,6 @@
 # The purpose of this script is to identify if we are running on target
 # Endless hardware and if so, enlarges the root partition to use
 # all available space.
-# When disk space is plentiful, we also carve out some space at the end of
-# the disk, and use it to create a swap partition.
 #
 # It is important to identify that this system is an Endless-flashed device
 # that desires such treatment.
@@ -69,23 +67,20 @@ get_last_char() {
 # - A different partition numbering scheme as not all configurations have
 #   a ESP and a BIOS boot partition.
 partno=$(get_last_char ${root_part})
-
 swap_partno=$((partno + 1))
+
 case ${root_part} in
   /dev/sd??)
     root_disk=${root_part%?}
-    swap_part=${root_disk}${swap_partno}
     ;;
   /dev/*p[0-9])
     root_disk=${root_part%p?}
-    swap_part=${root_disk}p${swap_partno}
     ;;
 esac
 
 case ${orig_root_part} in
   /dev/mapper/endless-image?)
     root_disk=${orig_root_part%?}
-    swap_part=${root_disk}${swap_partno}
     using_device_mapper=1
     ;;
   /dev/loop?p?)
@@ -107,10 +102,8 @@ fi
 # Check for our magic "this is Endless" marker
 if [ "$pt_label" = "dos" ]; then
   marker=$(sfdisk --force --part-type $root_disk 4)
-  swap_type="82"
 else
   marker=$(sfdisk --force --part-attrs $root_disk $partno)
-  swap_type="0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
 fi
 
 case "$marker" in
@@ -151,8 +144,13 @@ fi
 lastpartno=$(echo "$parts" | sed -n -e '$ s/[^:]*\([0-9]\) :.*$/\1/p')
 
 if [ $lastpartno -eq $swap_partno ]; then
-  # already have an extra partition, perhaps we were halfway through creating
-  # a swap partition but didn't finish. Remove it to try again below.
+  # We previously created an extra partition for swap.
+  # Remove it, now that we are using zram instead of disk swap.
+  # Keep in mind, though, that this code path currently only runs
+  # if we had not yet completed the repartitioning, for example
+  # in the rare case that we were halfway through creating a swap
+  # partition on a previous version of the OS, but did not finish
+  # before upgrading the OS.
   parts=$(echo "$parts" | sed '$d')
 elif [ $lastpartno -gt $swap_partno ]; then
   echo "repartition: found $lastpartno partitions?"
@@ -180,26 +178,6 @@ else
   new_size=$(( new_size - 33 ))
 fi
 
-# If we find ourselves with >100GB free space, we'll use the final 4GB as
-# a swap partition
-added_space=$(( new_size - part_size ))
-if [ $added_space -gt 209715200 ]; then
-  swap_size=8388608
-  new_size=$(( new_size - swap_size ))
-  swap_start=$(( part_start + new_size ))
-
-  # Align swap partition start to 1MB boundary
-  residue=$(( swap_start % 2048 ))
-  if [ $residue -gt 0 ]; then
-    swap_start=$(( swap_start + 2048 - residue ))
-    swap_size=$(( swap_size - (2048 - residue) ))
-    # might as well bump up root partition size too, instead of leaving a gap
-    new_size=$(( new_size + 2048 - residue ))
-  fi
-else
-  swap_part=
-fi
-
 # remove the last-lba line so that we fill the disk
 # + Randomize PARTUUIDs
 # + Randomize GPT disk UUID
@@ -208,13 +186,6 @@ parts=$(echo "$parts" | sed -e '/^last-lba:/d;s/ uuid=[a-fA-F0-9-]\{36\},\{0,1\}
 if [ $new_size -gt $part_size ]; then
   echo "Try to resize $root_part to fill $new_size sectors"
   parts=$(echo "$parts" | sed -e "$ s/size=[0-9\t ]*,/size=$new_size,/")
-fi
-
-if [ -n "$swap_start" ]; then
-  # Create swap partition
-  echo "Create swap partition at $swap_start size $swap_size"
-  parts="$parts
-start=$swap_start, size=$swap_size, type=$swap_type"
 fi
 
 # Readd the preserve partition that we excluded earlier
@@ -249,8 +220,6 @@ if [ -n "$using_loop" ]; then
   partprobe $root_disk
   udevadm settle
 fi
-
-[ -e "$swap_part" ] && mkswap -L eos-swap $swap_part
 
 # Randomize root filesystem UUID
 # uninit_bg functionality prevents us from doing this later when the
