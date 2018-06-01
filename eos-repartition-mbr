@@ -75,8 +75,8 @@ backup_gpt_offset=$(
   dd if="$root_disk" bs=1 count=8 skip=$(( 512 + 0x20 )) | python3 -c \
     'import sys, struct; print(struct.unpack("<Q", sys.stdin.buffer.read(8))[0])'
 )
-backup_gpt="$(dd if="$root_disk" bs=512 skip="$backup_gpt_offset" count=1)"
-if [ "${backup_gpt::8}" != "EFI PART" ]; then
+backup_gpt="$(dd if="$root_disk" bs=512 skip="$backup_gpt_offset" count=8 iflag=count_bytes)"
+if [ "${backup_gpt}" != "EFI PART" ]; then
   echo "$0: couldn't find backup GPT header at ${backup_gpt_offset}" >&2
   exit 1
 fi
