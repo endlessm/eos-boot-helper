@@ -7,18 +7,18 @@ if [ $# -lt 1 -o "$1" -lt 0 -o "$1" -gt 1 ]; then
 	exit 1
 fi
 
-ram_size_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
-
-if [ "$1" -ne 0 ]; then
-    if [ ! -e /sys/block/zram0 ]; then
-        modprobe zram
-    fi
-    echo $(($ram_size_kb * 2))K > /sys/block/zram0/disksize
-    # For now, disable the swap partition if in use
-    swapoff -a
-    mkswap /dev/zram0
-    swapon /dev/zram0
-else
+if [ "$1" -eq 0 ]; then
     swapoff /dev/zram0
     echo 1 > /sys/block/zram0/reset
+    exit 0
 fi
+
+if [ ! -e /sys/block/zram0 ]; then
+    modprobe zram
+fi
+
+ram_size_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+echo $(($ram_size_kb * 2))K > /sys/block/zram0/disksize
+mkswap /dev/zram0
+swapoff -a
+swapon /dev/zram0
