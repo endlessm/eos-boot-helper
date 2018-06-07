@@ -524,8 +524,10 @@ def _update_branch(ref, new_branch, refs):
     # however: this is a startup job
     shutil.rmtree(old_branch_dir, ignore_errors=True)
 
-    ref.set_property("branch", new_branch)
-    ref.set_property("deploy-dir", new_deploy_dir)
+
+def _refresh_ref(inst, kind, name, arch, branch):
+    inst.drop_caches()
+    return inst.get_installed_ref(kind, name, arch, branch)
 
 
 def _migrate_installed_flatpaks():
@@ -578,6 +580,8 @@ def _migrate_installed_flatpaks():
                 new_branch = migrate.get('new-branch')
                 if new_branch:
                     _update_branch(ref, new_branch, refs)
+                    branch = new_branch
+                    ref = _refresh_ref(inst, kind, name, arch, branch)
 
                 deploy_dir = ref.get_deploy_dir()
                 deploy = os.path.join(deploy_dir, 'deploy')
@@ -585,10 +589,14 @@ def _migrate_installed_flatpaks():
                 new_origin = migrate.get('new-origin')
                 if new_origin:
                     _update_deploy_file_with_origin(deploy, new_origin)
+                    origin = new_origin
+                    ref = _refresh_ref(inst, kind, name, arch, branch)
 
                 new_subpaths = migrate.get('new-subpaths')
                 if new_subpaths:
                     _update_deploy_file_with_subpaths(deploy, new_subpaths)
+                    subpaths = new_subpaths
+                    ref = _refresh_ref(inst, kind, name, arch, branch)
             except Exception:
                 logging.exception('Failure applying migration to {}'
                                   .format(name))
