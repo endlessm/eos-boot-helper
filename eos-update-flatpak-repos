@@ -23,6 +23,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import argparse
 import fnmatch
 import glob
 import logging
@@ -682,6 +683,13 @@ if __name__ == '__main__':
     # Send logging messages both to the console and the journal
     logging.basicConfig(level=logging.INFO)
     logging.root.addHandler(journal.JournalHandler())
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', '-d', dest='debug', action='store_true')
+    parsed_args, otherargs = parser.parse_known_args()
+
+    if parsed_args.debug:
+        logging.root.setLevel(logging.DEBUG)
 
     # ensure default remotes exist, such as eos-sdk and flathub
     _add_flatpak_repos()
