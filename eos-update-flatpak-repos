@@ -23,6 +23,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import fnmatch
 import glob
 import logging
 import os
@@ -33,8 +34,8 @@ from systemd import journal
 
 import gi
 gi.require_version('Flatpak', '1.0')
-from gi.repository import Flatpak
-from gi.repository import GLib
+gi.require_version('OSTree', '1.0')
+from gi.repository import Flatpak, Gio, GLib, OSTree
 
 
 def _flatpak_inst_get_remote(inst, name):
@@ -447,6 +448,16 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
     return ret
 
 
+def _filter_ostree_refs(refs, kind, name='*', prefix=None, arch='*',
+                        branch='*', origin='*'):
+    if prefix:
+        name = '{}*'.format(prefix)
+
+    pattern = '{}:{}/{}/{}/{}'.format(origin, kind.value_nick, name, arch, branch)
+
+    return fnmatch.filter(refs, pattern)
+
+
 def _replace_in_file(path, old, new):
     _, data = GLib.file_get_contents(path)
     assert data
@@ -533,8 +544,14 @@ def _refresh_ref(inst, kind, name, arch, branch):
 def _migrate_installed_flatpaks():
     insts = Flatpak.get_system_installations()
     inst = insts[0]
-
     refs = inst.list_installed_refs()
+
+    # we need to also operate directly on the ostree refs that shadow each
+    # flatpak so we don't leave behind local refs to the old origin and branch.
+    repo = OSTree.Repo.new(inst.get_path().get_child('repo'))
+    repo.open()
+    _, ostree_refs = repo.list_refs() # dictionary of ref -> commit
+
     for migrate in FLATPAKS_TO_MIGRATE:
         kind = migrate['kind']
         name = migrate.get('name')
@@ -545,9 +562,21 @@ def _migrate_installed_flatpaks():
         old_origin = migrate.get('old-origin')
         old_subpaths = migrate.get('old-subpaths')
 
+        # we build what should be the same list twice - from the flatpak
+        # perspective by examining the installation and deployed apps, and from
+        # the ostree perspective by examining the refs in the repo. ordinarily
+        # we would only see them differ due to a bug in previous versions of
+        # this script where the refs were not renamed during a migration.
+        # everything in the matching_ostree_refs list will be copied to its
+        # new name if we change (or previously changed) the branch or origin,
+        # and then deleted after the deployed apps are updated. (T22763)
         matching_refs = _filter_refs(refs, name=name, prefix=prefix, kind=kind,
                                      branch=old_branch, origin=old_origin,
                                      subpaths=old_subpaths)
+        matching_ostree_refs = _filter_ostree_refs(ostree_refs.keys(), kind,
+                                                   name=name, prefix=prefix,
+                                                   branch=old_branch,
+                                                   origin=old_origin)
 
         # also search for name.* runtimes to migrate to catch extensions
         # unless we are already searching runtimes by prefix - in this case
@@ -560,6 +589,12 @@ def _migrate_installed_flatpaks():
                                           branch=old_branch, origin=old_origin,
                                           subpaths=old_subpaths)
 
+            matching_ostree_refs += _filter_ostree_refs(ostree_refs.keys(),
+                                                        Flatpak.RefKind.RUNTIME,
+                                                        prefix=prefix,
+                                                        branch=old_branch,
+                                                        origin=old_origin)
+
         if len(matching_refs) == 0:
             if name:
                 logging.debug('Found no matches to migrate for {} {}'
@@ -567,7 +602,6 @@ def _migrate_installed_flatpaks():
             else:
                 logging.debug('Found no matches to migrate for {} {}*'
                               .format(kind.value_nick, prefix))
-            continue
 
         for ref in matching_refs:
             name = ref.get_name()
@@ -575,6 +609,8 @@ def _migrate_installed_flatpaks():
             branch = ref.get_branch()
             logging.info('Found {}/{}/{} to migrate'
                          .format(name, arch, branch))
+
+            old_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
 
             try:
                 new_branch = migrate.get('new-branch')
@@ -597,9 +633,48 @@ def _migrate_installed_flatpaks():
                     _update_deploy_file_with_subpaths(deploy, new_subpaths)
                     subpaths = new_subpaths
                     ref = _refresh_ref(inst, kind, name, arch, branch)
+
+                new_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
+
+                # in the case we have only modified the subpaths, the ref does
+                # not change, so we should remove it from the list of old refs
+                # which will be deleted.
+                if new_ostree_ref == old_ostree_ref:
+                    logging.debug('OSTree ref {} unchanged'
+                                  .format(old_ostree_ref))
+                    matching_ostree_refs.remove(old_ostree_ref)
+                    continue
+
+                # when the branch or origin has changed, we copy the old ref to
+                # the new one, pointing at the same commit
+                if old_ostree_ref in ostree_refs and \
+                   not new_ostree_ref in ostree_refs:
+                    logging.info('Copying OSTree ref {} [{}] to {}'
+                                 .format(old_ostree_ref,
+                                         ostree_refs[old_ostree_ref],
+                                         new_ostree_ref))
+                    repo.set_ref_immediate(ref.get_origin(), ref.format_ref(),
+                                           ostree_refs[old_ostree_ref])
+                    ostree_refs[new_ostree_ref] = ostree_refs[old_ostree_ref]
+
             except Exception:
                 logging.exception('Failure applying migration to {}'
                                   .format(name))
+                continue
+
+        # any refs we copied, along with any matches for apps we migrated
+        # in the past, should be deleted.
+        for old_ostree_ref in matching_ostree_refs:
+            try:
+                logging.info('Deleting old/stale OSTree ref {} [{}]'
+                             .format(old_ostree_ref,
+                                     ostree_refs[old_ostree_ref]))
+                repo.set_ref_immediate(old_ostree_ref.split(':')[0],
+                                       old_ostree_ref.split(':')[1],
+                                       None)
+            except Exception:
+                logging.exception('Failure deleting ref {}'
+                                  .format(old_ostree_ref))
                 continue
 
 
