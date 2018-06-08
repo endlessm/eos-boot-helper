@@ -18,9 +18,9 @@ fi
 echo "Found nvidia device ${NV_DEVICE}"
 
 # Return 1 if nvidia is blacklisted
-nvidia_blacklist_check() {
-  # First try a user-defined dmi blacklist override, which would not ordinarily
-  # be present
+nvidia_blacklist_check_by_product() {
+  # Try a user-defined dmi blacklist override, which would not ordinarily be
+  # present
   local dmi_blacklist=${DATA_OVERRIDE_DIR}/dmi-blacklist
   if ! [[ -e ${dmi_blacklist} ]]; then
     # Fall back on the ostree-shipped DMI blacklist
@@ -41,7 +41,39 @@ with open('${dmi_blacklist}', newline='') as fp:
 " || return 1
   fi
 
-  # Then try a blacklist override specific to ASUS PCI IDs
+  return 0
+}
+
+# Return 1 if nvidia is blacklisted
+nvidia_blacklist_check_by_board() {
+  # Try a user-defined dmi blacklist override, which would not ordinarily be
+  # present
+  local dmi_board_blacklist=${DATA_OVERRIDE_DIR}/dmi-board-blacklist
+  if ! [[ -e ${dmi_board_blacklist} ]]; then
+    # Fall back on the ostree-shipped DMI blacklist
+    dmi_board_blacklist=${DATA_DIR}/dmi-board-blacklist
+  fi
+
+  # Accurately parsing CSV in bash is impractical. Use python to do this right.
+  if [[ -e ${dmi_board_blacklist} ]]; then
+    python3 -c "
+import csv, sys
+board_vendor = open('/sys/class/dmi/id/board_vendor').read().strip()
+board_name = open('/sys/class/dmi/id/board_name').read().strip()
+with open('${dmi_board_blacklist}', newline='') as fp:
+    # Filter out empty lines and comments
+    reader = csv.reader(row for row in fp if row.rstrip()
+                        and not row.startswith('#'))
+    sys.exit([board_vendor, board_name] in reader)
+" || return 1
+  fi
+
+  return 0
+}
+
+# Return 1 if nvidia is blacklisted
+nvidia_blacklist_check_by_pci_id() {
+  # Try a blacklist override specific to ASUS PCI IDs
   local asus_pci_blacklist=${DATA_OVERRIDE_DIR}/asus-pci-blacklist
   if ! [[ -e ${asus_pci_blacklist} ]]; then
     # Fall back on the ostree-shipped ASUS PCI blacklist
@@ -51,6 +83,17 @@ with open('${dmi_blacklist}', newline='') as fp:
   if [[ -e ${asus_pci_blacklist} ]] &&
      [[ "1043" == "${NV_SUBVENDOR}" ]]; then
     grep --quiet -F ${NV_DEVICE} ${asus_pci_blacklist} && return 1
+  fi
+
+  return 0
+}
+
+# Return 1 if nvidia is blacklisted
+nvidia_blacklist_check() {
+  if ! nvidia_blacklist_check_by_product ||
+     ! nvidia_blacklist_check_by_board ||
+     ! nvidia_blacklist_check_by_pci_id; then
+    return 1
   fi
 
   return 0
