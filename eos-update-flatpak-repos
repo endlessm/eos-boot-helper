@@ -219,12 +219,14 @@ FLATPAKS_TO_MIGRATE = [
     {
         'name': 'com.endlessm.apps.Platform.Locale',
         'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-sdk',
         'old-subpaths': ['/en,id,th,vi'],
         'new-subpaths': ['/en', '/id', '/th', '/vi']
     },
     {
         'name': 'com.endlessm.apps.Sdk.Locale',
         'kind': Flatpak.RefKind.RUNTIME,
+        'old-origin': 'eos-sdk',
         'old-subpaths': ['/en,id,th,vi'],
         'new-subpaths': ['/en', '/id', '/th', '/vi']
     },
@@ -449,8 +451,11 @@ def _filter_refs(refs, name=None, prefix=None, kind=None, arch=None,
     return ret
 
 
-def _filter_ostree_refs(refs, kind, name='*', prefix=None, arch='*',
-                        branch='*', origin='*'):
+def _filter_ostree_refs(refs, origin, kind, name='*', prefix=None, arch='*',
+                        branch='*'):
+    assert origin
+    assert kind.value_nick in {'app', 'runtime'}
+
     if prefix:
         name = '{}*'.format(prefix)
 
@@ -555,12 +560,13 @@ def _migrate_installed_flatpaks():
 
     for migrate in FLATPAKS_TO_MIGRATE:
         kind = migrate['kind']
+        old_origin = migrate['old-origin']
+
         name = migrate.get('name')
         prefix = migrate.get('prefix')
         assert name or prefix
 
         old_branch = migrate.get('old-branch')
-        old_origin = migrate.get('old-origin')
         old_subpaths = migrate.get('old-subpaths')
 
         # we build what should be the same list twice - from the flatpak
@@ -574,10 +580,10 @@ def _migrate_installed_flatpaks():
         matching_refs = _filter_refs(refs, name=name, prefix=prefix, kind=kind,
                                      branch=old_branch, origin=old_origin,
                                      subpaths=old_subpaths)
-        matching_ostree_refs = _filter_ostree_refs(ostree_refs.keys(), kind,
+        matching_ostree_refs = _filter_ostree_refs(ostree_refs.keys(),
+                                                   old_origin, kind,
                                                    name=name, prefix=prefix,
-                                                   branch=old_branch,
-                                                   origin=old_origin)
+                                                   branch=old_branch)
 
         # also search for name.* runtimes to migrate to catch extensions
         # unless we are already searching runtimes by prefix - in this case
@@ -591,10 +597,10 @@ def _migrate_installed_flatpaks():
                                           subpaths=old_subpaths)
 
             matching_ostree_refs += _filter_ostree_refs(ostree_refs.keys(),
+                                                        old_origin,
                                                         Flatpak.RefKind.RUNTIME,
                                                         prefix=prefix,
-                                                        branch=old_branch,
-                                                        origin=old_origin)
+                                                        branch=old_branch)
 
         if len(matching_refs) == 0:
             if name:
