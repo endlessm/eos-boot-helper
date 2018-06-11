@@ -13,4 +13,5 @@ dist_modprobe_DATA = \
 nvidiadatadir = $(datadir)/endless-external-drivers/nvidia
 dist_nvidiadata_DATA = \
 	asus-pci-blacklist \
-	dmi-blacklist
+	dmi-blacklist \
+	dmi-board-blacklist

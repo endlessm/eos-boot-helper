@@ -1,0 +1,9 @@
+# List of platforms (matched by DMI data) where the proprietary nvidia driver
+# should not be loaded.
+#
+# Format: CSV
+# delimiter: ,
+# Quote character: "
+
+# Hangs upon S3 resume (GTX1050M) (T22898)
+ASUSTeK COMPUTER INC.,X560UD
