@@ -5,12 +5,12 @@
 # TODO: Tests
 
 # List any active swap areas
-active_swaps=$(swapon --show=NAME --raw --noheadings)
+active_swaps=($(swapon --show=NAME --raw --noheadings))
 if [ -z "${active_swaps}" ]; then
     echo "No active swap areas, nothing to be done here"
     exit 0
 else
-    echo "Active swap areas: ${active_swaps}"
+    echo "Active swap areas: ${active_swaps[*]}"
 fi
 
 # Find root partition, root partition number, root disk, and table type
@@ -44,6 +44,33 @@ if [ -z "${root_disk}" ]; then
     exit 1
 else
     echo "Found root disk ${root_disk}"
+fi
+
+for swap_area in "${active_swaps[@]}" ; do
+    case ${swap_area} in
+        /dev/sd??)
+            swap_disk=${swap_area%?}
+            ;;
+        /dev/*p[0-9])
+            swap_disk=${swap_area%p?}
+            ;;
+        /dev/dm-[0-9])
+            # If we find an active area in a DM device, this is likely a
+            # dual-boot installation, so lets just assume the swap disk is the
+            # same as the root disk
+            swap_disk=${orig_root_part%?}
+            ;;
+    esac
+
+    if [ "${swap_disk}" = "${root_disk}" ] ; then
+        echo "Swap area ${swap_area} is a partition on the root disk"
+        swap_part="${swap_area}"
+    fi
+done
+
+if [ -z ${swap_part} ] ; then
+    echo "No swap partitions found on the root disk"
+    exit 0
 fi
 
 partno=${root_part: -1}
