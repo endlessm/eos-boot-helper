@@ -1,0 +1,72 @@
+#!/bin/bash -e
+# Copyright (C) 2018 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# TODO: Tests
+
+# List any active swap areas
+active_swaps=$(swapon --show=NAME --raw --noheadings)
+if [ -z "${active_swaps}" ]; then
+    echo "No active swap areas, nothing to be done here"
+    exit 0
+else
+    echo "Active swap areas: ${active_swaps}"
+fi
+
+# Find root partition, root partition number, root disk, and table type
+orig_root_part=$(systemctl show -p What sysroot.mount)
+orig_root_part=${orig_root_part#What=}
+root_part=$(readlink -f "${orig_root_part}")
+if [ -z ${root_part} ]; then
+    echo "Root device not found"
+    exit 1
+else
+    echo "Found root device ${root_part}"
+fi
+
+case ${root_part} in
+    /dev/sd??)
+        root_disk=${root_part%?}
+        ;;
+    /dev/*p[0-9])
+        root_disk=${root_part%p?}
+        ;;
+esac
+
+case ${orig_root_part} in
+    /dev/mapper/endless-image?)
+        root_disk=${orig_root_part%?}
+        ;;
+esac
+
+if [ -z "${root_disk}" ]; then
+    echo "No root disk found for ${root_part}"
+    exit 1
+else
+    echo "Found root disk ${root_disk}"
+fi
+
+partno=${root_part: -1}
+pt_label=$(blkid -o value -s PTTYPE $root_disk)
+if [ -z "$pt_label" ]; then
+    echo "\"blkid -o value -s PTTYPE '$root_disk'\" failed"
+    exit 1
+fi
+
+# Enable the conditions for endless-repartition.service and
+# eos-firstboot.service so they run on the next boot
+rm -f /var/eos-booted
+
+if [ "$pt_label" = "gpt" ]; then
+    attrs=$(sfdisk --part-attrs ${root_disk} ${partno})
+    attrs="GUID:55 ${attrs}"
+    echo "Setting partition attributes \"${attrs}\" on ${root_disk}${partno}"
+    sfdisk --force --part-attrs ${root_disk} ${partno} "${attrs}"
+else
+    # The only HW we expect to find with MBR layouts are Endless' own x86 HW
+    # (EC-200, Mission One, NL-3) and BIOS boot systems in which the image is
+    # converted from GPT to MBR by eos-installer. On none of these layouts
+    # partition entry 4 is used.
+    echo "Creating partition entry 4 of type DD on ${root_disk}"
+    printf "\xdd" | dd of=${root_disk} bs=1 count=1 seek=498 conv=notrunc
+fi
