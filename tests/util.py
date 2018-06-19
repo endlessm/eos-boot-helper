@@ -35,7 +35,7 @@ def udevadm_settle():
 def get_lsblk_field(device, field):
     return subprocess.check_output([
         'lsblk', '--nodeps', '--noheading', '--output', field, device
-    ]).decode('utf-8').strip()
+    ], stderr=subprocess.PIPE).decode('utf-8').strip()
 
 
 def fstype(device):
