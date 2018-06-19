@@ -1,8 +1,6 @@
 #!/bin/bash -e
 # Copyright (C) 2018 Endless Mobile, Inc.
 # Licensed under the GPLv2
-#
-# TODO: Tests
 
 # List any active swap areas
 active_swaps=($(swapon --show=NAME --raw --noheadings))
@@ -14,8 +12,14 @@ else
 fi
 
 # Find root partition, root partition number, root disk, and table type
-orig_root_part=$(systemctl show -p What sysroot.mount)
-orig_root_part=${orig_root_part#What=}
+if [ $# -ge 1 ]; then
+    # For testing
+    orig_root_part="$1"
+else
+    orig_root_part=$(systemctl show -p What sysroot.mount)
+    orig_root_part=${orig_root_part#What=}
+fi
+
 root_part=$(readlink -f "${orig_root_part}")
 if [ -z ${root_part} ]; then
     echo "Root device not found"
@@ -37,6 +41,9 @@ case ${orig_root_part} in
     /dev/mapper/endless-image?)
         root_disk=${orig_root_part%?}
         using_device_mapper=1
+        ;;
+    /dev/loop?p?)
+        using_loop=1
         ;;
 esac
 
@@ -132,6 +139,12 @@ fi
 # Device-mapper needs an extra prod to update the block devices
 if [ -n "$using_device_mapper" ]; then
     kpartx -u $root_disk
+    udevadm settle
+fi
+
+# Loop devices need a different extra prod
+if [ -n "$using_loop" ]; then
+    partprobe $root_disk
     udevadm settle
 fi
 
