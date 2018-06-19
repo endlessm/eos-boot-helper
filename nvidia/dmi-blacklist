@@ -8,6 +8,9 @@
 # Occasional hang upon S3 resume (GTX1060) (T21513)
 Acer,Nitro N50-600
 
+# Hang upon S3 resume on first boot (GTX1050Ti) (T21605)
+Acer,Predator Orion 5-100
+
 # Hangs upon S3 resume (GTX1050M) (T21413)
 ASUSTeK COMPUTER INC.,ASUS Gaming FX570UD
 
