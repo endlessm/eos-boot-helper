@@ -1,0 +1,122 @@
+#!/usr/bin/python3 -u
+# -*- mode: Python; coding: utf-8 -*-
+
+from configparser import ConfigParser
+from gi import require_version
+require_version('Flatpak', '1.0')
+from gi.repository import Flatpak
+import logging
+import sys
+
+logger = logging.getLogger(__name__)
+
+class FlatpakChecker:
+
+    def __init__(self):
+        self._flatpaks = {}
+
+    def _get_metadata(self, ref):
+        logger.debug('Getting metadata for {}'.format(ref.format_ref()))
+        try:
+            metadata_bytes = ref.load_metadata()
+        except Exception as e:
+            # This is expected behavior with older platform locale
+            # extensions, so keep the log level relatively low
+            logger.debug('Could not load {} metadata:\n{}'
+                         .format(ref.format_ref(), e))
+            return None
+        metadata_str = metadata_bytes.get_data().decode('utf-8')
+        metadata = ConfigParser(strict=False)
+        try:
+            metadata.read_string(metadata_str)
+        except:
+            logger.warn('Could not read {} metadata:\n{}'
+                        .format(ref.get_name(), metadata_str))
+            return None
+        return metadata
+
+    def _parse_installations(self):
+        installations = Flatpak.get_system_installations()
+        for installation in installations:
+            refs = installation.list_installed_refs()
+            for ref in refs:
+                index = '{}/{}/{}'.format(
+                    ref.get_name(), ref.get_arch(), ref.get_branch())
+                # Initialize a field we will later use to keep track of
+                # which runtimes are needed dependencies of apps
+                flatpak = {}
+                flatpak['needed'] = False
+                flatpak['ref'] = ref
+                self._flatpaks[index] = flatpak
+
+    def _find_needed_runtimes(self, index, include_subdirectories=False):
+        if index not in self._flatpaks:
+            if include_subdirectories:
+                index_fields = index.split('/')
+                for key in self._flatpaks.keys():
+                    key_fields = key.split('/')
+                    if key_fields[0].startswith(index_fields[0] + '.') and \
+                       key_fields[1] == index_fields[1] and \
+                       key_fields[2] == index_fields[2]:
+                        logger.debug('Found subdirectory {} for {}'.format(
+                            key, index))
+                        index = key
+                        break
+                else:
+                    logger.debug('No ref or subdirectory found for {}'.format(index))
+                    return
+            else:
+                logger.debug('No ref found for {}'.format(index))
+                return
+        flatpak = self._flatpaks[index]
+        if flatpak['needed']:
+            # We've already visited this flatpak, no need to dig further
+            return
+        else:
+            logger.debug('Finding needed runtimes for {}'.format(index))
+            flatpak['needed'] = True
+            ref = flatpak['ref']
+            metadata = self._get_metadata(ref)
+            if not metadata:
+                # Again, this is expected for some really old platform locales
+                logger.debug('No metadata found for {}'.format(index))
+                return
+            # If this is an application, we need its runtime
+            if ref.get_kind() == Flatpak.RefKind.APP:
+                runtime = metadata.get('Application', 'runtime', fallback=None)
+                self._find_needed_runtimes(runtime)
+            # We also need any extensions (if installed)
+            for section in metadata.sections():
+                if section.startswith('Extension '):
+                    name = section[10:]
+                    # If the extension specifies a version, use it as the branch
+                    # (otherwise fall back to the same branch as the parent)
+                    branch = metadata.get(section, 'version', fallback=ref.get_branch())
+                    extension = '{}/{}/{}'.format(name, ref.get_arch(), branch)
+                    subdirectories = metadata.get(section, 'subdirectories', fallback='false') == 'true'
+                    self._find_needed_runtimes(extension, subdirectories)
+
+    def find_orphaned_runtimes(self):
+        self._parse_installations()
+        # Find all the runtimes that are directly or indirectly
+        # needed by all of the installed apps
+        indexes = self._flatpaks.keys()
+        for index in indexes:
+            flatpak = self._flatpaks[index]
+            ref = flatpak['ref']
+            if ref.get_kind() == Flatpak.RefKind.APP:
+                self._find_needed_runtimes(index)
+        # Any runtimes that are not needed are orphans.
+        # Since we marked all apps as needed, we don't need to
+        # explicitly check the ref kind here.
+        orphans = []
+        for index in indexes:
+            flatpak = self._flatpaks[index]
+            if not flatpak['needed']:
+                orphans.append(index)
+        return orphans
+
+flatpak_checker = FlatpakChecker()
+orphans = flatpak_checker.find_orphaned_runtimes()
+for orphan in sorted(orphans):
+    print(orphan)
