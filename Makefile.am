@@ -18,7 +18,6 @@ dist_systemdunit_DATA = \
 	eos-extra-resize.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
-	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
@@ -82,7 +81,6 @@ dist_sbin_SCRIPTS = \
 	eos-extra-resize \
 	eos-firewall-localonly \
 	eos-firstboot \
-	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
@@ -94,4 +92,5 @@ dist_sbin_SCRIPTS = \
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
+	tmpfiles.d/eos-boot-helper.conf \
 	$(NULL)
