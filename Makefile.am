@@ -19,9 +19,6 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-remove-old-flatpak-extension-dir.service \
-	eos-remove-old-flatpak-extension-dir-extra.service \
-	eos-setup-flatpak-extension-dir-extra.service \
 	eos-update-flatpak-repos.service \
 	$(NULL)
 
