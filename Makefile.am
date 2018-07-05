@@ -19,7 +19,6 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-ostree-remotes-config.service \
 	eos-remove-old-flatpak-extension-dir.service \
 	eos-remove-old-flatpak-extension-dir-extra.service \
 	eos-setup-flatpak-extension-dir-extra.service \
@@ -80,7 +79,6 @@ dist_sbin_SCRIPTS = \
 	eos-firstboot \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
-	eos-ostree-remotes-config \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
 	$(NULL)
