@@ -13,9 +13,6 @@ Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=|/etc
 ConditionNeedsUpdate=|/var
 
-# Wait until the core.add-remotes-config-dir repo option is set
-After=eos-ostree-remotes-config.service
-
 # Ensure that the extra disk for a split-disk system has been mounted
 Requires=eos-extra-settled.target
 After=eos-extra-settled.target
