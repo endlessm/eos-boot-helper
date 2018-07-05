@@ -13,7 +13,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 dist_systemdunit_DATA = \
 	eos-config-journal.service \
-	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
 	eos-firewall-localonly.service \
@@ -76,7 +75,6 @@ dist_polkitrules_DATA = \
 
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
-	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \
 	eos-firewall-localonly \
