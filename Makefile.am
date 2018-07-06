@@ -13,21 +13,12 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 dist_systemdunit_DATA = \
 	eos-config-journal.service \
-	eos-enable-extra-upgrade.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
-	eos-fix-external-appstream.service \
-	eos-fix-flatpak-branches.service \
-	eos-fix-home-dir-permissions.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-migrate-image-defaults.service \
-	eos-ostree-remotes-config.service \
-	eos-remove-old-flatpak-extension-dir.service \
-	eos-remove-old-flatpak-extension-dir-extra.service \
-	eos-setup-flatpak-extension-dir-extra.service \
 	eos-update-flatpak-repos.service \
 	$(NULL)
 
@@ -79,18 +70,12 @@ dist_polkitrules_DATA = \
 
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
-	eos-enable-extra-upgrade \
 	eos-enable-zram \
 	eos-extra-resize \
 	eos-firewall-localonly \
 	eos-firstboot \
-	eos-fix-external-appstream \
-	eos-fix-flatpak-branches \
-	eos-fix-home-dir-permissions \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
-	eos-migrate-image-defaults \
-	eos-ostree-remotes-config \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
 	$(NULL)
@@ -98,4 +83,5 @@ dist_sbin_SCRIPTS = \
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
+	tmpfiles.d/eos-boot-helper.conf \
 	$(NULL)

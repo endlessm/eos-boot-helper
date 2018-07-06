@@ -13,13 +13,6 @@ Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=|/etc
 ConditionNeedsUpdate=|/var
 
-# Wait until the core.add-remotes-config-dir repo option is set
-After=eos-ostree-remotes-config.service
-
-# Avoid running concurrently with other services that manipulate
-# the exported flatpak .desktop and .service files
-After=eos-fix-flatpak-branches.service
-
 # Ensure that the extra disk for a split-disk system has been mounted
 Requires=eos-extra-settled.target
 After=eos-extra-settled.target
