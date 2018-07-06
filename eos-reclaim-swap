@@ -1,0 +1,151 @@
+#!/bin/bash -e
+# Copyright (C) 2018 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+# List any active swap areas
+active_swaps=($(swapon --show=NAME --raw --noheadings))
+if [ -z "${active_swaps}" ]; then
+    echo "No active swap areas, nothing to be done here"
+    exit 0
+else
+    echo "Active swap areas: ${active_swaps[*]}"
+fi
+
+# Find root partition, root partition number, root disk, and table type
+if [ $# -ge 1 ]; then
+    # For testing
+    orig_root_part="$1"
+else
+    orig_root_part=$(systemctl show -p What sysroot.mount)
+    orig_root_part=${orig_root_part#What=}
+fi
+
+root_part=$(readlink -f "${orig_root_part}")
+if [ -z ${root_part} ]; then
+    echo "Root device not found"
+    exit 1
+else
+    echo "Found root device ${root_part}"
+fi
+
+case ${root_part} in
+    /dev/sd??)
+        root_disk=${root_part%?}
+        ;;
+    /dev/*p[0-9])
+        root_disk=${root_part%p?}
+        ;;
+esac
+
+case ${orig_root_part} in
+    /dev/mapper/endless-image?)
+        root_disk=${orig_root_part%?}
+        using_device_mapper=1
+        ;;
+    /dev/loop?p?)
+        using_loop=1
+        ;;
+esac
+
+if [ -z "${root_disk}" ]; then
+    echo "No root disk found for ${root_part}"
+    exit 1
+else
+    echo "Found root disk ${root_disk}"
+fi
+
+for swap_area in "${active_swaps[@]}" ; do
+    case ${swap_area} in
+        /dev/sd??)
+            swap_disk=${swap_area%?}
+            ;;
+        /dev/*p[0-9])
+            swap_disk=${swap_area%p?}
+            ;;
+        /dev/dm-[0-9])
+            # If we find an active area in a DM device, this is likely a
+            # dual-boot installation, so lets just assume the swap disk is the
+            # same as the root disk
+            swap_disk=${orig_root_part%?}
+            ;;
+    esac
+
+    if [ "${swap_disk}" = "${root_disk}" ] ; then
+        echo "Swap area ${swap_area} is a partition on the root disk"
+        swap_part="${swap_area}"
+    fi
+done
+
+if [ -z ${swap_part} ] ; then
+    echo "No swap area matches the root disk"
+    exit 0
+fi
+
+# Take current partition table and type
+parts=$(sfdisk -d $root_disk)
+pt_label=$(echo "${parts}" | sed -n -e 's/^label:[ ]\+\(.*\)$/\1/p')
+
+if [ "$pt_label" = "dos" ]; then
+    swap_type="82"
+else
+    swap_type="0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
+fi
+
+# Look for a swap parition on the root disk's partition table
+# OBS: We assume there is at most one partition table in the root disk
+swap_part_start=$(echo "${parts}" | sed -n -e "/type=${swap_type}/ s/.*start=[ ]\+\([0-9]\+\).*$/\1/p")
+swap_part_size=$(echo "${parts}" | sed -n -e "/type=${swap_type}/ s/.*size=[ ]\+\([0-9]\+\).*$/\1/p")
+
+if [ -z ${swap_part_start} ] ; then
+    echo "No swap partitions found on the root disk"
+    exit 0
+fi
+
+# Calculate new root partition size
+root_part_start=$(echo "${parts}" | grep -e "${root_part}" | sed -n -e "s/.*start=[ ]\+\([0-9]\+\).*$/\1/p")
+root_part_size=$(echo "${parts}" | grep -e "${root_part}" | sed -n -e "s/.*size=[ ]\+\([0-9]\+\).*$/\1/p")
+root_part_uuid=$(echo "${parts}" | grep -e "${root_part}" | sed -n -e 's/.*uuid=\(.*\),.*$/\1/p')
+new_root_part_size=$(( root_part_size + swap_part_size ))
+
+# Ensure the swap partion is located right after the root partition
+root_part_end=$(( root_part_start + root_part_size ))
+
+if [ ${root_part_end} -ne ${swap_part_start} ] ; then
+    echo "Swap partition is not right after root partition, not possible to reclaim space"
+    exit 0
+fi
+
+echo "Old root ${root_part} start=${root_part_start} size=${root_part_size}"
+echo "Old swap ${swap_part} start=${swap_part_start} size=${swap_part_size}"
+echo "New root ${root_part} start=${root_part_start} size=${new_root_part_size}"
+
+parts=$(echo "${parts}" | grep -v -e "type=${swap_type}")
+parts=$(echo "${parts}" | sed -e "/uuid=${root_part_uuid}/ s/size=[ \t]*${root_part_size}/size=${new_root_part_size}/")
+echo "$parts"
+echo "$parts" | sfdisk --force --no-reread $root_disk
+ret=$?
+echo "sfdisk returned $ret"
+udevadm settle
+
+# Update SPL checksum right away, minimizing the time during which it is
+# invalid
+if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
+    /usr/sbin/amlogic-fix-spl-checksum $root_disk
+    udevadm settle
+fi
+
+[ "$ret" != "0" ] && exit 0
+
+# Device-mapper needs an extra prod to update the block devices
+if [ -n "$using_device_mapper" ]; then
+    kpartx -u $root_disk
+    udevadm settle
+fi
+
+# Loop devices need a different extra prod
+if [ -n "$using_loop" ]; then
+    partprobe $root_disk
+    udevadm settle
+fi
+
+resize2fs "${root_part}"

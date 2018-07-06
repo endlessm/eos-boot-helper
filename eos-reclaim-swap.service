@@ -1,0 +1,12 @@
+[Unit]
+Description=Remove swap partions from root disk and reclaim their space
+Before=multi-user.target eos-enable-zram.service
+After=swap.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-reclaim-swap
+
+[Install]
+WantedBy=multi-user.target

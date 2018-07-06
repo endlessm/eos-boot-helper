@@ -25,6 +25,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-migrate-image-defaults.service \
 	eos-ostree-remotes-config.service \
+	eos-reclaim-swap.service \
 	eos-remove-old-flatpak-extension-dir.service \
 	eos-remove-old-flatpak-extension-dir-extra.service \
 	eos-setup-flatpak-extension-dir-extra.service \
@@ -91,6 +92,7 @@ dist_sbin_SCRIPTS = \
 	eos-live-boot-overlayfs-setup \
 	eos-migrate-image-defaults \
 	eos-ostree-remotes-config \
+	eos-reclaim-swap \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
 	$(NULL)
