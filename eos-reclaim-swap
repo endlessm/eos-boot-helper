@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+import argparse
+import contextlib
+import os
+import parted
+import _ped
+import subprocess
+
+
+class SwapRemover():
+    '''
+    Remove swap partitions from a disk and reclaim their space.
+    '''
+
+    def get_table_str(self, disk):
+        '''
+        Return a text string with the disk partition table.
+        '''
+        cmd = ['fdisk', '-l', disk]
+        out = subprocess.run(cmd, stdout=subprocess.PIPE).stdout
+        return out.decode()
+
+    def find_disk(self, partition):
+        '''
+        Return path to a block device representing the disk containing
+        partition.
+        '''
+        p = os.path.realpath(partition)
+        disk = None
+
+        # /dev/sd[a-z][0-9]
+        if p.startswith('/dev/sd'):
+            disk = p[:-1]
+
+        # /dev/[a-z]+p[0-9], but not /dev/sdp[0-9] (eMMC)
+        elif p.startswith('/dev/') and p[-2] == 'p':
+            disk = p[:-2]
+
+        # device-mapped images (dual-boot setups)
+        if partition.startswith('/dev/mapper/endless-image'):
+            disk = partition[:-1]
+
+        # for testing with image files
+        if not p.startswith('/dev/'):
+            disk = p[:-1]
+
+        return disk
+
+    def reclaim_swap_space(self, disk_path):
+        '''
+        Remove the first swap partition on disk and expand the preceding
+        partition so it spawns over the space previously used by the swap
+        partition.
+        '''
+        dev = parted.getDevice(disk_path)
+        disk = parted.newDisk(dev)
+        parts = disk.partitions
+
+        for p, part in enumerate(parts):
+            # (py)parted does not expose the MBR partition ID or the GPT GUID,
+            # so we need to use the file system signature to identify swap
+            # partitions and thus this only works with formatted swap
+            # partitions. When the fileSystem property is set on swap
+            # partitions it can be either linux-swap(v0) or linux-swap(v1).
+            if part.fileSystem and part.fileSystem.type[:-4] == 'linux-swap':
+                geom = parted.Geometry(start=parts[p-1].geometry.start,
+                                       end=part.geometry.end, device=dev)
+                constraint = parted.Constraint(maxGeom=geom)
+                disk.removePartition(part)
+                disk.maximizePartition(parts[p-1], constraint)
+                # The disk is in use at this point, which means parted will not
+                # be able to update the kernel with the new partition table and
+                # it will raise an exception. Lets suppress the exception here
+                # so the service has a success exit status.
+                with contextlib.suppress(_ped.IOException):
+                    disk.commit()
+
+                return True
+
+        return False
+
+    def find_disk_and_reclaim_swap_space(self, part, unit):
+        if not part:
+            part = subprocess.run(['systemctl', 'show', '-p', 'What', unit],
+                                  stdout=subprocess.PIPE).stdout
+            part = part.decode()
+            part = part.split(sep='=')[1].strip()
+            partition_autodetected = True
+        else:
+            partition_autodetected = False
+
+        disk = self.find_disk(part)
+        if not disk:
+            raise ValueError('Could not find disk for partition %s' % part)
+        if self.verbose:
+            print('Old disk table:\n' + self.get_table_str(disk))
+
+        removed = self.reclaim_swap_space(disk)
+        if removed and partition_autodetected and os.geteuid() == 0:
+            # schedule filesystem resize for next boot. if /var/eos-booted does
+            # not exist the filesystem resize is already scheduled, so we can
+            # ignore file not found errors.
+            with contextlib.suppress(FileNotFoundError):
+                os.remove('/var/eos-booted')
+        if self.verbose:
+            print('New disk table:\n' + self.get_table_str(disk))
+
+    def __init__(self, verbose=False):
+        self.verbose = verbose
+
+
+if __name__ == '__main__':
+    desc = 'Remove swap partitions from the root disk and reclaim their space. \
+            All arguments are for testing or debugging purposes only.'
+    parser = argparse.ArgumentParser(description=desc)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-p', '--partition',
+                       help='partition on the disk where swap will be removed')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    args = parser.parse_args()
+
+    s = SwapRemover(args.verbose)
+    s.find_disk_and_reclaim_swap_space(args.partition, 'sysroot.mount')

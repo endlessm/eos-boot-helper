@@ -26,6 +26,7 @@ Depends: ${misc:Depends},
          gir1.2-glib-2.0,
          python3,
          python3-gi,
+         python3-parted,
          python3-systemd,
          util-linux (>= 2.30.0),
 Breaks: systemd (<= 232+dev145.a41a4e3-23)
