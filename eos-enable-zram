@@ -13,7 +13,7 @@ if [ "$1" -ne 0 ]; then
     if [ ! -e /sys/block/zram0 ]; then
         modprobe zram
     fi
-    echo $(($ram_size_kb * 2))K > /sys/block/zram0/disksize
+    echo $(($ram_size_kb * 3 / 2))K > /sys/block/zram0/disksize
     # For now, disable the swap partition if in use
     swapoff -a
     mkswap /dev/zram0
