@@ -189,5 +189,5 @@ fi
 
 # nouveau claims all devices based on the nvidia vendor IDs so we don't
 # need to do a specific product ID lookup here, just load it.
-echo "Loading nouveau"
-modprobe nouveau
+echo "Loading nouveau (if not blacklisted)"
+modprobe --use-blacklist nouveau
