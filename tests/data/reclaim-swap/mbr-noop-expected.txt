@@ -1,0 +1,9 @@
+Disk mbr-noop.img: 10 MiB, 10485760 bytes, 20480 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x377ce08c
+
+Device        Boot Start   End Sectors  Size Id Type
+mbr-noop.img1         63 16064   16002  7.8M 83 Linux
