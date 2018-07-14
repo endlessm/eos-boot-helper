@@ -96,12 +96,14 @@ class SwapRemover():
             print('Old disk table:\n' + self.get_table_str(disk))
 
         removed = self.reclaim_swap_space(disk)
-        if removed and partition_autodetected and os.geteuid() == 0:
-            # schedule filesystem resize for next boot. if /var/eos-booted does
-            # not exist the filesystem resize is already scheduled, so we can
-            # ignore file not found errors.
-            with contextlib.suppress(FileNotFoundError):
-                os.remove('/var/eos-booted')
+        if os.geteuid() == 0 and partition_autodetected:
+            if removed:
+                # schedule filesystem resize for next boot. if /var/eos-booted
+                # does not exist the filesystem resize is already scheduled, so
+                # we can ignore file not found errors.
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove('/var/eos-booted')
+            open('/var/eos-swap-reclaimed', mode='wb').close()
         if self.verbose:
             print('New disk table:\n' + self.get_table_str(disk))
 
