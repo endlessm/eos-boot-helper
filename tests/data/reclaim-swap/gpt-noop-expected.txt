@@ -1,0 +1,9 @@
+Disk gpt-noop.img: 10 MiB, 10485760 bytes, 20480 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 9142A643-1F50-8B42-B735-9532B3120033
+
+Device        Start   End Sectors Size Type
+gpt-noop.img1  2048 20446   18399   9M Linux filesystem

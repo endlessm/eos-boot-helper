@@ -1,0 +1,14 @@
+[Unit]
+Description=Remove swap partitions and reclaim their space
+Before=multi-user.target
+After=eos-firstboot.service eos-enable-zram.service
+ConditionPathExists=!/var/eos-swap-reclaimed
+ConditionKernelCommandLine=!endless.live_boot
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-reclaim-swap
+
+[Install]
+WantedBy=multi-user.target

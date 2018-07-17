@@ -1,0 +1,10 @@
+Disk mbr-remove-swap.img: 10 MiB, 10485760 bytes, 20480 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x2e193288
+
+Device               Boot Start   End Sectors Size Id Type
+mbr-remove-swap.img1       2048 12287   10240   5M 83 Linux
+mbr-remove-swap.img2      12288 20479    8192   4M 82 Linux swap / Solaris
