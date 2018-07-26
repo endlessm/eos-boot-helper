@@ -88,9 +88,30 @@ nvidia_blacklist_check_by_pci_id() {
   return 0
 }
 
+# Return 1 if module name passed as argument is blacklisted through the kernel
+# command line with modprobe.blacklist. Note that modprobe.blacklist accepts a
+# comma-separated list of modules, i.e. modprobe.blacklist=nouveau,nvidia.
+check_cmdline_blacklist() {
+  module=${1}
+  set -- $(< /proc/cmdline)
+  for param in "$@"; do
+      case "$param" in
+          modprobe.blacklist=*)
+          if [[ ",${param#modprobe.blacklist=}," =~ ",${module}," ]]; then
+              echo "${module} blacklisted on kernel command line"
+              return 1
+          fi
+          ;;
+      esac
+  done
+
+  return 0
+}
+
 # Return 1 if nvidia is blacklisted
 nvidia_blacklist_check() {
-  if ! nvidia_blacklist_check_by_product ||
+  if ! check_cmdline_blacklist "nvidia" ||
+     ! nvidia_blacklist_check_by_product ||
      ! nvidia_blacklist_check_by_board ||
      ! nvidia_blacklist_check_by_pci_id; then
     return 1
@@ -189,5 +210,7 @@ fi
 
 # nouveau claims all devices based on the nvidia vendor IDs so we don't
 # need to do a specific product ID lookup here, just load it.
-echo "Loading nouveau"
-modprobe nouveau
+if check_cmdline_blacklist "nouveau"; then
+  echo "Loading nouveau"
+  modprobe nouveau
+fi
