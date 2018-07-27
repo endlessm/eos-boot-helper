@@ -81,6 +81,29 @@ def _add_flatpak_repos():
                                '--from', name, repo_file])
 
 
+# list of ostree refs
+OSTREE_REFS_TO_REMOVE = [
+    # remove eos3.3 refs leaked by eos-updater checkpoint bug (T23410)
+    'eos:os/eos/amd64/eos3',
+    'eos:os/eos/ec100/eos3',
+    'eos:os/eos/nexthw/eos3'
+]
+
+
+def _remove_ostree_refs():
+    try:
+        repo = OSTree.Repo.new_default()
+        repo.open()
+        _, ostree_refs = repo.list_refs() # dictionary of ref -> commit
+        for ref in OSTREE_REFS_TO_REMOVE:
+            if ref in ostree_refs:
+                logging.info('Deleting leaked OSTree ref {}'.format(ref))
+                repo.set_ref_immediate(ref.split(':')[0], ref.split(':')[1],
+                                       None)
+    except Exception:
+        logging.exception('Failure deleting leaked OSTree refs')
+
+
 # list of remote names
 REMOTES_TO_REMOVE = [
 ]
@@ -667,7 +690,8 @@ if __name__ == '__main__':
     # ensure default remotes exist, such as eos-sdk and flathub
     _add_flatpak_repos()
 
-    # remove any unused remotes and runtimes
+    # remove any unused refs, remotes and runtimes
+    _remove_ostree_refs()
     _remove_remotes()
     _remove_runtimes()
 
