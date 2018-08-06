@@ -5,9 +5,6 @@
 # delimiter: ,
 # Quote character: "
 
-# No Endless logo during boot (GTX1050Ti) (T23367)
-Acer,Nitro N50-100
-
 # Occasional hang upon S3 resume (GTX1060) (T21513)
 Acer,Nitro N50-600
 
