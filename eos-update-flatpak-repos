@@ -87,6 +87,13 @@ OSTREE_REFS_TO_REMOVE = [
     'eos:os/eos/amd64/eos3',
     'eos:os/eos/ec100/eos3',
     'eos:os/eos/nexthw/eos3'
+
+    # remove eos2 ref left behind after eos-upgrade-eos2-to-eos3 (T23443)
+    'eos:eos2/ec100',
+    'eos:eos2/i386',
+
+    # remove "initial factory commit" ref from pre-2.3.1 (T23443)
+    'local:factory',
 ]
 
 
