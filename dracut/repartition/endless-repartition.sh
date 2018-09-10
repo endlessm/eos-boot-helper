@@ -66,11 +66,12 @@ get_last_char() {
 # - SCSI/MMC/NVMe block devices with different naming conventions
 # - A different partition numbering scheme as not all configurations have
 #   a ESP and a BIOS boot partition.
+# - Virtual block devices for OpenQA
 partno=$(get_last_char ${root_part})
 swap_partno=$((partno + 1))
 
 case ${root_part} in
-  /dev/sd??)
+  /dev/[sv]d??)
     root_disk=${root_part%?}
     ;;
   /dev/*p[0-9])

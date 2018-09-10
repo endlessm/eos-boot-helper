@@ -22,7 +22,7 @@ case ${extra_part} in
     /dev/*p1)
         extra_disk=${extra_part%p1}
         ;;
-    /dev/sd?1)
+    /dev/[sv]d?1)
         extra_disk=${extra_part%1}
         ;;
 esac

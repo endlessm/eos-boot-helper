@@ -29,7 +29,8 @@ class SwapRemover():
         disk = None
 
         # /dev/sd[a-z][0-9]
-        if p.startswith('/dev/sd'):
+        # /dev/vd[a-z][0-9]
+        if p.startswith('/dev/sd') or p.startswith('/dev/vd'):
             disk = p[:-1]
 
         # /dev/[a-z]+p[0-9], but not /dev/sdp[0-9] (eMMC)
