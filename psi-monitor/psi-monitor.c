@@ -21,46 +21,47 @@
 #define SYSRQ_MASK          0x40
 #define BUFSIZE             256
 
-static void sysrq_trigger_oom() {
+static ssize_t fstr(const char *path, char *rbuf, const char *wbuf) {
     int fd;
     ssize_t n;
 
-    printf("Above threshold limit, killing task and pausing for recovery\n");
+    /* one and only one operation per call */
+    if ((!rbuf && !wbuf) || (rbuf && wbuf))
+        return 0;
 
-    fd = open(SYSRQ_TRIGGER_FILE, O_WRONLY);
+    fd = open(path, rbuf ? O_RDONLY : O_WRONLY);
     if (fd < 0)
-        err(1, "%s", SYSRQ_TRIGGER_FILE);
-    n = write(fd, "f", strlen("f"));
+        err(1, "%s", path);
+
+    if (rbuf)
+        n = read(fd, rbuf, BUFSIZE);
+    else
+        n = write(fd, wbuf, strlen(wbuf));
     if (n < 0)
-        err(1, "%s", SYSRQ_TRIGGER_FILE);
+        err(1, "%s", path);
     close(fd);
+
+    if (rbuf)
+        rbuf[n-1] = '\0';
+
+    return n;
+}
+
+static void sysrq_trigger_oom() {
+    printf("Above threshold limit, killing task and pausing for recovery\n");
+    fstr(SYSRQ_TRIGGER_FILE, NULL, "f");
     sleep(RECOVERY_INTERVAL);
 }
 
 static void sysrq_enable_oom() {
-    int fd, sysrq;
-    ssize_t n;
+    int sysrq;
     char buf[BUFSIZE];
 
-    fd = open(SYSRQ_FILE, O_RDONLY);
-    if (fd < 0)
-        err(1, "%s", SYSRQ_FILE);
-    n = read(fd, buf, BUFSIZE);
-    if (n < 0)
-        err(1, "%s", SYSRQ_FILE);
-    close(fd);
-    buf[n-1] = '\0';
-
+    fstr(SYSRQ_FILE, buf, NULL);
     sysrq = atoi(buf);
     sysrq |= SYSRQ_MASK;
     snprintf(buf, BUFSIZE, "%d", sysrq);
-    fd = open(SYSRQ_FILE, O_WRONLY);
-    if (fd < 0)
-        err(1, "%s", SYSRQ_FILE);
-    n = write(fd, buf, strlen(buf));
-    if (n < 0)
-        err(1, "%s", SYSRQ_FILE);
-    close(fd);
+    fstr(SYSRQ_FILE, NULL, buf);
 }
 
 int main(int argc, char **argv) {
@@ -70,23 +71,16 @@ int main(int argc, char **argv) {
     sysrq_enable_oom();
 
     while (true) {
-        int fd, i;
-        ssize_t n;
+        int i;
         char buf[BUFSIZE];
         float full_avg10;
 
-        fd = open(PSI_MEMORY_FILE, O_RDONLY);
-        if (fd < 0)
-            err(1, "%s", PSI_MEMORY_FILE);
-        n = read(fd, buf, BUFSIZE);
-        if (n < 0)
-            err(1, "%s", PSI_MEMORY_FILE);
-        close(fd);
-        buf[n-1] = '\0';
+        fstr(PSI_MEMORY_FILE, buf, NULL);
 
         for (i = 0; buf[i] != '\n'; i++);
         i++; /* skip \n */
         i+=11; /* skip "full avg10=" */
+
         sscanf(buf+i, "%f", &full_avg10);
         if (DEBUG) printf("full_avg10=%f\n", full_avg10);
 
