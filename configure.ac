@@ -4,6 +4,8 @@ AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([eos-firstboot])
 PKG_PROG_PKG_CONFIG
 
+AC_PROG_CC
+
 dnl Get systemd unit and udev rules directories. Add options so that they
 dnl can be set under $prefix for distcheck.
 m4_define([no_systemdunitdir_error],
@@ -61,6 +63,7 @@ AC_CONFIG_FILES([
 	dracut/customization/Makefile
 	flatpak-repos/Makefile
 	nvidia/Makefile
+	psi-monitor/Makefile
 	tests/Makefile
 ])
 AC_OUTPUT
