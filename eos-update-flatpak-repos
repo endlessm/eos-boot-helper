@@ -635,6 +635,25 @@ def _migrate_installed_flatpaks():
             try:
                 new_branch = migrate.get('new-branch')
                 if new_branch:
+                    try:
+                        new_ref = inst.get_installed_ref(kind, name, arch,
+                                                         new_branch)
+                    except GLib.GError as e:
+                        if not e.matches(Flatpak.error_quark(),
+                                         Flatpak.Error.NOT_INSTALLED):
+                            raise
+                    else:
+                        logging.info('{} already installed, removing {}'
+                                     .format(new_ref.format_ref(),
+                                             ref.format_ref()))
+                        inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE,
+                                            kind, name, arch, branch)
+
+                        # do not continue to do any origin migrations if we already
+                        # have the app installed. the ostree ref is already part
+                        # of matching_ostree_refs so will be removed at the end.
+                        continue
+
                     _update_branch(ref, new_branch, refs)
                     branch = new_branch
                     ref = _refresh_ref(inst, kind, name, arch, branch)
