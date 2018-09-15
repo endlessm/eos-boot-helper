@@ -65,6 +65,7 @@ static void sysrq_enable_oom() {
 }
 
 int main(int argc, char **argv) {
+    setvbuf(stdout, NULL, _IOLBF, 0);
     printf("poll_interval=%ds, recovery_interval=%ds, stall_threshold=%d%%\n",
            POLL_INTERVAL, RECOVERY_INTERVAL, MEM_THRESHOLD);
 
