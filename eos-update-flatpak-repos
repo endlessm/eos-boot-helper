@@ -624,17 +624,22 @@ def _migrate_installed_flatpaks():
                               .format(kind.value_nick, prefix))
 
         for ref in matching_refs:
+            origin = ref.get_origin()
             name = ref.get_name()
             arch = ref.get_arch()
             branch = ref.get_branch()
-            logging.info('Found {}/{}/{} to migrate'
-                         .format(name, arch, branch))
+            old_ostree_ref = '{}:{}'.format(origin, ref.format_ref())
 
-            old_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
+            new_origin = migrate.get('new-origin', origin)
+            new_branch = migrate.get('new-branch', branch)
+            new_ostree_ref = '{}:{}/{}/{}/{}'.format(new_origin, kind.value_nick,
+                                                     name, arch, new_branch)
+
+            logging.info('Found {} to migrate to {}'.format(old_ostree_ref,
+                         new_ostree_ref))
 
             try:
-                new_branch = migrate.get('new-branch')
-                if new_branch:
+                if new_branch != branch:
                     try:
                         new_ref = inst.get_installed_ref(kind, name, arch,
                                                          new_branch)
@@ -661,13 +666,10 @@ def _migrate_installed_flatpaks():
                 deploy_dir = ref.get_deploy_dir()
                 deploy = os.path.join(deploy_dir, 'deploy')
 
-                new_origin = migrate.get('new-origin')
-                if new_origin:
+                if new_origin != origin:
                     _update_deploy_file_with_origin(deploy, new_origin)
                     origin = new_origin
                     ref = _refresh_ref(inst, kind, name, arch, branch)
-
-                new_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
 
                 # in the case the ref has not changed, we should remove it from
                 # the list of old refs so it will not be deleted
