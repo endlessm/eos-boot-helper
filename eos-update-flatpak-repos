@@ -25,10 +25,8 @@
 
 import argparse
 import fnmatch
-import glob
 import logging
 import os
-import shutil
 import subprocess
 
 from systemd import journal
@@ -480,89 +478,6 @@ def _filter_ostree_refs(refs, origin, kind, name='*', prefix=None, arch='*',
     return fnmatch.filter(refs, pattern)
 
 
-def _replace_in_file(path, old, new):
-    _, data = GLib.file_get_contents(path)
-    assert data
-    GLib.file_set_contents(path, data.replace(old.encode('utf-8'),
-                                              new.encode('utf-8')))
-
-
-def _update_branch(ref, new_branch, refs):
-    kind = ref.get_kind()
-    name = ref.get_name()
-    arch = ref.get_arch()
-    branch = ref.get_branch()
-    deploy_dir = ref.get_deploy_dir()
-
-    clashing_refs = _filter_refs(refs, name=name, kind=kind,
-                                 arch=arch, branch=new_branch)
-    if len(clashing_refs) > 0:
-        logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
-                        .format(name, arch, branch, new_branch))
-        raise FileExistsError
-
-    logging.info('Migrating {}/{}/{} to new branch {}'
-                 .format(name, arch, branch, new_branch))
-
-    # .../${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
-    old_branch_dir, ref_dir = os.path.split(deploy_dir)
-
-    # .../${kind}/${name}/${arch}
-    arch_dir = os.path.dirname(old_branch_dir)
-
-    # .../${kind}/${name}
-    name_dir = os.path.dirname(arch_dir)
-    current = os.path.join(name_dir, 'current')
-    current_tmp = current + '.tmp'
-
-    # .../${kind}/${name}/${arch}/${new_branch}
-    new_branch_dir = os.path.join(arch_dir, new_branch)
-
-    # .../${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
-    new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
-
-    try:
-        os.mkdir(new_branch_dir, mode=0o755)
-        subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
-        os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
-        if kind == Flatpak.RefKind.APP:
-            # update current symlink (specific to apps - runtimes
-            # always have a specified branch)
-            os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
-            os.rename(current_tmp, current)
-
-            # update Exec= line in exported .desktop and .service files
-            old_exec = '/flatpak run --branch={} --arch={}'.format(branch,
-                                                                   arch)
-            new_exec = '/flatpak run --branch={} --arch={}'.format(new_branch,
-                                                                   arch)
-
-            for path in glob.glob(os.path.join(new_deploy_dir,
-                                  'export/share/applications/*.desktop')):
-                logging.debug('Updating branch in {}'.format(path))
-                _replace_in_file(path, old_exec, new_exec)
-
-            for path in glob.glob(os.path.join(new_deploy_dir,
-                                  'export/share/dbus-1/services/*.service')):
-                logging.debug('Updating branch in {}'.format(path))
-                _replace_in_file(path, old_exec, new_exec)
-
-    except Exception:
-        shutil.rmtree(new_branch_dir, ignore_errors=True)
-        if os.path.exists(current_tmp):
-            os.unlink(current_tmp)
-        raise
-
-    # this is unsafe whilst flatpaks are running
-    # however: this is a startup job
-    shutil.rmtree(old_branch_dir, ignore_errors=True)
-
-
-def _refresh_ref(inst, kind, name, arch, branch):
-    inst.drop_caches()
-    return inst.get_installed_ref(kind, name, arch, branch)
-
-
 def _migrate_installed_flatpaks():
     insts = Flatpak.get_system_installations()
     inst = insts[0]
@@ -655,36 +570,33 @@ def _migrate_installed_flatpaks():
                     ostree_refs[new_ostree_ref] = ostree_refs[old_ostree_ref]
 
                 if new_branch != branch:
-                    try:
-                        new_ref = inst.get_installed_ref(kind, name, arch,
-                                                         new_branch)
-                    except GLib.GError as e:
-                        if not e.matches(Flatpak.error_quark(),
-                                         Flatpak.Error.NOT_INSTALLED):
-                            raise
+                    new_refs = _filter_refs(refs, name=name, kind=kind,
+                                            arch=arch, branch=new_branch)
+                    if new_refs:
+                        new_ref = new_refs[0]
+
+                        logging.info('Found already installed: {}'
+                                     .format(new_ref.format_ref()))
+
+                        # adopt installed origin if app was already installed
+                        new_origin = new_ref.get_origin()
                     else:
-                        logging.info('{} already installed, removing {}'
-                                     .format(new_ref.format_ref(),
-                                             ref.format_ref()))
-                        inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE,
-                                            kind, name, arch, branch)
+                        logging.info('Deploying with new ref: {}'.format(new_ostree_ref))
+                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL, new_origin,
+                                                    kind, name, arch, new_branch)
 
-                        # do not continue to do any origin migrations if we already
-                        # have the app installed. the ostree ref is already part
-                        # of matching_ostree_refs so will be removed at the end.
-                        continue
+                    logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
+                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
+                                        name, arch, branch)
 
-                    _update_branch(ref, new_branch, refs)
-                    branch = new_branch
-                    ref = _refresh_ref(inst, kind, name, arch, branch)
+                    ref = new_ref
+                    origin = new_origin
 
                 deploy_dir = ref.get_deploy_dir()
                 deploy = os.path.join(deploy_dir, 'deploy')
 
                 if new_origin != origin:
                     _update_deploy_file_with_origin(deploy, new_origin)
-                    origin = new_origin
-                    ref = _refresh_ref(inst, kind, name, arch, branch)
 
             except Exception:
                 logging.exception('Failure applying migration to {}'
