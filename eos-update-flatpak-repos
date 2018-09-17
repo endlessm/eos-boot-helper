@@ -630,6 +630,13 @@ def _migrate_installed_flatpaks():
                 logging.debug('Found no matches to migrate for {} {}*'
                               .format(kind.value_nick, prefix))
 
+        if 'new-name' in migrate:
+            assert 'name' in migrate
+            if len(matching_refs) > 1:
+                logging.warning('Avoiding undefined behaviour, cannot rename ' \
+                                'an app with extensions: {}'.format(name))
+                continue
+
         for ref in matching_refs:
             origin = ref.get_origin()
             name = ref.get_name()
@@ -638,9 +645,10 @@ def _migrate_installed_flatpaks():
             old_ostree_ref = '{}:{}'.format(origin, ref.format_ref())
 
             new_origin = migrate.get('new-origin', origin)
+            new_name = migrate.get('new-name', name)
             new_branch = migrate.get('new-branch', branch)
             new_ostree_ref = '{}:{}/{}/{}/{}'.format(new_origin, kind.value_nick,
-                                                     name, arch, new_branch)
+                                                     new_name, arch, new_branch)
 
             logging.info('Found {} to migrate to {}'.format(old_ostree_ref,
                          new_ostree_ref))
@@ -672,7 +680,7 @@ def _migrate_installed_flatpaks():
 
                 if new_branch != branch:
                     try:
-                        new_ref = inst.get_installed_ref(kind, name, arch,
+                        new_ref = inst.get_installed_ref(kind, new_name, arch,
                                                          new_branch)
                         logging.info('Found already installed: {}'
                                      .format(ref.format_ref()))
@@ -688,8 +696,9 @@ def _migrate_installed_flatpaks():
 
                     if not new_ref:
                         logging.info('Deploying with new ref: {}'.format(new_ostree_ref))
-                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL, new_origin,
-                                                    kind, name, arch, new_branch)
+                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL,
+                                                    new_origin, kind, new_name,
+                                                    arch, new_branch)
 
                     logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
                     inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
