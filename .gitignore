@@ -12,6 +12,7 @@ configure
 depcomp
 install-sh
 missing
+psi-monitor/psi-monitor
 test-driver
 tests/*.log
 tests/*.trs

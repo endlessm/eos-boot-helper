@@ -1,4 +1,4 @@
-SUBDIRS = dracut flatpak-repos nvidia tests
+SUBDIRS = dracut flatpak-repos nvidia psi-monitor tests
 EXTRA_DIST = debian
 
 # Install systemd units, generators, preset files, and udev rules
