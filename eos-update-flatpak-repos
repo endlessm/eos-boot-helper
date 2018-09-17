@@ -443,6 +443,23 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # test / made-up migration
+    {
+        'name': 'de.billardgl.Billardgl',
+        'new-name': 'de.billardgl.ONE',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'de.billardgl.ONE',
+        'new-name': 'de.billardgl.TWO',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'stable',
+        'old-origin': 'flathub'
     }
 ]
 
