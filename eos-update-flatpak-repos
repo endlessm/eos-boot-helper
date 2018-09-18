@@ -24,6 +24,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import argparse
+import ctypes
 import fnmatch
 import glob
 import logging
@@ -497,11 +498,133 @@ def _filter_ostree_refs(refs, origin, kind, name='*', prefix=None, arch='*',
     return fnmatch.filter(refs, pattern)
 
 
+def mtree_add_file(repo, mtree, stream, file_info):
+    file_info.set_file_type(Gio.FileType.REGULAR)
+    file_info.set_attribute_uint32('unix::uid', 0)
+    file_info.set_attribute_uint32('unix::gid', 0)
+    file_info.set_attribute_uint32('unix::mode', 0o100644)
+
+    _, content_stream, content_length = OSTree.raw_file_to_content_stream(stream, file_info, None)
+    _, csum_bytes = repo.write_content(None, content_stream, content_length)
+    csum = OSTree.checksum_from_bytes(csum_bytes)
+    mtree.replace_file(file_info.get_name(), csum)
+
+    logging.debug('Updated file in commit: {}'.format(file_info.get_name()))
+
+
+def mtree_load_file(repo, mtree, name):
+    files = mtree.get_files()
+    csum = files[name]
+    _, stream, info, _ = repo.load_file(csum)
+    info.set_name(name)
+    return stream, info
+
+
+def mtree_rename_file(repo, mtree, old_name, new_name):
+    stream, info = mtree_load_file(repo, mtree, old_name)
+    info.set_name(new_name)
+    mtree_add_file(repo, mtree, stream, info)
+    files = mtree.get_files()
+    # FIXME this doesn't do anything
+    # https://gitlab.gnome.org/GNOME/pygobject/issues/139
+    #del files[old_name]
+
+
+def mtree_load_keyfile(repo, mtree, name):
+    stream, info = mtree_load_file(repo, mtree, name)
+    bytes = stream.read_bytes(info.get_size())
+    keyfile = GLib.KeyFile()
+    keyfile.load_from_bytes(bytes, GLib.KeyFileFlags.KEEP_COMMENTS |
+                                   GLib.KeyFileFlags.KEEP_TRANSLATIONS)
+    return keyfile, info
+
+
+def mtree_add_keyfile(repo, mtree, keyfile, info):
+    data = keyfile.to_data()[0].encode('utf-8')
+    stream = Gio.MemoryInputStream.new_from_data(data)
+    info.set_size(len(data))
+    mtree_add_file(repo, mtree, stream, info)
+
+
+def rename_exports(repo, mtree, old_id, new_id, path=['export'], to_remove=[]):
+    logging.debug('Renaming files in {}'.format('/'.join(path)))
+
+    files = mtree.get_files()
+    for name,csum in files.items():
+        if name.startswith(old_id):
+            new_name = new_id + name[len(old_id):]
+
+            if path == ['export', 'share', 'applications'] and \
+               name.endswith('.desktop'):
+                desktop_file, info = mtree_load_keyfile(repo, mtree, name)
+
+                for key in [GLib.KEY_FILE_DESKTOP_KEY_ICON,
+                            'X-Endless-SplashBackground']:
+                    try:
+                        value = desktop_file.get_string(GLib.KEY_FILE_DESKTOP_GROUP, key)
+                    except GLib.GError as e:
+                        if not e.matches(GLib.KeyFile.error_quark(),
+                                         GLib.KeyFileError.KEY_NOT_FOUND):
+                            raise
+                        continue
+
+                    value = value.replace(old_id, new_id)
+                    desktop_file.set_string(GLib.KEY_FILE_DESKTOP_GROUP, key, value)
+
+                info.set_name(new_name)
+                mtree_add_keyfile(repo, mtree, desktop_file, info)
+            else:
+                logging.debug('Renaming {} to {}'.format(name, new_name))
+                mtree_rename_file(repo, mtree, name, new_name)
+
+            to_remove.append(os.path.join(*(path + [name])))
+        else:
+            logging.debug('Not changing {}'.format(name))
+
+    dirs = mtree.get_subdirs()
+    for k,v in dirs.items():
+        rename_exports(repo, v, old_id, new_id, path + [k], to_remove=to_remove)
+
+    return to_remove
+
+FLATPAK_METADATA_FILE = 'metadata'
+FLATPAK_METADATA_APPLICATION = 'Application'
+FLATPAK_METADATA_KEY_NAME = 'name'
+FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY = 'Session Bus Policy'
+FLATPAK_METADATA_BUS_POLICY_OWN = 'own'
+
+
+def rewrite_app_id(repo, mtree, old_id, new_id):
+    metadata, info = mtree_load_keyfile(repo, mtree, FLATPAK_METADATA_FILE)
+    metadata.set_string(FLATPAK_METADATA_APPLICATION,
+                        FLATPAK_METADATA_KEY_NAME, new_id)
+
+    # allow the app to own its old bus name (if the app was relying on this,
+    # it would lose the right to this name with the new ID)
+    metadata.set_string(FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY,
+                        old_id, FLATPAK_METADATA_BUS_POLICY_OWN)
+
+    mtree_add_keyfile(repo, mtree, metadata, info)
+
+    dirs = mtree.get_subdirs()
+    if 'export' in dirs:
+        export_mtree = dirs['export']
+        to_remove = rename_exports(repo, export_mtree, old_id, new_id)
+    else:
+        logging.warning('Cannot find export dir in {} mtree'
+                        .format(old_app_id))
+        to_remove = []
+
+    return to_remove
+
+
 COMMIT_SUBJECT_INDEX = 3
 COMMIT_BODY_INDEX = 4
 
 
-def copy_commit(repo, src_rev, dest_ref, collection_id=None):
+def copy_commit(repo, src_rev, dest_ref,
+                old_app_id=None, new_app_id=None,
+                collection_id=None):
     """Copy commit src_rev to dest_ref
     This makes the new commit at dest_ref have the proper collection
     binding for this repo. The caller is expected to manage the
@@ -575,6 +698,10 @@ def copy_commit(repo, src_rev, dest_ref, collection_id=None):
     # Make the new commit assuming the caller started a transaction
     mtree = OSTree.MutableTree.new()
     repo.write_directory_to_mtree(src_root, mtree, None)
+
+    if old_app_id and new_app_id:
+       to_remove = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+
     _, dest_root = repo.write_mtree(mtree)
     _, dest_checksum = repo.write_commit_with_time(dest_parent,
                                                    commit_subject,
@@ -683,9 +810,14 @@ def _migrate_installed_flatpaks():
                                          new_ostree_ref))
                     try:
                         repo.prepare_transaction()
+                        kwargs = {}
+                        if kind == Flatpak.RefKind.APP:
+                            kwargs['old_app_id'] = name
+                            kwargs['new_app_id'] = new_name
                         new_commit = copy_commit(repo,
                                                  ostree_refs[old_ostree_ref],
-                                                 new_ostree_ref.split(':')[1])
+                                                 new_ostree_ref.split(':')[1],
+                                                 **kwargs)
                         repo.commit_transaction()
                     except:
                         repo.abort_transaction()
