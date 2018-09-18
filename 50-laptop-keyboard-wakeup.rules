@@ -1,4 +1,0 @@
-SUBSYSTEM=="input", ENV{ID_BUS}="i8042", ENV{ID_INPUT_KEYBOARD}="1", ATTR{[dmi/id]chassis_type}=="10", ATTR{[dmi/id]board_name}=="UX333FA", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../../../power/wakeup'"
-SUBSYSTEM=="input", ENV{ID_BUS}="i8042", ENV{ID_INPUT_KEYBOARD}="1", ATTR{[dmi/id]chassis_type}=="10", ATTR{[dmi/id]board_name}=="UX433FN", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../../../power/wakeup'"
-SUBSYSTEM=="input", ENV{ID_BUS}="i8042", ENV{ID_INPUT_KEYBOARD}="1", ATTR{[dmi/id]chassis_type}=="10", ATTR{[dmi/id]board_name}=="UX533FD", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../../../power/wakeup'"
-SUBSYSTEM=="input", ENV{ID_BUS}="i8042", ENV{ID_INPUT_KEYBOARD}="1", ATTR{[dmi/id]chassis_type}=="10", ATTR{[dmi/id]product_name}=="Swift SF314-55G", RUN+="/bin/sh -c 'echo enabled > /sys$env{DEVPATH}/../../../power/wakeup'"
