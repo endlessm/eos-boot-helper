@@ -4,6 +4,3 @@
 # Format: CSV
 # delimiter: ,
 # Quote character: "
-
-# Hangs upon S3 resume (MX150) (T23033)
-ASUSTeK COMPUTER INC.,X530UN

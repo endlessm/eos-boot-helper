@@ -8,14 +8,5 @@
 # Occasional hang upon S3 resume (GTX1060) (T21513)
 Acer,Nitro N50-600
 
-# Hangs upon S3 resume (MX150) (T21413)
-ASUSTeK COMPUTER INC.,Vivo AIO 27 V272UN
-
-# Hangs upon S3 resume (940MX) (T20281)
-ASUSTeK COMPUTER INC.,X555UQ
-
-# Hangs upon S3 resume (940MX) (T18554)
-ASUSTeK COMPUTER INC.,X705UQ
-
 # Massive graphics corruption (940MX) (T23366)
 Acer,TravelMate P648-G2-MG
