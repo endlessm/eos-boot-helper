@@ -164,6 +164,27 @@ def update_deploy_file_with_origin(deploy_file_path, new_origin):
                       GLib.Variant('s', new_origin))
 
 
+def update_deploy_file_with_previous_id(deploy_file_path, previous_id):
+    orig_variant = load_deploy_file(deploy_file_path)
+    metadata = GLib.VariantDict(orig_variant.get_child_value(4))
+
+    previous_ids_variant = metadata.lookup_value('previous-ids')
+    if previous_ids_variant:
+        previous_ids = previous_ids_variant.unpack()
+    else:
+        previous_ids = []
+
+    if previous_id in previous_ids:
+        logging.info('Nothing to do, {} already contains previous-id: {}'
+                     .format(deploy_file_path, previous_id))
+        return
+
+    previous_ids.append(previous_id)
+    metadata.insert_value('previous-ids', GLib.Variant('as', previous_ids))
+
+    write_deploy_file(deploy_file_path, orig_variant, 4, metadata.end())
+
+
 def load_deploy_file(deploy_file_path):
     logging.debug("Reading data from the deploy file at {}..."
                   .format(deploy_file_path))
@@ -850,6 +871,12 @@ def _migrate_installed_flatpaks():
                     inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
                                         name, arch, branch)
 
+                    # TODO: ideally we would defer the removal of the old app
+                    # until after the deploy file edits had been completed, so
+                    # we could pick up any prior previous-ids and carry them
+                    # over. however at present we are performing no such repeat
+                    # migrations (and may never need to).
+
                     ref = new_ref
                     origin = new_origin
 
@@ -858,6 +885,9 @@ def _migrate_installed_flatpaks():
 
                 if new_origin != origin:
                     update_deploy_file_with_origin(deploy, new_origin)
+
+                if new_name != name:
+                    update_deploy_file_with_previous_id(deploy, name)
 
             except Exception:
                 logging.exception('Failure applying migration to {}'
