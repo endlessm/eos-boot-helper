@@ -152,11 +152,19 @@ def _remove_runtimes():
                                '--runtime', refspec])
 
 
-def _update_deploy_file_with_origin(deploy_file_path, new_origin_name):
-    _update_deploy_file(deploy_file_path, 0, new_origin_name)
+def update_deploy_file_with_origin(deploy_file_path, new_origin):
+    orig_variant = load_deploy_file(deploy_file_path)
+
+    if orig_variant[0] == new_origin:
+        logging.info('Nothing to do, {} origin already set to: {}'
+                     .format(deploy_file_path, new_origin))
+        return
+
+    write_deploy_file(deploy_file_path, orig_variant, 0,
+                      GLib.Variant('s', new_origin))
 
 
-def _update_deploy_file(deploy_file_path, idx, new_val):
+def load_deploy_file(deploy_file_path):
     logging.debug("Reading data from the deploy file at {}..."
                   .format(deploy_file_path))
 
@@ -171,19 +179,16 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
                                                src_file_contents, False)
     logging.debug("Original variant: {}".format(str(orig_variant)))
 
-    cur_val = orig_variant[idx]
-    if cur_val == new_val or (isinstance(cur_val, list) and
-                              isinstance(new_val, list) and
-                              set(cur_val) == set(new_val)):
-        logging.info('Nothing to do, {}[{}] already set to: {}'
-                     .format(deploy_file_path, idx, new_val))
-        return
+    return orig_variant
 
+
+def write_deploy_file(deploy_file_path, orig_variant, idx, new_val):
+    variant_type = GLib.VariantType.new('(ssasta{sv})')
     builder = GLib.VariantBuilder.new(variant_type)
     for i, val in enumerate(orig_variant):
         child = orig_variant.get_child_value(i)
         if i == idx:
-            builder.add_value(GLib.Variant(child.get_type_string(), new_val))
+            builder.add_value(new_val)
         else:
             builder.add_value(child)
 
@@ -852,7 +857,7 @@ def _migrate_installed_flatpaks():
                 deploy = os.path.join(deploy_dir, 'deploy')
 
                 if new_origin != origin:
-                    _update_deploy_file_with_origin(deploy, new_origin)
+                    update_deploy_file_with_origin(deploy, new_origin)
 
             except Exception:
                 logging.exception('Failure applying migration to {}'
