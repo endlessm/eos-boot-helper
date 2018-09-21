@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 '''
 Tests eos-repartition-mbr. Must be run as a user privileged enough to run
 `losetup`. If run as an unprivileged user, all tests are skipped.

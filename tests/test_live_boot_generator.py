@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 '''Exercises eos-live-boot-generator for the live and !live cases.'''
 
 import os
