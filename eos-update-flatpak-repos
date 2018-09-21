@@ -25,10 +25,8 @@
 
 import argparse
 import fnmatch
-import glob
 import logging
 import os
-import shutil
 import subprocess
 
 from systemd import journal
@@ -154,11 +152,40 @@ def _remove_runtimes():
                                '--runtime', refspec])
 
 
-def _update_deploy_file_with_origin(deploy_file_path, new_origin_name):
-    _update_deploy_file(deploy_file_path, 0, new_origin_name)
+def update_deploy_file_with_origin(deploy_file_path, new_origin):
+    orig_variant = load_deploy_file(deploy_file_path)
+
+    if orig_variant[0] == new_origin:
+        logging.info('Nothing to do, {} origin already set to: {}'
+                     .format(deploy_file_path, new_origin))
+        return
+
+    write_deploy_file(deploy_file_path, orig_variant, 0,
+                      GLib.Variant('s', new_origin))
 
 
-def _update_deploy_file(deploy_file_path, idx, new_val):
+def update_deploy_file_with_previous_id(deploy_file_path, previous_id):
+    orig_variant = load_deploy_file(deploy_file_path)
+    metadata = GLib.VariantDict(orig_variant.get_child_value(4))
+
+    previous_ids_variant = metadata.lookup_value('previous-ids')
+    if previous_ids_variant:
+        previous_ids = previous_ids_variant.unpack()
+    else:
+        previous_ids = []
+
+    if previous_id in previous_ids:
+        logging.info('Nothing to do, {} already contains previous-id: {}'
+                     .format(deploy_file_path, previous_id))
+        return
+
+    previous_ids.append(previous_id)
+    metadata.insert_value('previous-ids', GLib.Variant('as', previous_ids))
+
+    write_deploy_file(deploy_file_path, orig_variant, 4, metadata.end())
+
+
+def load_deploy_file(deploy_file_path):
     logging.debug("Reading data from the deploy file at {}..."
                   .format(deploy_file_path))
 
@@ -173,19 +200,16 @@ def _update_deploy_file(deploy_file_path, idx, new_val):
                                                src_file_contents, False)
     logging.debug("Original variant: {}".format(str(orig_variant)))
 
-    cur_val = orig_variant[idx]
-    if cur_val == new_val or (isinstance(cur_val, list) and
-                              isinstance(new_val, list) and
-                              set(cur_val) == set(new_val)):
-        logging.info('Nothing to do, {}[{}] already set to: {}'
-                     .format(deploy_file_path, idx, new_val))
-        return
+    return orig_variant
 
+
+def write_deploy_file(deploy_file_path, orig_variant, idx, new_val):
+    variant_type = GLib.VariantType.new('(ssasta{sv})')
     builder = GLib.VariantBuilder.new(variant_type)
     for i, val in enumerate(orig_variant):
         child = orig_variant.get_child_value(i)
         if i == idx:
-            builder.add_value(GLib.Variant(child.get_type_string(), new_val))
+            builder.add_value(new_val)
         else:
             builder.add_value(child)
 
@@ -480,87 +504,237 @@ def _filter_ostree_refs(refs, origin, kind, name='*', prefix=None, arch='*',
     return fnmatch.filter(refs, pattern)
 
 
-def _replace_in_file(path, old, new):
-    _, data = GLib.file_get_contents(path)
-    assert data
-    GLib.file_set_contents(path, data.replace(old.encode('utf-8'),
-                                              new.encode('utf-8')))
+def mtree_add_file(repo, mtree, stream, file_info):
+    file_info.set_file_type(Gio.FileType.REGULAR)
+    file_info.set_attribute_uint32('unix::uid', 0)
+    file_info.set_attribute_uint32('unix::gid', 0)
+    file_info.set_attribute_uint32('unix::mode', 0o100644)
+
+    _, content_stream, content_length = OSTree.raw_file_to_content_stream(stream, file_info, None)
+    _, csum_bytes = repo.write_content(None, content_stream, content_length)
+    csum = OSTree.checksum_from_bytes(csum_bytes)
+    mtree.replace_file(file_info.get_name(), csum)
 
 
-def _update_branch(ref, new_branch, refs):
-    kind = ref.get_kind()
-    name = ref.get_name()
-    arch = ref.get_arch()
-    branch = ref.get_branch()
-    deploy_dir = ref.get_deploy_dir()
-
-    clashing_refs = _filter_refs(refs, name=name, kind=kind,
-                                 arch=arch, branch=new_branch)
-    if len(clashing_refs) > 0:
-        logging.warning('Not migrating {}/{}/{}, new branch {} already exists'
-                        .format(name, arch, branch, new_branch))
-        raise FileExistsError
-
-    logging.info('Migrating {}/{}/{} to new branch {}'
-                 .format(name, arch, branch, new_branch))
-
-    # .../${kind}/${name}/${arch}/${branch} , ${ref}-${subpaths}
-    old_branch_dir, ref_dir = os.path.split(deploy_dir)
-
-    # .../${kind}/${name}/${arch}
-    arch_dir = os.path.dirname(old_branch_dir)
-
-    # .../${kind}/${name}
-    name_dir = os.path.dirname(arch_dir)
-    current = os.path.join(name_dir, 'current')
-    current_tmp = current + '.tmp'
-
-    # .../${kind}/${name}/${arch}/${new_branch}
-    new_branch_dir = os.path.join(arch_dir, new_branch)
-
-    # .../${kind}/${name}/${arch}/${new_branch}/${ref}-${subpaths}
-    new_deploy_dir = os.path.join(new_branch_dir, ref_dir)
-
-    try:
-        os.mkdir(new_branch_dir, mode=0o755)
-        subprocess.check_call(['cp', '-al', deploy_dir, new_deploy_dir])
-        os.symlink(ref_dir, os.path.join(new_branch_dir, 'active'))
-        if kind == Flatpak.RefKind.APP:
-            # update current symlink (specific to apps - runtimes
-            # always have a specified branch)
-            os.symlink('{}/{}'.format(arch, new_branch), current_tmp)
-            os.rename(current_tmp, current)
-
-            # update Exec= line in exported .desktop and .service files
-            old_exec = '/flatpak run --branch={} --arch={}'.format(branch,
-                                                                   arch)
-            new_exec = '/flatpak run --branch={} --arch={}'.format(new_branch,
-                                                                   arch)
-
-            for path in glob.glob(os.path.join(new_deploy_dir,
-                                  'export/share/applications/*.desktop')):
-                logging.debug('Updating branch in {}'.format(path))
-                _replace_in_file(path, old_exec, new_exec)
-
-            for path in glob.glob(os.path.join(new_deploy_dir,
-                                  'export/share/dbus-1/services/*.service')):
-                logging.debug('Updating branch in {}'.format(path))
-                _replace_in_file(path, old_exec, new_exec)
-
-    except Exception:
-        shutil.rmtree(new_branch_dir, ignore_errors=True)
-        if os.path.exists(current_tmp):
-            os.unlink(current_tmp)
-        raise
-
-    # this is unsafe whilst flatpaks are running
-    # however: this is a startup job
-    shutil.rmtree(old_branch_dir, ignore_errors=True)
+def mtree_load_file(repo, mtree, name):
+    files = mtree.get_files()
+    csum = files[name]
+    _, stream, info, _ = repo.load_file(csum)
+    info.set_name(name)
+    return stream, info
 
 
-def _refresh_ref(inst, kind, name, arch, branch):
-    inst.drop_caches()
-    return inst.get_installed_ref(kind, name, arch, branch)
+def mtree_rename_file(repo, mtree, old_name, new_name):
+    stream, info = mtree_load_file(repo, mtree, old_name)
+    info.set_name(new_name)
+    mtree_add_file(repo, mtree, stream, info)
+    mtree.remove(old_name, False)
+
+
+def mtree_load_keyfile(repo, mtree, name):
+    stream, info = mtree_load_file(repo, mtree, name)
+    bytes = stream.read_bytes(info.get_size())
+    keyfile = GLib.KeyFile()
+    keyfile.load_from_bytes(bytes,
+                            GLib.KeyFileFlags.KEEP_COMMENTS |
+                            GLib.KeyFileFlags.KEEP_TRANSLATIONS)
+    return keyfile, info
+
+
+def mtree_add_keyfile(repo, mtree, keyfile, info):
+    data = keyfile.to_data()[0].encode('utf-8')
+    stream = Gio.MemoryInputStream.new_from_data(data)
+    info.set_size(len(data))
+    mtree_add_file(repo, mtree, stream, info)
+
+
+def rename_exports(repo, mtree, old_id, new_id, path='export'):
+    logging.debug('Renaming files in {}'.format(path))
+
+    files = mtree.get_files()
+    for name, csum in files.items():
+        if name.startswith(old_id):
+            new_name = new_id + name[len(old_id):]
+
+            if path == 'export/share/applications' and \
+               name.endswith('.desktop'):
+                logging.info('Rewriting {} as {}'.format(name, new_name))
+                desktop_file, info = mtree_load_keyfile(repo, mtree, name)
+
+                # if the app relied on D-Bus activation, the desktop file ID
+                # will no longer match the name that is implemented internally
+                # so we have to disable it
+                try:
+                    da = desktop_file.get_boolean(GLib.KEY_FILE_DESKTOP_GROUP,
+                                                  GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE)
+                    if da:
+                        logging.debug('Removing DBusActivatable=true')
+                        desktop_file.remove_key(GLib.KEY_FILE_DESKTOP_GROUP,
+                                                GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE)
+                except GLib.GError as e:
+                    if not e.matches(GLib.KeyFile.error_quark(),
+                                     GLib.KeyFileError.KEY_NOT_FOUND):
+                        raise
+
+                # update the places inside the desktop file where the ID is embedded
+                for key in [GLib.KEY_FILE_DESKTOP_KEY_ICON,
+                            'X-Endless-SplashBackground']:
+                    try:
+                        value = desktop_file.get_string(GLib.KEY_FILE_DESKTOP_GROUP, key)
+                    except GLib.GError as e:
+                        if not e.matches(GLib.KeyFile.error_quark(),
+                                         GLib.KeyFileError.KEY_NOT_FOUND):
+                            raise
+                        continue
+
+                    value = value.replace(old_id, new_id)
+                    desktop_file.set_string(GLib.KEY_FILE_DESKTOP_GROUP, key, value)
+
+                info.set_name(new_name)
+                mtree_add_keyfile(repo, mtree, desktop_file, info)
+                mtree.remove(name, False)
+            elif path == 'export/share/dbus-1/services' and \
+                 name.endswith('.service'):
+                logging.info('Not changing exported D-Bus service {}'.format(name))
+            else:
+                logging.info('Renaming {} to {}'.format(name, new_name))
+                mtree_rename_file(repo, mtree, name, new_name)
+        else:
+            logging.debug('Not changing {}'.format(name))
+
+    dirs = mtree.get_subdirs()
+    for k, v in dirs.items():
+        rename_exports(repo, v, old_id, new_id, os.path.join(path, k))
+
+
+FLATPAK_METADATA_FILE = 'metadata'
+FLATPAK_METADATA_APPLICATION = 'Application'
+FLATPAK_METADATA_KEY_NAME = 'name'
+FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY = 'Session Bus Policy'
+FLATPAK_METADATA_BUS_POLICY_OWN = 'own'
+FLATPAK_METADATA_GROUP_EXTRA_DATA = 'Extra Data'
+
+
+def rewrite_app_id(repo, mtree, old_id, new_id):
+    metadata, info = mtree_load_keyfile(repo, mtree, FLATPAK_METADATA_FILE)
+    metadata.set_string(FLATPAK_METADATA_APPLICATION,
+                        FLATPAK_METADATA_KEY_NAME, new_id)
+
+    # allow the app to own its old bus name (if the app was relying on this,
+    # it would lose the right to this name with the new ID)
+    metadata.set_string(FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY,
+                        old_id, FLATPAK_METADATA_BUS_POLICY_OWN)
+
+    # prohibit Extra Data apps at present, because they cannot be re-deployed
+    # without connectivity to download the original data file
+    if metadata.has_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
+        raise Exception('Cannot support extra data app {}'.format(old_id))
+
+    mtree_add_keyfile(repo, mtree, metadata, info)
+
+    dirs = mtree.get_subdirs()
+    if 'export' in dirs:
+        export_mtree = dirs['export']
+        rename_exports(repo, export_mtree, old_id, new_id)
+    else:
+        logging.warning('Cannot find export dir in {} mtree'
+                        .format(old_id))
+
+
+COMMIT_SUBJECT_INDEX = 3
+COMMIT_BODY_INDEX = 4
+
+
+def copy_commit(repo, src_rev, dest_ref,
+                old_app_id=None, new_app_id=None,
+                collection_id=None):
+    """Copy commit src_rev to dest_ref
+    This makes the new commit at dest_ref have the proper collection
+    binding for this repo. The caller is expected to manage the
+    ostree transaction.
+    This is like "flatpak build-commit-from", but we need more
+    control over the transaction.
+    """
+    logging.debug('Copying commit %s to %s', src_rev, dest_ref)
+
+    _, src_root, _ = repo.read_commit(src_rev)
+    _, src_variant, src_state = repo.load_commit(src_rev)
+
+    # Only copy normal commits
+    if src_state != 0:
+        raise Exception('Cannot copy irregular commit {}'
+                        .format(src_rev))
+
+    # If the dest ref exists, use the current commit as the new
+    # commit's parent
+    _, dest_parent = repo.resolve_rev_ext(
+        dest_ref, allow_noent=True,
+        flags=OSTree.RepoResolveRevExtFlags.REPO_RESOLVE_REV_EXT_NONE)
+    if dest_parent is not None:
+        logging.info('Using %s as new commit parent', dest_parent)
+
+    # Make a copy of the commit metadata to update. Like flatpak
+    # build-commit-from, the detached metadata is not copied since
+    # the only known usage is for GPG signatures, which would become
+    # invalid.
+    commit_metadata = GLib.VariantDict.new(src_variant.get_child_value(0))
+
+    # Set the collection binding if the repo has a collection ID,
+    # otherwise remove it
+    if collection_id is not None:
+        commit_metadata.insert_value(
+            OSTree.COMMIT_META_KEY_COLLECTION_BINDING,
+            GLib.Variant('s', collection_id))
+    else:
+        commit_metadata.remove(
+            OSTree.COMMIT_META_KEY_COLLECTION_BINDING)
+
+    # Include the destination ref in the ref bindings
+    ref_bindings = commit_metadata.lookup_value(
+        OSTree.COMMIT_META_KEY_REF_BINDING,
+        GLib.VariantType('as'))
+    if ref_bindings is None:
+        ref_bindings = []
+    ref_bindings = set(ref_bindings)
+    ref_bindings.add(dest_ref)
+    commit_metadata.insert_value(
+        OSTree.COMMIT_META_KEY_REF_BINDING,
+        GLib.Variant('as', sorted(ref_bindings)))
+
+    # Add flatpak specific metadata. xa.ref is deprecated, but some
+    # flatpak clients might expect it. xa.from_commit will be used
+    # by the app verifier to make sure the commit it sent actually
+    # got there
+    commit_metadata.insert_value('xa.ref',
+                                 GLib.Variant('s', dest_ref))
+    commit_metadata.insert_value('xa.from_commit',
+                                 GLib.Variant('s', src_rev))
+
+    # Convert from GVariantDict to GVariant vardict
+    commit_metadata = commit_metadata.end()
+
+    # Copy other commit data from source commit
+    commit_subject = src_variant[COMMIT_SUBJECT_INDEX]
+    commit_body = src_variant[COMMIT_BODY_INDEX]
+    commit_time = OSTree.commit_get_timestamp(src_variant)
+
+    # Make the new commit assuming the caller started a transaction
+    mtree = OSTree.MutableTree.new()
+    repo.write_directory_to_mtree(src_root, mtree, None)
+
+    if old_app_id and new_app_id and old_app_id != new_app_id:
+        rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+
+    _, dest_root = repo.write_mtree(mtree)
+    _, dest_checksum = repo.write_commit_with_time(dest_parent,
+                                                   commit_subject,
+                                                   commit_body,
+                                                   commit_metadata,
+                                                   dest_root,
+                                                   commit_time)
+    logging.info('Created new commit %s', dest_checksum)
+
+    return dest_checksum
 
 
 def _migrate_installed_flatpaks():
@@ -623,76 +797,105 @@ def _migrate_installed_flatpaks():
                 logging.debug('Found no matches to migrate for {} {}*'
                               .format(kind.value_nick, prefix))
 
+        if 'new-name' in migrate:
+            assert 'name' in migrate
+            if len(matching_refs) > 1:
+                logging.warning('Avoiding undefined behaviour, cannot rename '
+                                'an app with extensions: {}'.format(name))
+                continue
+
         for ref in matching_refs:
+            origin = ref.get_origin()
             name = ref.get_name()
             arch = ref.get_arch()
             branch = ref.get_branch()
-            logging.info('Found {}/{}/{} to migrate'
-                         .format(name, arch, branch))
+            old_ostree_ref = '{}:{}'.format(origin, ref.format_ref())
 
-            old_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
+            new_origin = migrate.get('new-origin', origin)
+            new_name = migrate.get('new-name', name)
+            new_branch = migrate.get('new-branch', branch)
+            new_ostree_ref = '{}:{}/{}/{}/{}'.format(new_origin, kind.value_nick,
+                                                     new_name, arch, new_branch)
+
+            logging.info('Found {} to migrate to {}'.format(old_ostree_ref,
+                         new_ostree_ref))
+
+            # if we're not changing anything, why are we here?
+            assert (old_ostree_ref != new_ostree_ref)
 
             try:
-                new_branch = migrate.get('new-branch')
-                if new_branch:
-                    try:
-                        new_ref = inst.get_installed_ref(kind, name, arch,
-                                                         new_branch)
-                    except GLib.GError as e:
-                        if not e.matches(Flatpak.error_quark(),
-                                         Flatpak.Error.NOT_INSTALLED):
-                            raise
-                    else:
-                        logging.info('{} already installed, removing {}'
-                                     .format(new_ref.format_ref(),
-                                             ref.format_ref()))
-                        inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE,
-                                            kind, name, arch, branch)
-
-                        # do not continue to do any origin migrations if we already
-                        # have the app installed. the ostree ref is already part
-                        # of matching_ostree_refs so will be removed at the end.
-                        continue
-
-                    _update_branch(ref, new_branch, refs)
-                    branch = new_branch
-                    ref = _refresh_ref(inst, kind, name, arch, branch)
-
-                deploy_dir = ref.get_deploy_dir()
-                deploy = os.path.join(deploy_dir, 'deploy')
-
-                new_origin = migrate.get('new-origin')
-                if new_origin:
-                    _update_deploy_file_with_origin(deploy, new_origin)
-                    origin = new_origin
-                    ref = _refresh_ref(inst, kind, name, arch, branch)
-
-                new_ostree_ref = '{}:{}'.format(ref.get_origin(), ref.format_ref())
-
-                # in the case the ref has not changed, we should remove it from
-                # the list of old refs so it will not be deleted
-                if new_ostree_ref == old_ostree_ref:
-                    logging.debug('OSTree ref {} unchanged'
-                                  .format(old_ostree_ref))
-                    matching_ostree_refs.remove(old_ostree_ref)
-                    continue
-
-                # when the branch or origin has changed, we copy the old ref to
-                # the new one, pointing at the same commit
+                # copy the old ref to the new one, pointing at the same commit
                 if old_ostree_ref in ostree_refs and \
-                   not new_ostree_ref in ostree_refs:
+                   new_ostree_ref not in ostree_refs:
                     logging.info('Copying OSTree ref {} [{}] to {}'
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
                                          new_ostree_ref))
-                    repo.set_ref_immediate(ref.get_origin(), ref.format_ref(),
-                                           ostree_refs[old_ostree_ref])
-                    ostree_refs[new_ostree_ref] = ostree_refs[old_ostree_ref]
+                    try:
+                        repo.prepare_transaction()
+                        kwargs = {}
+                        if kind == Flatpak.RefKind.APP:
+                            kwargs['old_app_id'] = name
+                            kwargs['new_app_id'] = new_name
+                        new_commit = copy_commit(repo,
+                                                 ostree_refs[old_ostree_ref],
+                                                 new_ostree_ref.split(':')[1],
+                                                 **kwargs)
+                        repo.commit_transaction()
+                    except:
+                        repo.abort_transaction()
+                        raise
+                    repo.set_ref_immediate(new_origin,
+                                           new_ostree_ref.split(':')[1],
+                                           new_commit)
+                    ostree_refs[new_ostree_ref] = new_commit
+
+                if new_branch != branch or new_name != name:
+                    new_refs = _filter_refs(refs, name=new_name, kind=kind,
+                                            arch=arch, branch=new_branch)
+                    if new_refs:
+                        new_ref = new_refs[0]
+
+                        logging.info('Found already installed: {}'
+                                     .format(new_ref.format_ref()))
+
+                        # adopt installed origin if app was already installed
+                        new_origin = new_ref.get_origin()
+                    else:
+                        logging.info('Deploying with new ref: {}'.format(new_ostree_ref))
+                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL,
+                                                    new_origin, kind, new_name,
+                                                    arch, new_branch)
+
+                    logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
+                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
+                                        name, arch, branch)
+
+                    # TODO: ideally we would defer the removal of the old app
+                    # until after the deploy file edits had been completed, so
+                    # we could pick up any prior previous-ids and carry them
+                    # over. however at present we are performing no such repeat
+                    # migrations (and may never need to).
+
+                    ref = new_ref
+                    origin = new_origin
+
+                deploy_dir = ref.get_deploy_dir()
+                deploy = os.path.join(deploy_dir, 'deploy')
+
+                if new_origin != origin:
+                    update_deploy_file_with_origin(deploy, new_origin)
+
+                if new_name != name:
+                    update_deploy_file_with_previous_id(deploy, name)
 
             except Exception:
                 logging.exception('Failure applying migration to {}'
                                   .format(name))
-                continue
+
+                # preserve the old ref so that the migration can be re-attempted
+                if old_ostree_ref in matching_ostree_refs:
+                    matching_ostree_refs.remove(old_ostree_ref)
 
         # any refs we copied, along with any matches for apps we migrated
         # in the past, should be deleted.
