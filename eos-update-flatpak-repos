@@ -467,6 +467,556 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate 61 legacy eos-apps to flathub (T23856)
+    {
+        'name': 'com.arduino.App',
+        'new-name': 'cc.arduino.arduinoide',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'com.github.Slingshot',
+        'new-name': 'com.github.ryanakca.slingshot',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'io.github.Supertux',
+        'new-name': 'org.supertuxproject.SuperTux',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.blockout.Blockout2',
+        'new-name': 'net.blockout.BlockOutII',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.gcompris.Gcompris',
+        'new-name': 'org.kde.gcompris',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.olofson.Kobodeluxe',
+        'new-name': 'net.olofson.KoboDeluxe',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Atanks',
+        'new-name': 'net.sourceforge.atanks',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Audacity',
+        'new-name': 'org.audacityteam.Audacity',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Btanks',
+        'new-name': 'net.sourceforge.btanks',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.ChromiumBSU',
+        'new-name': 'net.sourceforge.chromium-bsu',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Extremetuxracer',
+        'new-name': 'net.sourceforge.ExtremeTuxRacer',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Rili',
+        'new-name': 'net.sourceforge.Ri-li',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Supertuxkart',
+        'new-name': 'net.supertuxkart.SuperTuxKart',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Torcs',
+        'new-name': 'net.sourceforge.torcs',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Tuxfootball',
+        'new-name': 'net.sourceforge.TuxFootball',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.sourceforge.Warmux',
+        'new-name': 'org.gna.Warmux',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'net.wz2100.Warzone2100',
+        'new-name': 'net.wz2100.wz2100',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.armagetronad.Armagetronad',
+        'new-name': 'org.armagetronad.ArmagetronAdvanced',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.codeblocks.App',
+        'new-name': 'org.codeblocks.codeblocks',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.debian.Tuxpuck',
+        'new-name': 'org.debian.TuxPuck',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.debian.alioth.tux4kids.Tuxmath',
+        'new-name': 'com.tux4kids.tuxmath',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.debian.alioth.tux4kids.Tuxtype',
+        'new-name': 'com.tux4kids.tuxtype',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.frozenbubble.FrozenBubble',
+        'new-name': 'org.frozen_bubble.frozen-bubble',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gimp.Gimp',
+        'new-name': 'org.gimp.GIMP',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Freecell',
+        'new-name': 'org.gnome.Aisleriot',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Iagno',
+        'new-name': 'org.gnome.iagno',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Quadrapassel',
+        'new-name': 'org.gnome.quadrapassel',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Solitaire',
+        'new-name': 'org.gnome.Aisleriot',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.Tetravex',
+        'new-name': 'org.gnome.tetravex',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.gnome.people.dscorgie.Labyrinth',
+        'new-name': 'com.github.labyrinth_team.labyrinth',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kalzium',
+        'new-name': 'org.kde.kalzium',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kapman',
+        'new-name': 'org.kde.kapman',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Katomic',
+        'new-name': 'org.kde.katomic',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kblocks',
+        'new-name': 'org.kde.kblocks',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kbounce',
+        'new-name': 'org.kde.kbounce',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kbruch',
+        'new-name': 'org.kde.kbruch',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kdiamond',
+        'new-name': 'org.kde.kdiamond',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kgeography',
+        'new-name': 'org.kde.kgeography',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kgoldrunner',
+        'new-name': 'org.kde.kgoldrunner',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Khangman',
+        'new-name': 'org.kde.khangman',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kigo',
+        'new-name': 'org.kde.kigo',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Killbots',
+        'new-name': 'org.kde.killbots',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kjumpingcube',
+        'new-name': 'org.kde.kjumpingcube',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Klines',
+        'new-name': 'org.kde.klines',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Knavalbattle',
+        'new-name': 'org.kde.knavalbattle',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Knetwalk',
+        'new-name': 'org.kde.knetwalk',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Ksame',
+        'new-name': 'org.kde.klickety',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Ksquares',
+        'new-name': 'org.kde.ksquares',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Ksudoku',
+        'new-name': 'org.kde.ksudoku',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Ktuberling',
+        'new-name': 'org.kde.ktuberling',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kubrick',
+        'new-name': 'org.kde.kubrick',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Kwordquiz',
+        'new-name': 'org.kde.kwordquiz',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.kde.Palapeli',
+        'new-name': 'org.kde.palapeli',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.maemo.Numptyphysics',
+        'new-name': 'io.thp.numptyphysics',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.marsshooter.Marsshooter',
+        'new-name': 'net.sourceforge.mars-game',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.openarena.Openarena',
+        'new-name': 'ws.openarena.OpenArena',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.openscad.Openscad',
+        'new-name': 'org.openscad.OpenSCAD',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.processing.App',
+        'new-name': 'org.processing.processingide',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.seul.Pingus',
+        'new-name': 'org.seul.pingus',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.sugarlabs.Turtleblocks',
+        'new-name': 'org.laptop.TurtleArtActivity',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'org.tuxfamily.Xmoto',
+        'new-name': 'org.tuxfamily.XMoto',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
