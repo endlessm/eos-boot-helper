@@ -5,6 +5,7 @@ Maintainer: Daniel Drake <drake@endlessm.com>
 Build-Depends: automake,
                debhelper (>= 8),
                dh-systemd,
+               flake8,
                pkg-config,
                python3,
                python3-parted,
