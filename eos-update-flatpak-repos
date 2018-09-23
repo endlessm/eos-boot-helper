@@ -590,6 +590,22 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                     value = value.replace(old_id, new_id)
                     desktop_file.set_string(GLib.KEY_FILE_DESKTOP_GROUP, key, value)
 
+                # Add old name to X-Flatpak-RenamedFrom
+                try:
+                    renamed_from = desktop_file.get_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
+                                                                'X-Flatpak-RenamedFrom')
+                except GLib.GError as e:
+                    if not e.matches(GLib.KeyFile.error_quark(),
+                                     GLib.KeyFileError.KEY_NOT_FOUND):
+                        raise
+                    renamed_from = []
+
+                if name not in renamed_from:
+                    renamed_from.append(name)
+                desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
+                                             'X-Flatpak-RenamedFrom',
+                                             renamed_from)
+
                 info.set_name(new_name)
                 mtree_add_keyfile(repo, mtree, desktop_file, info)
                 mtree.remove(name, False)
