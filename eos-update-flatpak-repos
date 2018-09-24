@@ -1132,21 +1132,23 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                                      GLib.KeyFileError.KEY_NOT_FOUND):
                         raise
 
-                # update the places inside the desktop file where the ID is embedded
-                for key in [GLib.KEY_FILE_DESKTOP_KEY_ICON,
-                            'X-Endless-SplashBackground']:
-                    try:
-                        value = desktop_file.get_string(
-                            GLib.KEY_FILE_DESKTOP_GROUP, key
-                        )
-                    except GLib.GError as e:
-                        if not e.matches(GLib.KeyFile.error_quark(),
-                                         GLib.KeyFileError.KEY_NOT_FOUND):
-                            raise
-                        continue
-
+                # update the icon name which matches the ID
+                try:
+                    value = desktop_file.get_string(
+                        GLib.KEY_FILE_DESKTOP_GROUP,
+                        GLib.KEY_FILE_DESKTOP_KEY_ICON
+                    )
+                except GLib.GError as e:
+                    if not e.matches(GLib.KeyFile.error_quark(),
+                                     GLib.KeyFileError.KEY_NOT_FOUND):
+                        raise
+                else:
                     value = value.replace(old_id, new_id)
-                    desktop_file.set_string(GLib.KEY_FILE_DESKTOP_GROUP, key, value)
+                    desktop_file.set_string(
+                        GLib.KEY_FILE_DESKTOP_GROUP,
+                        GLib.KEY_FILE_DESKTOP_KEY_ICON,
+                        value
+                    )
 
                 # Add old name to X-Flatpak-RenamedFrom
                 try:
