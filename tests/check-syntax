@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import os
 import subprocess
+import glob
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -30,6 +31,12 @@ def main():
 
     for dash_script in find_files("^#!/bin/sh"):
         checks.append(["dash", "-n", dash_script])
+
+    # All files with a shebang, regardless of their extension (if any)
+    python_scripts = set(find_files("^#!/usr/bin/python"))
+    # .py files in the tests/ directory, which may or may not have a hashtag yell
+    python_scripts.update(glob.glob(os.path.join(ROOT, 'tests', '*.py')))
+    checks.append(["flake8"] + sorted(python_scripts))
 
     print('1..{}'.format(len(checks)))
     failed = False

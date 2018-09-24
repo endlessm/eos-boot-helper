@@ -34,7 +34,7 @@ from systemd import journal
 import gi
 gi.require_version('Flatpak', '1.0')
 gi.require_version('OSTree', '1.0')
-from gi.repository import Flatpak, Gio, GLib, OSTree
+from gi.repository import Flatpak, Gio, GLib, OSTree  # noqa: E402
 
 
 def _flatpak_inst_get_remote(inst, name):
@@ -99,7 +99,7 @@ def _remove_ostree_refs():
     try:
         repo = OSTree.Repo.new_default()
         repo.open()
-        _, ostree_refs = repo.list_refs() # dictionary of ref -> commit
+        _, ostree_refs = repo.list_refs()  # dictionary of ref -> commit
         for ref in OSTREE_REFS_TO_REMOVE:
             if ref in ostree_refs:
                 logging.info('Deleting leaked OSTree ref {}'.format(ref))
@@ -510,7 +510,9 @@ def mtree_add_file(repo, mtree, stream, file_info):
     file_info.set_attribute_uint32('unix::gid', 0)
     file_info.set_attribute_uint32('unix::mode', 0o100644)
 
-    _, content_stream, content_length = OSTree.raw_file_to_content_stream(stream, file_info, None)
+    _, content_stream, content_length = OSTree.raw_file_to_content_stream(
+        stream, file_info, None
+    )
     _, csum_bytes = repo.write_content(None, content_stream, content_length)
     csum = OSTree.checksum_from_bytes(csum_bytes)
     mtree.replace_file(file_info.get_name(), csum)
@@ -565,12 +567,16 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                 # will no longer match the name that is implemented internally
                 # so we have to disable it
                 try:
-                    da = desktop_file.get_boolean(GLib.KEY_FILE_DESKTOP_GROUP,
-                                                  GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE)
+                    da = desktop_file.get_boolean(
+                        GLib.KEY_FILE_DESKTOP_GROUP,
+                        GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
+                    )
                     if da:
                         logging.debug('Removing DBusActivatable=true')
-                        desktop_file.remove_key(GLib.KEY_FILE_DESKTOP_GROUP,
-                                                GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE)
+                        desktop_file.remove_key(
+                            GLib.KEY_FILE_DESKTOP_GROUP,
+                            GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
+                        )
                 except GLib.GError as e:
                     if not e.matches(GLib.KeyFile.error_quark(),
                                      GLib.KeyFileError.KEY_NOT_FOUND):
@@ -580,7 +586,9 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                 for key in [GLib.KEY_FILE_DESKTOP_KEY_ICON,
                             'X-Endless-SplashBackground']:
                     try:
-                        value = desktop_file.get_string(GLib.KEY_FILE_DESKTOP_GROUP, key)
+                        value = desktop_file.get_string(
+                            GLib.KEY_FILE_DESKTOP_GROUP, key
+                        )
                     except GLib.GError as e:
                         if not e.matches(GLib.KeyFile.error_quark(),
                                          GLib.KeyFileError.KEY_NOT_FOUND):
@@ -592,8 +600,9 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
 
                 # Add old name to X-Flatpak-RenamedFrom
                 try:
-                    renamed_from = desktop_file.get_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
-                                                                'X-Flatpak-RenamedFrom')
+                    renamed_from = desktop_file.get_string_list(
+                        GLib.KEY_FILE_DESKTOP_GROUP, 'X-Flatpak-RenamedFrom'
+                    )
                 except GLib.GError as e:
                     if not e.matches(GLib.KeyFile.error_quark(),
                                      GLib.KeyFileError.KEY_NOT_FOUND):
@@ -609,8 +618,7 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                 info.set_name(new_name)
                 mtree_add_keyfile(repo, mtree, desktop_file, info)
                 mtree.remove(name, False)
-            elif path == 'export/share/dbus-1/services' and \
-                 name.endswith('.service'):
+            elif path == 'export/share/dbus-1/services' and name.endswith('.service'):
                 logging.info('Not changing exported D-Bus service {}'.format(name))
             else:
                 logging.info('Renaming {} to {}'.format(name, new_name))
@@ -762,7 +770,7 @@ def _migrate_installed_flatpaks():
     # flatpak so we don't leave behind local refs to the old origin and branch.
     repo = OSTree.Repo.new(inst.get_path().get_child('repo'))
     repo.open()
-    _, ostree_refs = repo.list_refs() # dictionary of ref -> commit
+    _, ostree_refs = repo.list_refs()  # dictionary of ref -> commit
 
     for migrate in FLATPAKS_TO_MIGRATE:
         kind = migrate['kind']
@@ -878,7 +886,9 @@ def _migrate_installed_flatpaks():
                         # adopt installed origin if app was already installed
                         new_origin = new_ref.get_origin()
                     else:
-                        logging.info('Deploying with new ref: {}'.format(new_ostree_ref))
+                        logging.info(
+                            'Deploying with new ref: {}'.format(new_ostree_ref)
+                        )
                         new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL,
                                                     new_origin, kind, new_name,
                                                     arch, new_branch)
