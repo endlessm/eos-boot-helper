@@ -1407,8 +1407,8 @@ def _migrate_installed_flatpaks():
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
                                          new_ostree_ref))
+                    repo.prepare_transaction()
                     try:
-                        repo.prepare_transaction()
                         kwargs = {}
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
@@ -1418,9 +1418,8 @@ def _migrate_installed_flatpaks():
                                                  new_ostree_ref.split(':')[1],
                                                  **kwargs)
                         repo.commit_transaction()
-                    except:
+                    finally:
                         repo.abort_transaction()
-                        raise
                     repo.set_ref_immediate(new_origin,
                                            new_ostree_ref.split(':')[1],
                                            new_commit)
