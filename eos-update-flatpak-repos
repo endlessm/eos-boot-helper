@@ -1100,7 +1100,63 @@ def mtree_add_keyfile(repo, mtree, keyfile, info):
     mtree_add_file(repo, mtree, stream, info)
 
 
-def rename_exports(repo, mtree, old_id, new_id, path='export'):
+def mangle_desktop_file(desktop_file, old_name, old_id, new_id):
+    # if the app relied on D-Bus activation, the desktop file ID
+    # will no longer match the name that is implemented internally
+    # so we have to disable it
+    try:
+        da = desktop_file.get_boolean(
+            GLib.KEY_FILE_DESKTOP_GROUP,
+            GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
+        )
+        if da:
+            logging.debug('Removing DBusActivatable=true')
+            desktop_file.remove_key(
+                GLib.KEY_FILE_DESKTOP_GROUP,
+                GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
+            )
+    except GLib.GError as e:
+        if not e.matches(GLib.KeyFile.error_quark(),
+                         GLib.KeyFileError.KEY_NOT_FOUND):
+            raise
+
+    # update the icon name which matches the ID
+    try:
+        value = desktop_file.get_string(
+            GLib.KEY_FILE_DESKTOP_GROUP,
+            GLib.KEY_FILE_DESKTOP_KEY_ICON
+        )
+    except GLib.GError as e:
+        if not e.matches(GLib.KeyFile.error_quark(),
+                         GLib.KeyFileError.KEY_NOT_FOUND):
+            raise
+    else:
+        value = value.replace(old_id, new_id)
+        desktop_file.set_string(
+            GLib.KEY_FILE_DESKTOP_GROUP,
+            GLib.KEY_FILE_DESKTOP_KEY_ICON,
+            value
+        )
+
+    # Add old name to X-Flatpak-RenamedFrom
+    try:
+        renamed_from = desktop_file.get_string_list(
+            GLib.KEY_FILE_DESKTOP_GROUP, 'X-Flatpak-RenamedFrom'
+        )
+    except GLib.GError as e:
+        if not e.matches(GLib.KeyFile.error_quark(),
+                         GLib.KeyFileError.KEY_NOT_FOUND):
+            raise
+        renamed_from = []
+
+    if old_name not in renamed_from:
+        renamed_from.append(old_name)
+    desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
+                                 'X-Flatpak-RenamedFrom',
+                                 renamed_from)
+
+
+def rename_exports(repo, mtree, old_id, new_id, parent_mtree=None, path='export'):
     logging.debug('Renaming files in {}'.format(path))
 
     files = mtree.get_files()
@@ -1113,62 +1169,28 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                 logging.info('Rewriting {} as {}'.format(name, new_name))
                 desktop_file, info = mtree_load_keyfile(repo, mtree, name)
 
-                # if the app relied on D-Bus activation, the desktop file ID
-                # will no longer match the name that is implemented internally
-                # so we have to disable it
-                try:
-                    da = desktop_file.get_boolean(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
-                    )
-                    if da:
-                        logging.debug('Removing DBusActivatable=true')
-                        desktop_file.remove_key(
-                            GLib.KEY_FILE_DESKTOP_GROUP,
-                            GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
-                        )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-
-                # update the icon name which matches the ID
-                try:
-                    value = desktop_file.get_string(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_ICON
-                    )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-                else:
-                    value = value.replace(old_id, new_id)
-                    desktop_file.set_string(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_ICON,
-                        value
-                    )
-
-                # Add old name to X-Flatpak-RenamedFrom
-                try:
-                    renamed_from = desktop_file.get_string_list(
-                        GLib.KEY_FILE_DESKTOP_GROUP, 'X-Flatpak-RenamedFrom'
-                    )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-                    renamed_from = []
-
-                if name not in renamed_from:
-                    renamed_from.append(name)
-                desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
-                                             'X-Flatpak-RenamedFrom',
-                                             renamed_from)
+                mangle_desktop_file(desktop_file, name, old_id, new_id)
 
                 info.set_name(new_name)
                 mtree_add_keyfile(repo, mtree, desktop_file, info)
+                mtree.remove(name, False)
+            elif (
+                os.path.dirname(path) == 'export/share/applications' and
+                name.endswith('.desktop')
+            ):
+                # Vendor subdirectory, as used by kde4-... apps
+                vendor = os.path.basename(path)
+
+                logging.info('Rewriting {}/{} as {}'.format(vendor, name, new_name))
+                desktop_file, info = mtree_load_keyfile(repo, mtree, name)
+
+                # kde4/foo.desktop is treated as kde4-foo.desktop, so put that as the
+                # old name into the rewritten file.
+                old_name = vendor + '-' + name
+                mangle_desktop_file(desktop_file, old_name, old_id, new_id)
+
+                info.set_name(new_name)
+                mtree_add_keyfile(repo, parent_mtree, desktop_file, info)
                 mtree.remove(name, False)
             elif path == 'export/share/dbus-1/services' and name.endswith('.service'):
                 logging.info('Not changing exported D-Bus service {}'.format(name))
@@ -1180,7 +1202,7 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
 
     dirs = mtree.get_subdirs()
     for k, v in dirs.items():
-        rename_exports(repo, v, old_id, new_id, os.path.join(path, k))
+        rename_exports(repo, v, old_id, new_id, mtree, os.path.join(path, k))
 
 
 FLATPAK_METADATA_FILE = 'metadata'
@@ -1211,7 +1233,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     dirs = mtree.get_subdirs()
     if 'export' in dirs:
         export_mtree = dirs['export']
-        rename_exports(repo, export_mtree, old_id, new_id)
+        rename_exports(repo, export_mtree, old_id, new_id, mtree)
     else:
         logging.warning('Cannot find export dir in {} mtree'
                         .format(old_id))
