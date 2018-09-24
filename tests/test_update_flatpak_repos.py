@@ -38,6 +38,25 @@ class TestMangleDesktopFile(BaseTestCase):
             _, mtree = mtree.ensure_dir(name)
         return mtree
 
+    def test_rename_empty_desktop(self):
+        '''No keys we care about'''
+        orig_name = "com.example.Hello.desktop"
+        orig_data = textwrap.dedent(
+            """
+            [Desktop Entry]
+            """
+        ).strip()
+
+        expected_name = "org.example.Hi.desktop"
+        expected_data = textwrap.dedent(
+            """
+            [Desktop Entry]
+            X-Flatpak-RenamedFrom=com.example.Hello.desktop;
+            """
+        ).strip()
+
+        self._test(orig_name, orig_data, expected_name, expected_data)
+
     def test_rename_main_desktop(self):
         orig_name = "com.example.Hello.desktop"
         orig_data = textwrap.dedent(
