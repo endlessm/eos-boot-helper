@@ -1102,37 +1102,41 @@ def mtree_add_keyfile(repo, mtree, keyfile, info):
     mtree_add_file(repo, mtree, stream, info)
 
 
+def _get_with_default(func, group, key, default):
+    try:
+        return func(group, key)
+    except GLib.GError as e:
+        if not e.matches(GLib.KeyFile.error_quark(),
+                         GLib.KeyFileError.KEY_NOT_FOUND):
+            raise
+        return default
+
+
 def mangle_desktop_file(desktop_file, old_name, old_id, new_id):
     # if the app relied on D-Bus activation, the desktop file ID
     # will no longer match the name that is implemented internally
     # so we have to disable it
-    try:
-        da = desktop_file.get_boolean(
+    da = _get_with_default(
+        desktop_file.get_boolean,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE,
+        False
+    )
+    if da:
+        logging.debug('Removing DBusActivatable=true')
+        desktop_file.remove_key(
             GLib.KEY_FILE_DESKTOP_GROUP,
             GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
         )
-        if da:
-            logging.debug('Removing DBusActivatable=true')
-            desktop_file.remove_key(
-                GLib.KEY_FILE_DESKTOP_GROUP,
-                GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
-            )
-    except GLib.GError as e:
-        if not e.matches(GLib.KeyFile.error_quark(),
-                         GLib.KeyFileError.KEY_NOT_FOUND):
-            raise
 
     # update the icon name which matches the ID
-    try:
-        value = desktop_file.get_string(
-            GLib.KEY_FILE_DESKTOP_GROUP,
-            GLib.KEY_FILE_DESKTOP_KEY_ICON
-        )
-    except GLib.GError as e:
-        if not e.matches(GLib.KeyFile.error_quark(),
-                         GLib.KeyFileError.KEY_NOT_FOUND):
-            raise
-    else:
+    value = _get_with_default(
+        desktop_file.get_string,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        GLib.KEY_FILE_DESKTOP_KEY_ICON,
+        None
+    )
+    if value is not None:
         value = value.replace(old_id, new_id)
         desktop_file.set_string(
             GLib.KEY_FILE_DESKTOP_GROUP,
@@ -1141,16 +1145,12 @@ def mangle_desktop_file(desktop_file, old_name, old_id, new_id):
         )
 
     # Add old name to X-Flatpak-RenamedFrom
-    try:
-        renamed_from = desktop_file.get_string_list(
-            GLib.KEY_FILE_DESKTOP_GROUP, 'X-Flatpak-RenamedFrom'
-        )
-    except GLib.GError as e:
-        if not e.matches(GLib.KeyFile.error_quark(),
-                         GLib.KeyFileError.KEY_NOT_FOUND):
-            raise
-        renamed_from = []
-
+    renamed_from = _get_with_default(
+        desktop_file.get_string_list,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        'X-Flatpak-RenamedFrom',
+        []
+    )
     if old_name not in renamed_from:
         renamed_from.append(old_name)
     desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
