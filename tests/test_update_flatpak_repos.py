@@ -131,7 +131,10 @@ class TestMangleDesktopFile(BaseTestCase):
 
         # Rename the contents of the export/ directory
         _, export = self.mtree.ensure_dir("export")
-        eufr.rename_exports(self.repo, export, "com.example.Hello", "org.example.Hi")
+        vendor_prefixes = eufr.rename_exports(
+            self.repo, export, "com.example.Hello", "org.example.Hi",
+        )
+        self.assertEqual({'kde4'}, vendor_prefixes)
 
         # Check the kde4/ directory is now empty. In theory we might like the migration
         # script to have deleted it, but the dangling empty directory will go away as
@@ -170,7 +173,10 @@ class TestMangleDesktopFile(BaseTestCase):
 
         # Rename the contents of the export/ directory
         _, export = self.mtree.ensure_dir("export")
-        eufr.rename_exports(self.repo, export, "com.example.Hello", "org.example.Hi")
+        vendor_prefixes = eufr.rename_exports(
+            self.repo, export, "com.example.Hello", "org.example.Hi"
+        )
+        self.assertEqual(set(), vendor_prefixes)
 
         # Check the applications/ subdirectory is as we expect
         files = self._mkdir_p(desktop_path).get_files()
@@ -211,16 +217,21 @@ class TestUpdateDeployFile(BaseTestCase):
 
     def test_previous_ids_disjoint(self):
         self._test(["net.example.Howdy"],
-                   ["com.example.Hello", "net.example.Howdy"])
+                   [self.OLD_ID, "net.example.Howdy"])
 
     def test_previous_ids_contains_new(self):
         self._test(["com.example.Hello", "net.example.Howdy"],
-                   ["com.example.Hello", "net.example.Howdy"])
+                   [self.OLD_ID, "net.example.Howdy"])
 
-    def _test(self, orig, expected):
+    def test_add_multiple(self):
+        self._test([],
+                   [self.OLD_ID, "net.example.Howdy"],
+                   frozenset((self.OLD_ID, "net.example.Howdy")))
+
+    def _test(self, orig, expected, new_ids=frozenset((OLD_ID,))):
         self._populate_deploy_file(orig)
-        eufr.update_deploy_file_with_previous_id(
-            self.deploy_file.name, self.OLD_ID,
+        eufr.update_deploy_file_with_previous_ids(
+            self.deploy_file.name, new_ids,
         )
         modified = eufr.load_deploy_file(self.deploy_file.name)
         self.assertEqual(sorted(modified[4]['previous-ids']),
