@@ -30,6 +30,12 @@ class TestMangleDesktopFile(BaseTestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
 
+        self.repo = OSTree.Repo.new(Gio.File.new_for_path(self.tmp.name))
+        self.repo.set_disable_fsync(True)
+        self.repo.create(OSTree.RepoMode.BARE_USER_ONLY)
+
+        self.mtree = OSTree.MutableTree()
+
     def tearDown(self):
         self.tmp.cleanup()
 
@@ -55,7 +61,7 @@ class TestMangleDesktopFile(BaseTestCase):
             """
         ).strip()
 
-        self._test(orig_name, orig_data, expected_name, expected_data)
+        self._test_simple(orig_name, orig_data, expected_name, expected_data)
 
     def test_rename_main_desktop(self):
         orig_name = "com.example.Hello.desktop"
@@ -77,7 +83,7 @@ class TestMangleDesktopFile(BaseTestCase):
             """
         ).strip()
 
-        self._test(orig_name, orig_data, expected_name, expected_data)
+        self._test_simple(orig_name, orig_data, expected_name, expected_data)
 
     def test_rename_extra_desktop(self):
         orig_name = "com.example.Hello.Again.desktop"
@@ -97,33 +103,36 @@ class TestMangleDesktopFile(BaseTestCase):
             """
         ).strip()
 
-        self._test(orig_name, orig_data, expected_name, expected_data)
+        self._test_simple(orig_name, orig_data, expected_name, expected_data)
 
-    def _test(self, orig_name, orig_data, expected_name, expected_data):
-        repo = OSTree.Repo.new(Gio.File.new_for_path(self.tmp.name))
-        repo.set_disable_fsync(True)
-        repo.create(OSTree.RepoMode.BARE_USER_ONLY)
+    def _mkdir_p(self, path):
+        mtree = self.mtree
+        for name in path:
+            _, mtree = mtree.ensure_dir(name)
+        return mtree
 
-        mtree = OSTree.MutableTree()
-
-        # Store the original file in the tree
-        data_bytes = orig_data.encode("utf-8")
+    def _put_file(self, parents, name, data):
+        data_bytes = data.encode("utf-8")
         stream = Gio.MemoryInputStream.new_from_data(data_bytes)
         info = Gio.FileInfo()
         info.set_size(len(data_bytes))
-        info.set_name(orig_name)
+        info.set_name(name)
 
-        _, export = mtree.ensure_dir("export")
-        _, share = export.ensure_dir("share")
-        _, apps = share.ensure_dir("applications")
-        eufr.mtree_add_file(repo, apps, stream, info)
+        directory = self._mkdir_p(parents)
+        eufr.mtree_add_file(self.repo, directory, stream, info)
+
+    def _test_simple(self, orig_name, orig_data, expected_name, expected_data):
+        # Store the original file in the tree
+        desktop_path = ('export', 'share', 'applications')
+        self._put_file(desktop_path, orig_name, orig_data)
 
         # Rename the contents of the export/ directory
-        eufr.rename_exports(repo, export, "com.example.Hello", "org.example.Hi")
+        _, export = self.mtree.ensure_dir("export")
+        eufr.rename_exports(self.repo, export, "com.example.Hello", "org.example.Hi")
 
         # Check the applications/ subdirectory is as we expect
-        files = apps.get_files()
+        files = self._mkdir_p(desktop_path).get_files()
         self.assertEqual(list(files.keys()), [expected_name])
-        _, stream, info, _ = repo.load_file(files[expected_name])
+        _, stream, info, _ = self.repo.load_file(files[expected_name])
         bytes_ = stream.read_bytes(info.get_size())
         self.assertEqual(bytes_.get_data().decode("utf-8").strip(), expected_data)
