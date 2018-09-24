@@ -12,7 +12,7 @@ from .util import BaseTestCase, system_script
 import gi
 
 gi.require_version("OSTree", "1.0")
-from gi.repository import Gio, OSTree  # noqa: E402
+from gi.repository import GLib, Gio, OSTree  # noqa: E402
 
 
 # Import script as a module, despite its filename not being a legal module name
@@ -178,3 +178,50 @@ class TestMangleDesktopFile(BaseTestCase):
         _, stream, info, _ = self.repo.load_file(files[expected_name])
         bytes_ = stream.read_bytes(info.get_size())
         self.assertEqual(bytes_.get_data().decode("utf-8").strip(), expected_data)
+
+
+class TestUpdateDeployFile(BaseTestCase):
+    OLD_ID = "com.example.Hello"
+
+    def setUp(self):
+        self.deploy_file = tempfile.NamedTemporaryFile()
+
+    def tearDown(self):
+        self.deploy_file.close()
+
+    def _populate_deploy_file(self, previous_ids):
+        metadata = {}
+        if previous_ids is not None:
+            metadata['previous-ids'] = GLib.Variant('as', previous_ids)
+
+        subpaths = []
+        installed_size = 42
+        data = ('origin', 'commit', subpaths, installed_size, metadata)
+        variant = GLib.Variant('(ssasta{sv})', data)
+        GLib.file_set_contents(self.deploy_file.name,
+                               variant.get_data_as_bytes().get_data())
+
+    def test_previous_ids_not_present(self):
+        self._test(None,
+                   ["com.example.Hello"])
+
+    def test_previous_ids_empty(self):
+        self._test([],
+                   ["com.example.Hello"])
+
+    def test_previous_ids_disjoint(self):
+        self._test(["net.example.Howdy"],
+                   ["com.example.Hello", "net.example.Howdy"])
+
+    def test_previous_ids_contains_new(self):
+        self._test(["com.example.Hello", "net.example.Howdy"],
+                   ["com.example.Hello", "net.example.Howdy"])
+
+    def _test(self, orig, expected):
+        self._populate_deploy_file(orig)
+        eufr.update_deploy_file_with_previous_id(
+            self.deploy_file.name, self.OLD_ID,
+        )
+        modified = eufr.load_deploy_file(self.deploy_file.name)
+        self.assertEqual(sorted(modified[4]['previous-ids']),
+                         sorted(expected))
