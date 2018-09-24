@@ -105,6 +105,48 @@ class TestMangleDesktopFile(BaseTestCase):
 
         self._test_simple(orig_name, orig_data, expected_name, expected_data)
 
+    def test_rename_vendor_desktop(self):
+        """The Menu Specification introduces the concept of a vendor prefix. In short,
+        XDG_DATA_DIR/applications/vendor/foo.desktop should be treated as if it were
+        XDG_DATA_DIR/applications/vendor-foo.desktop. This concept was embraced by the
+        KDE games we shipped, with a 'kde4' vendor prefix."""
+        orig_name = "com.example.Hello.desktop"
+        orig_data = textwrap.dedent(
+            """
+            [Desktop Entry]
+            """
+        ).strip()
+
+        expected_name = "org.example.Hi.desktop"
+        expected_data = textwrap.dedent(
+            """
+            [Desktop Entry]
+            X-Flatpak-RenamedFrom=kde4-com.example.Hello.desktop;
+            """
+        ).strip()
+
+        # Store the original file in the tree
+        kde4_path = ('export', 'share', 'applications', 'kde4')
+        self._put_file(kde4_path, orig_name, orig_data)
+
+        # Rename the contents of the export/ directory
+        _, export = self.mtree.ensure_dir("export")
+        eufr.rename_exports(self.repo, export, "com.example.Hello", "org.example.Hi")
+
+        # Check the kde4/ directory is now empty. In theory we might like the migration
+        # script to have deleted it, but the dangling empty directory will go away as
+        # soon as the user updates to the Flathub version of the app.
+        files = self._mkdir_p(kde4_path).get_files()
+        self.assertEqual(list(files.keys()), [])
+
+        # Check the applications/ subdirectory is as we expect
+        desktop_path = ('export', 'share', 'applications')
+        files = self._mkdir_p(desktop_path).get_files()
+        self.assertEqual(list(files.keys()), [expected_name])
+        _, stream, info, _ = self.repo.load_file(files[expected_name])
+        bytes_ = stream.read_bytes(info.get_size())
+        self.assertEqual(bytes_.get_data().decode("utf-8").strip(), expected_data)
+
     def _mkdir_p(self, path):
         mtree = self.mtree
         for name in path:
