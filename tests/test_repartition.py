@@ -86,7 +86,7 @@ start=   482312879, size=    17825792, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
                     if bd_post is not None:
                         self.assert_fstype(img_device + bd_post, 'ntfs')
 
-                except:
+                except Exception:
                     # Log the current state to aid debugging
                     check_call(["sfdisk", "--dump", img_device])
                     check_call(["lsblk", "-o", "+fstype", img_device])

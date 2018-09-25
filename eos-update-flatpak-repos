@@ -164,23 +164,25 @@ def update_deploy_file_with_origin(deploy_file_path, new_origin):
                       GLib.Variant('s', new_origin))
 
 
-def update_deploy_file_with_previous_id(deploy_file_path, previous_id):
+def update_deploy_file_with_previous_ids(deploy_file_path, new_previous_ids):
     orig_variant = load_deploy_file(deploy_file_path)
     metadata = GLib.VariantDict(orig_variant.get_child_value(4))
 
     previous_ids_variant = metadata.lookup_value('previous-ids')
     if previous_ids_variant:
-        previous_ids = previous_ids_variant.unpack()
+        previous_ids = set(previous_ids_variant.unpack())
     else:
-        previous_ids = []
+        previous_ids = set()
 
-    if previous_id in previous_ids:
+    to_add = new_previous_ids - previous_ids
+    if not to_add:
         logging.info('Nothing to do, {} already contains previous-id: {}'
-                     .format(deploy_file_path, previous_id))
+                     .format(deploy_file_path, new_previous_ids))
         return
 
-    previous_ids.append(previous_id)
-    metadata.insert_value('previous-ids', GLib.Variant('as', previous_ids))
+    logging.debug('Adding {} to previous-ids'.format(to_add))
+    previous_ids.update(new_previous_ids)
+    metadata.insert_value('previous-ids', GLib.Variant('as', list(previous_ids)))
 
     write_deploy_file(deploy_file_path, orig_variant, 4, metadata.end())
 
@@ -1100,8 +1102,65 @@ def mtree_add_keyfile(repo, mtree, keyfile, info):
     mtree_add_file(repo, mtree, stream, info)
 
 
-def rename_exports(repo, mtree, old_id, new_id, path='export'):
+def _get_with_default(func, group, key, default):
+    try:
+        return func(group, key)
+    except GLib.GError as e:
+        if not e.matches(GLib.KeyFile.error_quark(),
+                         GLib.KeyFileError.KEY_NOT_FOUND):
+            raise
+        return default
+
+
+def mangle_desktop_file(desktop_file, old_name, old_id, new_id):
+    # if the app relied on D-Bus activation, the desktop file ID
+    # will no longer match the name that is implemented internally
+    # so we have to disable it
+    da = _get_with_default(
+        desktop_file.get_boolean,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE,
+        False
+    )
+    if da:
+        logging.debug('Removing DBusActivatable=true')
+        desktop_file.remove_key(
+            GLib.KEY_FILE_DESKTOP_GROUP,
+            GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
+        )
+
+    # update the icon name which matches the ID
+    value = _get_with_default(
+        desktop_file.get_string,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        GLib.KEY_FILE_DESKTOP_KEY_ICON,
+        None
+    )
+    if value is not None:
+        value = value.replace(old_id, new_id)
+        desktop_file.set_string(
+            GLib.KEY_FILE_DESKTOP_GROUP,
+            GLib.KEY_FILE_DESKTOP_KEY_ICON,
+            value
+        )
+
+    # Add old name to X-Flatpak-RenamedFrom
+    renamed_from = _get_with_default(
+        desktop_file.get_string_list,
+        GLib.KEY_FILE_DESKTOP_GROUP,
+        'X-Flatpak-RenamedFrom',
+        []
+    )
+    if old_name not in renamed_from:
+        renamed_from.append(old_name)
+    desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
+                                 'X-Flatpak-RenamedFrom',
+                                 renamed_from)
+
+
+def rename_exports(repo, mtree, old_id, new_id, parent_mtree=None, path='export'):
     logging.debug('Renaming files in {}'.format(path))
+    vendor_prefixes = set()
 
     files = mtree.get_files()
     for name, csum in files.items():
@@ -1113,62 +1172,29 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
                 logging.info('Rewriting {} as {}'.format(name, new_name))
                 desktop_file, info = mtree_load_keyfile(repo, mtree, name)
 
-                # if the app relied on D-Bus activation, the desktop file ID
-                # will no longer match the name that is implemented internally
-                # so we have to disable it
-                try:
-                    da = desktop_file.get_boolean(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
-                    )
-                    if da:
-                        logging.debug('Removing DBusActivatable=true')
-                        desktop_file.remove_key(
-                            GLib.KEY_FILE_DESKTOP_GROUP,
-                            GLib.KEY_FILE_DESKTOP_KEY_DBUS_ACTIVATABLE
-                        )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-
-                # update the icon name which matches the ID
-                try:
-                    value = desktop_file.get_string(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_ICON
-                    )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-                else:
-                    value = value.replace(old_id, new_id)
-                    desktop_file.set_string(
-                        GLib.KEY_FILE_DESKTOP_GROUP,
-                        GLib.KEY_FILE_DESKTOP_KEY_ICON,
-                        value
-                    )
-
-                # Add old name to X-Flatpak-RenamedFrom
-                try:
-                    renamed_from = desktop_file.get_string_list(
-                        GLib.KEY_FILE_DESKTOP_GROUP, 'X-Flatpak-RenamedFrom'
-                    )
-                except GLib.GError as e:
-                    if not e.matches(GLib.KeyFile.error_quark(),
-                                     GLib.KeyFileError.KEY_NOT_FOUND):
-                        raise
-                    renamed_from = []
-
-                if name not in renamed_from:
-                    renamed_from.append(name)
-                desktop_file.set_string_list(GLib.KEY_FILE_DESKTOP_GROUP,
-                                             'X-Flatpak-RenamedFrom',
-                                             renamed_from)
+                mangle_desktop_file(desktop_file, name, old_id, new_id)
 
                 info.set_name(new_name)
                 mtree_add_keyfile(repo, mtree, desktop_file, info)
+                mtree.remove(name, False)
+            elif (
+                os.path.dirname(path) == 'export/share/applications' and
+                name.endswith('.desktop')
+            ):
+                # Vendor subdirectory, as used by kde4-... apps
+                vendor = os.path.basename(path)
+                vendor_prefixes.add(vendor)
+
+                logging.info('Rewriting {}/{} as {}'.format(vendor, name, new_name))
+                desktop_file, info = mtree_load_keyfile(repo, mtree, name)
+
+                # kde4/foo.desktop is treated as kde4-foo.desktop, so put that as the
+                # old name into the rewritten file.
+                old_name = vendor + '-' + name
+                mangle_desktop_file(desktop_file, old_name, old_id, new_id)
+
+                info.set_name(new_name)
+                mtree_add_keyfile(repo, parent_mtree, desktop_file, info)
                 mtree.remove(name, False)
             elif path == 'export/share/dbus-1/services' and name.endswith('.service'):
                 logging.info('Not changing exported D-Bus service {}'.format(name))
@@ -1180,7 +1206,11 @@ def rename_exports(repo, mtree, old_id, new_id, path='export'):
 
     dirs = mtree.get_subdirs()
     for k, v in dirs.items():
-        rename_exports(repo, v, old_id, new_id, os.path.join(path, k))
+        vendor_prefixes.update(
+            rename_exports(repo, v, old_id, new_id, mtree, os.path.join(path, k))
+        )
+
+    return vendor_prefixes
 
 
 FLATPAK_METADATA_FILE = 'metadata'
@@ -1211,10 +1241,12 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     dirs = mtree.get_subdirs()
     if 'export' in dirs:
         export_mtree = dirs['export']
-        rename_exports(repo, export_mtree, old_id, new_id)
+        vendor_prefixes = rename_exports(repo, export_mtree, old_id, new_id, mtree)
     else:
         logging.warning('Cannot find export dir in {} mtree'
                         .format(old_id))
+
+    return vendor_prefixes
 
 
 COMMIT_SUBJECT_INDEX = 3
@@ -1299,7 +1331,7 @@ def copy_commit(repo, src_rev, dest_ref,
     repo.write_directory_to_mtree(src_root, mtree, None)
 
     if old_app_id and new_app_id and old_app_id != new_app_id:
-        rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
 
     _, dest_root = repo.write_mtree(mtree)
     _, dest_checksum = repo.write_commit_with_time(dest_parent,
@@ -1310,7 +1342,7 @@ def copy_commit(repo, src_rev, dest_ref,
                                                    commit_time)
     logging.info('Created new commit %s', dest_checksum)
 
-    return dest_checksum
+    return dest_checksum, vendor_prefixes
 
 
 def _migrate_installed_flatpaks():
@@ -1400,6 +1432,8 @@ def _migrate_installed_flatpaks():
             assert (old_ostree_ref != new_ostree_ref)
 
             try:
+                vendor_prefixes = frozenset()
+
                 # copy the old ref to the new one, pointing at the same commit
                 if old_ostree_ref in ostree_refs and \
                    new_ostree_ref not in ostree_refs:
@@ -1407,20 +1441,21 @@ def _migrate_installed_flatpaks():
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
                                          new_ostree_ref))
+                    repo.prepare_transaction()
                     try:
-                        repo.prepare_transaction()
                         kwargs = {}
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
                             kwargs['new_app_id'] = new_name
-                        new_commit = copy_commit(repo,
-                                                 ostree_refs[old_ostree_ref],
-                                                 new_ostree_ref.split(':')[1],
-                                                 **kwargs)
+                        new_commit, vendor_prefixes = copy_commit(
+                            repo,
+                            ostree_refs[old_ostree_ref],
+                            new_ostree_ref.split(':')[1],
+                            **kwargs,
+                        )
                         repo.commit_transaction()
-                    except:
+                    finally:
                         repo.abort_transaction()
-                        raise
                     repo.set_ref_immediate(new_origin,
                                            new_ostree_ref.split(':')[1],
                                            new_commit)
@@ -1464,8 +1499,16 @@ def _migrate_installed_flatpaks():
                 if new_origin != origin:
                     update_deploy_file_with_origin(deploy, new_origin)
 
-                if new_name != name:
-                    update_deploy_file_with_previous_id(deploy, name)
+                # If, for app "org.example.Foo", we found a vendor-prefixed desktop file
+                # like exports/share/applications/kde4/org.example.Foo.Bar.desktop,
+                # pretend that "kde4-org.example.Foo" was an old ID of this application.
+                # This will allow the X-Flatpak-RenamedFrom key to continue to include
+                # the vendor-prefixed name across app updates.
+                if new_name != name or vendor_prefixes:
+                    previous_ids = {name}
+                    for vendor_prefix in vendor_prefixes:
+                        previous_ids.add(vendor_prefix + '-' + name)
+                    update_deploy_file_with_previous_ids(deploy, previous_ids)
 
             except Exception:
                 logging.exception('Failure applying migration to {}'

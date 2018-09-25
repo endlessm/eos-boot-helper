@@ -106,7 +106,7 @@ unit: sectors
 
                 # GPTs should be erased
                 check_gpts(img, b'\0' * len(b'EFI PART'))
-            except:
+            except Exception:
                 # Log the current state to aid debugging
                 check_call(["sfdisk", "--dump", img_device])
                 raise
