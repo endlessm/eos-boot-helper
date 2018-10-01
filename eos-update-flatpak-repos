@@ -1354,6 +1354,8 @@ def _migrate_installed_flatpaks():
     inst = insts[0]
     refs = inst.list_installed_refs()
 
+    triggers_needed = False
+
     # we need to also operate directly on the ostree refs that shadow each
     # flatpak so we don't leave behind local refs to the old origin and branch.
     repo = OSTree.Repo.new(inst.get_path().get_child('repo'))
@@ -1488,13 +1490,17 @@ def _migrate_installed_flatpaks():
                         logging.info(
                             'Deploying with new ref: {}'.format(new_ostree_ref)
                         )
-                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL,
+                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL |
+                                                    Flatpak.InstallFlags.NO_TRIGGERS,
                                                     new_origin, kind, new_name,
                                                     arch, new_branch)
 
                     logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
-                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
-                                        name, arch, branch)
+                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE |
+                                        Flatpak.UninstallFlags.NO_TRIGGERS,
+                                        kind, name, arch, branch)
+
+                    triggers_needed = True
 
                     # TODO: ideally we would defer the removal of the old app
                     # until after the deploy file edits had been completed, so
@@ -1544,6 +1550,9 @@ def _migrate_installed_flatpaks():
                 logging.exception('Failure deleting ref {}'
                                   .format(old_ostree_ref))
                 continue
+
+    if triggers_needed:
+        inst.run_triggers()
 
 
 if __name__ == '__main__':
