@@ -1087,9 +1087,9 @@ def mtree_rename_file(repo, mtree, old_name, new_name):
 
 def mtree_load_keyfile(repo, mtree, name):
     stream, info = mtree_load_file(repo, mtree, name)
-    bytes = stream.read_bytes(info.get_size())
+    data = stream.read_bytes(info.get_size())
     keyfile = GLib.KeyFile()
-    keyfile.load_from_bytes(bytes,
+    keyfile.load_from_bytes(data,
                             GLib.KeyFileFlags.KEEP_COMMENTS |
                             GLib.KeyFileFlags.KEEP_TRANSLATIONS)
     return keyfile, info
