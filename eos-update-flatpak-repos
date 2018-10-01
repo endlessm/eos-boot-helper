@@ -1087,19 +1087,21 @@ def mtree_rename_file(repo, mtree, old_name, new_name):
 
 def mtree_load_keyfile(repo, mtree, name):
     stream, info = mtree_load_file(repo, mtree, name)
-    bytes = stream.read_bytes(info.get_size())
+    data = stream.read_bytes(info.get_size())
     keyfile = GLib.KeyFile()
-    keyfile.load_from_bytes(bytes,
+    keyfile.load_from_bytes(data,
                             GLib.KeyFileFlags.KEEP_COMMENTS |
                             GLib.KeyFileFlags.KEEP_TRANSLATIONS)
     return keyfile, info
 
 
 def mtree_add_keyfile(repo, mtree, keyfile, info):
-    data = keyfile.to_data()[0].encode('utf-8')
-    stream = Gio.MemoryInputStream.new_from_data(data)
-    info.set_size(len(data))
+    keyfile_string = keyfile.to_data()[0]
+    keyfile_bytes = keyfile_string.encode('utf-8')
+    stream = Gio.MemoryInputStream.new_from_data(keyfile_bytes)
+    info.set_size(len(keyfile_bytes))
     mtree_add_file(repo, mtree, stream, info)
+    return keyfile_string
 
 
 def _get_with_default(func, group, key, default):
@@ -1236,7 +1238,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     if metadata.has_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
         raise Exception('Cannot support extra data app {}'.format(old_id))
 
-    mtree_add_keyfile(repo, mtree, metadata, info)
+    metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
 
     dirs = mtree.get_subdirs()
     if 'export' in dirs:
@@ -1246,7 +1248,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
         logging.warning('Cannot find export dir in {} mtree'
                         .format(old_id))
 
-    return vendor_prefixes
+    return metadata_str, vendor_prefixes
 
 
 COMMIT_SUBJECT_INDEX = 3
@@ -1318,9 +1320,6 @@ def copy_commit(repo, src_rev, dest_ref,
     commit_metadata.insert_value('xa.from_commit',
                                  GLib.Variant('s', src_rev))
 
-    # Convert from GVariantDict to GVariant vardict
-    commit_metadata = commit_metadata.end()
-
     # Copy other commit data from source commit
     commit_subject = src_variant[COMMIT_SUBJECT_INDEX]
     commit_body = src_variant[COMMIT_BODY_INDEX]
@@ -1331,7 +1330,12 @@ def copy_commit(repo, src_rev, dest_ref,
     repo.write_directory_to_mtree(src_root, mtree, None)
 
     if old_app_id and new_app_id and old_app_id != new_app_id:
-        vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        commit_metadata.insert_value('xa.metadata',
+                                     GLib.Variant('s', metadata))
+
+    # Convert from GVariantDict to GVariant vardict
+    commit_metadata = commit_metadata.end()
 
     _, dest_root = repo.write_mtree(mtree)
     _, dest_checksum = repo.write_commit_with_time(dest_parent,
@@ -1350,9 +1354,17 @@ def _migrate_installed_flatpaks():
     inst = insts[0]
     refs = inst.list_installed_refs()
 
+    triggers_needed = False
+
     # we need to also operate directly on the ostree refs that shadow each
     # flatpak so we don't leave behind local refs to the old origin and branch.
     repo = OSTree.Repo.new(inst.get_path().get_child('repo'))
+
+    # every OSTree commit / ref creation that we perform is paired with a
+    # Flatpak install, which calls syncfs after the app is deployed on disk.
+    # the ref deletion in OStree uses unlink() which is atomic in any case.
+    repo.set_disable_fsync(True)
+
     repo.open()
     _, ostree_refs = repo.list_refs()  # dictionary of ref -> commit
 
@@ -1431,12 +1443,18 @@ def _migrate_installed_flatpaks():
             # if we're not changing anything, why are we here?
             assert (old_ostree_ref != new_ostree_ref)
 
+            new_refs = _filter_refs(refs, name=new_name, kind=kind,
+                                    arch=arch, branch=new_branch)
+            if new_refs:
+                new_ref = new_refs[0]
+            else:
+                new_ref = None
+
             try:
                 vendor_prefixes = frozenset()
 
                 # copy the old ref to the new one, pointing at the same commit
-                if old_ostree_ref in ostree_refs and \
-                   new_ostree_ref not in ostree_refs:
+                if old_ostree_ref in ostree_refs and not new_ref:
                     logging.info('Copying OSTree ref {} [{}] to {}'
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
@@ -1462,11 +1480,7 @@ def _migrate_installed_flatpaks():
                     ostree_refs[new_ostree_ref] = new_commit
 
                 if new_branch != branch or new_name != name:
-                    new_refs = _filter_refs(refs, name=new_name, kind=kind,
-                                            arch=arch, branch=new_branch)
-                    if new_refs:
-                        new_ref = new_refs[0]
-
+                    if new_ref:
                         logging.info('Found already installed: {}'
                                      .format(new_ref.format_ref()))
 
@@ -1476,13 +1490,17 @@ def _migrate_installed_flatpaks():
                         logging.info(
                             'Deploying with new ref: {}'.format(new_ostree_ref)
                         )
-                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL,
+                        new_ref = inst.install_full(Flatpak.InstallFlags.NO_PULL |
+                                                    Flatpak.InstallFlags.NO_TRIGGERS,
                                                     new_origin, kind, new_name,
                                                     arch, new_branch)
 
                     logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
-                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE, kind,
-                                        name, arch, branch)
+                    inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE |
+                                        Flatpak.UninstallFlags.NO_TRIGGERS,
+                                        kind, name, arch, branch)
+
+                    triggers_needed = True
 
                     # TODO: ideally we would defer the removal of the old app
                     # until after the deploy file edits had been completed, so
@@ -1532,6 +1550,9 @@ def _migrate_installed_flatpaks():
                 logging.exception('Failure deleting ref {}'
                                   .format(old_ostree_ref))
                 continue
+
+    if triggers_needed:
+        inst.run_triggers()
 
 
 if __name__ == '__main__':
