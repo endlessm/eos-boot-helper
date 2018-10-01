@@ -1096,10 +1096,12 @@ def mtree_load_keyfile(repo, mtree, name):
 
 
 def mtree_add_keyfile(repo, mtree, keyfile, info):
-    data = keyfile.to_data()[0].encode('utf-8')
-    stream = Gio.MemoryInputStream.new_from_data(data)
-    info.set_size(len(data))
+    keyfile_string = keyfile.to_data()[0]
+    keyfile_bytes = keyfile_string.encode('utf-8')
+    stream = Gio.MemoryInputStream.new_from_data(keyfile_bytes)
+    info.set_size(len(keyfile_bytes))
     mtree_add_file(repo, mtree, stream, info)
+    return keyfile_string
 
 
 def _get_with_default(func, group, key, default):
@@ -1236,7 +1238,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     if metadata.has_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
         raise Exception('Cannot support extra data app {}'.format(old_id))
 
-    mtree_add_keyfile(repo, mtree, metadata, info)
+    metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
 
     dirs = mtree.get_subdirs()
     if 'export' in dirs:
@@ -1246,7 +1248,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
         logging.warning('Cannot find export dir in {} mtree'
                         .format(old_id))
 
-    return vendor_prefixes
+    return metadata_str, vendor_prefixes
 
 
 COMMIT_SUBJECT_INDEX = 3
@@ -1318,9 +1320,6 @@ def copy_commit(repo, src_rev, dest_ref,
     commit_metadata.insert_value('xa.from_commit',
                                  GLib.Variant('s', src_rev))
 
-    # Convert from GVariantDict to GVariant vardict
-    commit_metadata = commit_metadata.end()
-
     # Copy other commit data from source commit
     commit_subject = src_variant[COMMIT_SUBJECT_INDEX]
     commit_body = src_variant[COMMIT_BODY_INDEX]
@@ -1331,7 +1330,12 @@ def copy_commit(repo, src_rev, dest_ref,
     repo.write_directory_to_mtree(src_root, mtree, None)
 
     if old_app_id and new_app_id and old_app_id != new_app_id:
-        vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        commit_metadata.insert_value('xa.metadata',
+                                     GLib.Variant('s', metadata))
+
+    # Convert from GVariantDict to GVariant vardict
+    commit_metadata = commit_metadata.end()
 
     _, dest_root = repo.write_mtree(mtree)
     _, dest_checksum = repo.write_commit_with_time(dest_parent,
