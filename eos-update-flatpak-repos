@@ -1344,12 +1344,6 @@ def _migrate_installed_flatpaks():
     # we need to also operate directly on the ostree refs that shadow each
     # flatpak so we don't leave behind local refs to the old origin and branch.
     repo = OSTree.Repo.new(inst.get_path().get_child('repo'))
-
-    # every OSTree commit / ref creation that we perform is paired with a
-    # Flatpak install, which calls syncfs after the app is deployed on disk.
-    # the ref deletion in OStree uses unlink() which is atomic in any case.
-    repo.set_disable_fsync(True)
-
     repo.open()
     _, ostree_refs = repo.list_refs()  # dictionary of ref -> commit
 
