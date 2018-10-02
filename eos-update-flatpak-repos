@@ -1247,6 +1247,7 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     else:
         logging.warning('Cannot find export dir in {} mtree'
                         .format(old_id))
+        vendor_prefixes = frozenset()
 
     return metadata_str, vendor_prefixes
 
@@ -1333,6 +1334,8 @@ def copy_commit(repo, src_rev, dest_ref,
         metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
         commit_metadata.insert_value('xa.metadata',
                                      GLib.Variant('s', metadata))
+    else:
+        vendor_prefixes = frozenset()
 
     # Convert from GVariantDict to GVariant vardict
     commit_metadata = commit_metadata.end()
