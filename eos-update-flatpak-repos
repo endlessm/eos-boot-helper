@@ -1497,6 +1497,7 @@ def _migrate_installed_flatpaks():
                                                     Flatpak.InstallFlags.NO_TRIGGERS,
                                                     new_origin, kind, new_name,
                                                     arch, new_branch)
+                        refs.append(new_ref)
 
                     logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
                     inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE |
