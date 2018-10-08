@@ -28,6 +28,7 @@ import fnmatch
 import logging
 import os
 import subprocess
+import sys
 
 from systemd import journal
 
@@ -1537,8 +1538,10 @@ def _migrate_installed_flatpaks():
 
 if __name__ == '__main__':
     # Send logging messages both to the console and the journal
-    logging.basicConfig(level=logging.INFO)
-    logging.root.addHandler(journal.JournalHandler())
+    handlers = [journal.JournalHandler()]
+    if not GLib.log_writer_is_journald(sys.stderr.fileno()):
+        handlers.append(logging.StreamHandler(sys.stderr))
+    logging.basicConfig(level=logging.INFO, handlers=handlers)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', '-d', dest='debug', action='store_true')
