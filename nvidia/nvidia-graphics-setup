@@ -127,7 +127,7 @@ load_module() {
 	if [[ -n $deps ]]; then
 		modprobe -a -q ${deps//,/ } || :
 	fi
-	insmod "$1" || :
+	insmod "$@" || :
 }
 
 # Build the nvidia module if we haven't already built the current
@@ -192,7 +192,7 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
   echo "Loading nvidia modules"
   load_module "${MODULE_DIR}"/nvidia.ko
   load_module "${MODULE_DIR}"/nvidia-modeset.ko
-  load_module "${MODULE_DIR}"/nvidia-drm.ko
+  load_module "${MODULE_DIR}"/nvidia-drm.ko modeset=1
   first_boot_cleanup_modules
   if [[ -e "/sys/module/nvidia_drm" ]]; then
     echo "nvidia loaded successfully"
