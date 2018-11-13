@@ -55,6 +55,8 @@ class SwapRemover():
         '''
         dev = parted.getDevice(disk_path)
         disk = parted.newDisk(dev)
+        if disk.type == "msdos":
+            disk.unsetFlag(parted.DISK_CYLINDER_ALIGNMENT)
         parts = disk.partitions
 
         for p, part in enumerate(parts):
@@ -69,6 +71,8 @@ class SwapRemover():
                 constraint = parted.Constraint(maxGeom=geom)
                 disk.removePartition(part)
                 disk.maximizePartition(parts[p-1], constraint)
+                if parts[p-1].geometry.start != geom.start:
+                    raise Exception("Operation would change partition start")
                 # The disk is in use at this point, which means parted will not
                 # be able to update the kernel with the new partition table and
                 # it will raise an exception. Lets suppress the exception here
