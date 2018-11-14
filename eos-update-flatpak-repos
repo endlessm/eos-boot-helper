@@ -1537,10 +1537,9 @@ def _migrate_installed_flatpaks():
 
 
 if __name__ == '__main__':
-    # Send logging messages to the journal, and to stderr if it's a tty (which
-    # implies it's not the journal)
+    # Send logging messages both to the console and the journal
     handlers = [journal.JournalHandler()]
-    if sys.stderr.isatty():
+    if not GLib.log_writer_is_journald(sys.stderr.fileno()):
         handlers.append(logging.StreamHandler(sys.stderr))
     logging.basicConfig(level=logging.INFO, handlers=handlers)
 
