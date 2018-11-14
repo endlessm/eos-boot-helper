@@ -1,0 +1,32 @@
+#!/bin/bash
+
+run_stage () {
+    stage_var_name=EOS_FACTORY_RESET_$1
+    if [ "${!stage_var_name}" = 1 ]; then
+        echo "Running factory reset stage $1"
+        "$(dirname "$0")/eos-factory-reset-${1,,}-helper"
+    else
+        echo "Skipping factory reset stage $1"
+    fi
+}
+
+flag_file=/var/.eos-factory-reset
+cmd_name=$(basename "$0")
+
+# Check that script was run with superuser privileges.
+if [[ $EUID != 0 ]]; then
+    echo "$cmd_name requires superuser privileges."
+    exit 1
+fi
+
+# Check if flag file exists
+if [ ! -f $flag_file ]; then
+    echo "$cmd_name: flag file '$flag_file' does not exist"
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+. $flag_file
+rm -v $flag_file
+
+run_stage USERS

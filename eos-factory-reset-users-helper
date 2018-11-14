@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ -f /etc/adduser.conf ]; then
+    . /etc/adduser.conf
+fi
+
+first_uid=${FIRST_UID:-1000}
+last_uid=${LAST_UID:-59999}
+
+IFS=':'
+while read -r user _ uid _ _ _ _; do
+    if [[ $uid -ge $first_uid && $uid -le $last_uid ]]; then
+        echo "Deleting user $user ($uid)"
+        userdel -r "$user"
+    fi
+done </etc/passwd

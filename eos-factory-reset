@@ -1,0 +1,89 @@
+#!/bin/bash -e
+
+cmd_name=$(basename "$0")
+
+usage () {
+    cat <<EOF
+Usage: $cmd_name
+Reboot the machine and perform a factory reset.
+
+  -u               reset all users only
+  -a               make a full factory reset
+  -f, --force      don't ask for user confirmation
+  -h, --help       display this help and exit
+
+EOF
+}
+
+args=$(getopt -o u,a,f,h -l "force,help" -n "$cmd_name" -- "$@") || exit 1
+
+eval set -- "$args"
+
+reset_stages=""
+ask_confirmation=1
+
+while true; do
+    case "$1" in
+        -u)
+            reset_stages="USERS $reset_stages"
+            shift
+            ;;
+        -a)
+            reset_stages="USERS"
+            shift
+            ;;
+        -f|--force)
+            ask_confirmation=0
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Check that script was run with superuser privileges.
+if [[ $EUID != 0 ]]; then
+    echo "$cmd_name requires superuser privileges."
+    exit 1
+fi
+
+if [ -z $reset_stages ]; then
+    echo "$cmd_name: No stages were selected"
+    exit 1
+fi
+
+
+if [ $ask_confirmation -eq 1 ]; then
+    echo "This tool will perform a factory reset, which will delete all"
+    echo "users and their documents, images, etc. forever."
+    echo ""
+    echo "During this process, you'll see a black screen for a few seconds"
+    echo "and then the system will be restarted."
+    echo ""
+    echo "Selected factory reset stages: $reset_stages"
+    echo ""
+    echo "WARNING: These changes are IRREVERSIBLE."
+    echo ""
+
+    read -rp "Are you sure you want to proceed? [y/n] "
+    response="${REPLY,,}" # to lower
+    if [[ ! "$response" =~ ^(yes|y)$ ]]; then
+        exit 1
+    fi
+fi
+
+flag_file=/var/.eos-factory-reset
+echo -n > $flag_file
+for reset_stage in $reset_stages; do
+    echo "EOS_FACTORY_RESET_$reset_stage=1" >> $flag_file
+done
+
+systemctl reboot

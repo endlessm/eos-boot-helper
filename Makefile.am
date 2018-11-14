@@ -15,6 +15,7 @@ dist_systemdunit_DATA = \
 	eos-config-journal.service \
 	eos-enable-zram.service \
 	eos-extra-resize.service \
+	eos-factory-reset.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
@@ -74,6 +75,7 @@ dist_sbin_SCRIPTS = \
 	eos-config-journal \
 	eos-enable-zram \
 	eos-extra-resize \
+	eos-factory-reset \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-image-boot-dm-setup \
@@ -81,6 +83,12 @@ dist_sbin_SCRIPTS = \
 	eos-reclaim-swap \
 	eos-repartition-mbr \
 	eos-update-flatpak-repos \
+	$(NULL)
+
+eosfactoryresetdir = $(prefix)/lib/eos-factory-reset
+dist_eosfactoryreset_SCRIPTS = \
+	eos-factory-reset-helper \
+	eos-factory-reset-users-helper \
 	$(NULL)
 
 tmpfilesdir = $(prefix)/lib/tmpfiles.d

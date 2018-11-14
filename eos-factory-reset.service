@@ -1,0 +1,18 @@
+[Unit]
+Description=Endless factory reset service
+ConditionPathExists=/var/.eos-factory-reset
+RefuseManualStart=yes
+DefaultDependencies=no
+Requires=sysinit.target
+After=sysinit.target local-fs.target
+Before=shutdown.target basic.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-factory-reset/eos-factory-reset-helper
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=basic.target
