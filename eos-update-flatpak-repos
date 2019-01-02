@@ -1002,6 +1002,16 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate Skype to flathub (T24741)
+    {
+        'name': 'com.microsoft.Skype',
+        'new-name': 'com.skype.Client',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
@@ -1216,10 +1226,14 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     metadata.set_string(FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY,
                         old_id, FLATPAK_METADATA_BUS_POLICY_OWN)
 
-    # prohibit Extra Data apps at present, because they cannot be re-deployed
-    # without connectivity to download the original data file
-    if metadata.has_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
-        raise Exception('Cannot support extra data app {}'.format(old_id))
+    # extra data apps are handled by removing the [Extra Data] from the metadata
+    # of the migrated app to allow the deploy to be done offline. instead,
+    # after the new app is installed, this script will copy the /app/extra
+    # folder from the pre-migration deploy folder. the migration function
+    # examines the commit metadata of the app being migrated to determine
+    # whether the re-deploy has to carry out this extra step.
+    if metadata.remove_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
+        logging.info('Removing [Extra Data] from {} metadata'.format(old_id))
 
     metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
 
@@ -1317,6 +1331,10 @@ def copy_commit(repo, src_rev, dest_ref,
         metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
         commit_metadata.insert_value('xa.metadata',
                                      GLib.Variant('s', metadata))
+
+        # unconditionally remove extra data, the caller determines whether the
+        # the extra data dir needs migrating
+        commit_metadata.remove('xa.extra-data-sources')
     else:
         vendor_prefixes = frozenset()
 
@@ -1333,6 +1351,30 @@ def copy_commit(repo, src_rev, dest_ref,
     logging.info('Created new commit %s', dest_checksum)
 
     return dest_checksum, vendor_prefixes
+
+
+def migrate_extra_data(old_ref, new_ref):
+    old_deploy = old_ref.get_deploy_dir()
+    old_extra = os.path.join(old_deploy, 'files', 'extra')
+
+    new_deploy = new_ref.get_deploy_dir()
+    new_extra = os.path.join(new_deploy, 'files', 'extra')
+
+    if os.path.exists(new_extra):
+        # either the user manually installed Skype from Flathub, or we got
+        # this far but died before uninstalling the old ref last time
+        logging.info('%s already has extra data dir', new_ref.format_ref())
+    else:
+        logging.debug('Copying extra data from %s to %s',
+                      old_ref.format_ref(), new_ref.format_ref())
+        subprocess.check_call(['cp', '-alT', old_extra, new_extra + '.tmp'])
+        os.rename(new_extra + '.tmp', new_extra)
+
+
+def is_extra_data(repo, rev):
+    _, commit_variant, _ = repo.load_commit(rev)
+    commit_metadata = GLib.VariantDict.new(commit_variant.get_child_value(0))
+    return commit_metadata.contains('xa.extra-data-sources')
 
 
 def _migrate_installed_flatpaks():
@@ -1432,6 +1474,7 @@ def _migrate_installed_flatpaks():
 
             try:
                 vendor_prefixes = frozenset()
+                migrate_extra = is_extra_data(repo, ostree_refs[old_ostree_ref])
 
                 # copy the old ref to the new one, pointing at the same commit
                 if old_ostree_ref in ostree_refs and not new_ref:
@@ -1475,6 +1518,9 @@ def _migrate_installed_flatpaks():
                                                     new_origin, kind, new_name,
                                                     arch, new_branch)
                         refs.append(new_ref)
+
+                    if migrate_extra:
+                        migrate_extra_data(ref, new_ref)
 
                     logging.info('Uninstalling old ref: {}'.format(old_ostree_ref))
                     inst.uninstall_full(Flatpak.UninstallFlags.NO_PRUNE |
