@@ -1,4 +1,4 @@
-SUBDIRS = dracut flatpak-repos nvidia psi-monitor tests
+SUBDIRS = dracut factory-reset flatpak-repos nvidia psi-monitor tests
 EXTRA_DIST = debian .flake8
 
 # Install systemd units, generators, preset files, and udev rules
