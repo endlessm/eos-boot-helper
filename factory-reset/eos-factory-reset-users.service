@@ -1,0 +1,28 @@
+# eos-factory-reset-users.service - Remove All Users And Home Directories
+#
+# This unit will be disabled by default, and should be enabled to have it
+# remove all user accounts and home directories on the next boot. It will
+# disable itself automatically after running through its ExecStopPost
+# statement, which is executed despite of the service's main process exit
+# status.
+#
+# This unit is ordered between sysinit.target and basic.target (see the bootup
+# manpage for more info), to guarantee early boot services (specifically mount
+# units) are available but no users are logged in.
+
+[Unit]
+Description=Remove All Users And Home Directories
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=basic.target shutdown.target
+Requires=sysinit.target
+After=sysinit.target
+RefuseManualStart=yes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/eos-factory-reset/eos-factory-reset-users
+ExecStopPost=/usr/bin/systemctl disable %n
+
+[Install]
+WantedBy=basic.target
