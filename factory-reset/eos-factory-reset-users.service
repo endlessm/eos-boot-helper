@@ -6,18 +6,21 @@
 # statement, which is executed despite of the service's main process exit
 # status.
 #
-# This unit is ordered between sysinit.target and basic.target (see the bootup
-# manpage for more info), to guarantee early boot services (specifically mount
-# units) are available but no users are logged in.
+# This unit needs to be ordered before any unprivileged users are able to
+# login, but after the D-Bus daemon has already started. dbus.service is
+# ordered after basic.target, so we can't order this unit before basic.target,
+# otherwise userdel will block waiting for a reply from the D-Bus daemon.
+#
+# Ordering this unit before systemd-user-sessions.service guarantees no
+# unprivileged users will login before it finishes, as a tmpfile snippet
+# creates /run/nologin during early boot and systemd-user-sessions.service
+# removes it when the boot is finished. See pam_nologin(8) for more info.
 
 [Unit]
 Description=Remove All Users And Home Directories
-DefaultDependencies=no
-Conflicts=shutdown.target
-Before=basic.target shutdown.target
-Requires=sysinit.target
-After=sysinit.target
 RefuseManualStart=yes
+Wants=dbus.service
+Before=systemd-user-sessions.service
 
 [Service]
 Type=oneshot
@@ -25,4 +28,4 @@ ExecStart=/usr/libexec/eos-factory-reset/eos-factory-reset-users
 ExecStopPost=/usr/bin/systemctl disable %n
 
 [Install]
-WantedBy=basic.target
+WantedBy=multi-user.target
