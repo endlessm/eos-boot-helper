@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup The Fallback Framebuffer
+Requires=display-manager.service
+After=display-manager.service
+
+[Service]
+ExecStart=/usr/libexec/fallback-fb-setup/fallback-fb-setup
+
+[Install]
+WantedBy=graphical.target
