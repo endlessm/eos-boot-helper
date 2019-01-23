@@ -10,14 +10,34 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <linux/fb.h>
+#include <linux/kd.h>
 
 #define FBDEV "/dev/fb0"
+#define TTYDEV "/dev/tty0"
 
 int main(int argc, char **argv) {
-    int ret = 0, fb_fd = -1;
+    int ret = 0, fb_fd = -1, tty_fd = -1, tty_mode;
     uint8_t *fbp = MAP_FAILED;
     size_t screensize, bytes_per_pixel;
     struct fb_var_screeninfo vinfo;
+
+    tty_fd = open(TTYDEV, O_RDWR);
+    if (tty_fd == -1) {
+        perror("Failed to open " TTYDEV);
+        ret = errno;
+        goto exit;
+    }
+
+    if (ioctl(tty_fd, KDGETMODE, &tty_mode) == -1) {
+        perror("KDGETMODE failed on " TTYDEV);
+        ret = errno;
+        goto exit;
+    }
+
+    if (tty_mode == KD_TEXT) {
+        printf("VT is in text mode, exiting");
+        goto exit;
+    }
 
     fb_fd = open(FBDEV, O_RDWR);
     if (fb_fd == -1) {
@@ -51,6 +71,9 @@ exit:
 
     if (fb_fd != -1)
         close(fb_fd);
+
+    if (tty_fd != -1)
+        close(tty_fd);
 
     return ret;
 }
