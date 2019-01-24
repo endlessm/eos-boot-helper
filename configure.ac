@@ -61,6 +61,7 @@ AC_CONFIG_FILES([
 	dracut/image-boot/Makefile
 	dracut/repartition/Makefile
 	dracut/customization/Makefile
+	fallback-fb-setup/Makefile
 	flatpak-repos/Makefile
 	nvidia/Makefile
 	psi-monitor/Makefile

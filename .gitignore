@@ -10,6 +10,7 @@ config.log
 config.status
 configure
 depcomp
+fallback-fb-setup/fallback-fb-setup
 install-sh
 missing
 psi-monitor/psi-monitor
