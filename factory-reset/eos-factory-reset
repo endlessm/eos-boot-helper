@@ -1,0 +1,114 @@
+#!/usr/bin/python3
+import argparse
+import logging
+import subprocess
+import sys
+
+from systemd import journal
+
+# Options list
+# Each entry has the form (short name, long name, description)
+OPTS = [
+    ("D", "disable", "fully remove a scheduled factory reset"),
+]
+
+# Stages dictionary
+# Each entry has the form {name: description}
+# When creating a new stage make sure to check both STAGES and OPTS so names
+# don't clash, as they both create optional command line arguments.
+STAGES = {
+    "users": "remove all user accounts (and home directories)",
+}
+
+
+def yes_or_no(question):
+    answer = ""
+    while answer not in ["y", "n"]:
+        answer = input("{} ".format(question)).lower()
+    return answer == "y"
+
+
+def toggle_stage(logger, stage, action):
+    unit = "eos-factory-reset-{}.service".format(stage)
+    cmd = ["systemctl", "--quiet", action, unit]
+    sp = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    status, msg = sp.returncode, sp.stdout.decode().rstrip("\n")
+    if status != 0:
+        logger.error("Failed to {} stage '{}': {}".format(action, stage, msg))
+    return status, msg
+
+
+if __name__ == "__main__":
+    desc = "reboot the machine and perform a factory reset."
+
+    logger = logging.getLogger(__name__)
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+    logger.addHandler(journal.JournalHandler())
+
+    parser = argparse.ArgumentParser(description=desc,
+                                     argument_default=argparse.SUPPRESS)
+    for n, name, desc in OPTS:
+        parser.add_argument("-{}".format(n), "--{}".format(name), help=desc,
+                            action="store_true")
+
+    group = parser.add_argument_group("stages to be performed on the next boot",
+                                      "if no stage is selected all stages will"
+                                      " be scheduled")
+    for name, desc in STAGES.items():
+        group.add_argument("--{}".format(name), help=desc, dest="stages",
+                           const=name, action="append_const")
+
+    args = vars(parser.parse_args())
+    disable = args.pop("disable", False)
+    if disable:
+        stages = STAGES.keys()
+    else:
+        stages = args.pop("stages", STAGES.keys())
+
+    if not disable:
+        action = "enable"
+        warn_msg = [
+            "Selected stages: {}".format(' '.join(stages)),
+            "WARNING: You are about to schedule IRREVERSIBLE changes to be",
+            "performed on the next boot. If you do not want to schedule these",
+            "changes for the next boot say 'n' now.",
+        ]
+        success_msg = [
+            "A factory reset procedure is scheduled for the next boot.",
+            "Please reboot the machine to proceed with the reset process.",
+            "If this was a mistake, run '{parser.prog} --disable'.",
+        ]
+    else:
+        action = "disable"
+        warn_msg = [
+            "You are about to remove the scheduled factory reset process.",
+            "Unless scheduled again, a factory reset will NOT be performed.",
+        ]
+        success_msg = [
+            "A factory reset procedure is not scheduled for the next boot.",
+        ]
+
+    print(*warn_msg, sep="\n", end="\n\n")
+    if not yes_or_no("Do you want to proceed [y/n]?"):
+        logging.shutdown()
+        sys.exit(0)
+    print()
+
+    formatted_verb = "{}{}ing".format(action[0].upper(), action[1:-1])
+    logger.info("{} stages: {}".format(formatted_verb, ' '.join(stages)))
+    for stage in stages:
+        status, msg = toggle_stage(logger, stage, action)
+        if status != 0:
+            if not disable:
+                dmsg = "Disabling selected stages: {}".format(' '.join(stages))
+                logger.warning(dmsg)
+                for s in stages:
+                    toggle_stage(logger, s, "disable")
+            logging.shutdown()
+            sys.exit(1)
+
+    logging.shutdown()
+    print()
+    print(*success_msg, sep="\n")
