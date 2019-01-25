@@ -1,0 +1,42 @@
+#!/bin/bash
+
+ADM_GROUP="sudo"
+
+if [ -f /etc/adduser.conf ]; then
+    . /etc/adduser.conf
+fi
+
+first_uid=${FIRST_UID:-1000}
+last_uid=${LAST_UID:-59999}
+
+admin_users=()
+nonadmin_users=()
+
+IFS=':'
+while read -r user _ uid _ _ _ _; do
+    if [[ $uid -ge $first_uid && $uid -le $last_uid ]]; then
+        /usr/bin/id -Gn $user | grep --word-regexp --quiet $ADM_GROUP
+        if [[ $? -eq 0 ]] ; then
+            echo "Found admin user '$user' ($uid)"
+            admin_users+=($user)
+        else
+            echo "Found non-admin user '$user' ($uid)"
+            nonadmin_users+=($user)
+        fi
+    fi
+done </etc/passwd
+
+for user in "${nonadmin_users[@]}"; do
+    /usr/sbin/deluser --remove-home "$user"
+    if [[ $? != 0 ]]; then
+        echo "Failed to remove user '$user'"
+        exit 1
+    fi
+done
+
+for user in "${admin_users[@]}"; do
+    /usr/sbin/deluser --remove-home "$user"
+    if [[ $? != 0 ]]; then
+        echo "Failed to remove user '$user'"
+    fi
+done
