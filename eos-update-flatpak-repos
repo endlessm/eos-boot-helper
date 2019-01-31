@@ -1234,12 +1234,11 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     # whether the re-deploy has to carry out this extra step.
     try:
         metadata.remove_group(FLATPAK_METADATA_GROUP_EXTRA_DATA)
+        logging.info('Removing [Extra Data] from {} metadata'.format(old_id))
     except GLib.GError as e:
         if not e.matches(GLib.key_file_error_quark(),
                          GLib.KeyFileError.GROUP_NOT_FOUND):
             raise
-    else:
-        logging.info('Removing [Extra Data] from {} metadata'.format(old_id))
 
     metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
 
