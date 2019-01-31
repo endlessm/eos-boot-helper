@@ -26,7 +26,7 @@ eufr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(eufr)
 
 
-class TestMangleDesktopFile(BaseTestCase):
+class TestMangleMetadataAndDesktopFile(BaseTestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
 
@@ -38,11 +38,6 @@ class TestMangleDesktopFile(BaseTestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
-
-    def _ensure_dirs(self, mtree, *dirs):
-        for name in dirs:
-            _, mtree = mtree.ensure_dir(name)
-        return mtree
 
     def test_rename_empty_desktop(self):
         '''No keys we care about'''
@@ -110,14 +105,15 @@ class TestMangleDesktopFile(BaseTestCase):
         XDG_DATA_DIR/applications/vendor/foo.desktop should be treated as if it were
         XDG_DATA_DIR/applications/vendor-foo.desktop. This concept was embraced by the
         KDE games we shipped, with a 'kde4' vendor prefix."""
-        orig_name = "com.example.Hello.desktop"
+        orig_id = "com.example.Hello"
         orig_data = textwrap.dedent(
             """
             [Desktop Entry]
             """
         ).strip()
 
-        expected_name = "org.example.Hi.desktop"
+        expected_id = "org.example.Hi"
+        expected_name = expected_id + ".desktop"
         expected_data = textwrap.dedent(
             """
             [Desktop Entry]
@@ -125,14 +121,24 @@ class TestMangleDesktopFile(BaseTestCase):
             """
         ).strip()
 
+        # Generate metadata file, store it in the tree
+        orig_metadata = textwrap.dedent(
+            """
+            [Application]
+            name=com.example.Hello
+            runtime=org.freedesktop.Platform/x86_64/18.08
+            sdk=org.freedesktop.Sdk/x86_64/18.08
+            command=hello
+            """
+        ).strip()
+        self._put_file((), "metadata", orig_metadata)
+
         # Store the original file in the tree
         kde4_path = ('export', 'share', 'applications', 'kde4')
-        self._put_file(kde4_path, orig_name, orig_data)
+        self._put_file(kde4_path, orig_id + ".desktop", orig_data)
 
-        # Rename the contents of the export/ directory
-        _, export = self.mtree.ensure_dir("export")
-        vendor_prefixes = eufr.rename_exports(
-            self.repo, export, "com.example.Hello", "org.example.Hi",
+        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+            self.repo, self.mtree, "com.example.Hello", "org.example.Hi",
         )
         self.assertEqual({'kde4'}, vendor_prefixes)
 
@@ -150,6 +156,50 @@ class TestMangleDesktopFile(BaseTestCase):
         bytes_ = stream.read_bytes(info.get_size())
         self.assertEqual(bytes_.get_data().decode("utf-8").strip(), expected_data)
 
+        # Check the metadata has been updated with the new name
+        self.assertEqual(self._get_name_from_metadata(), expected_id)
+
+    def test_rename_extra_data(self):
+        """Tests that the Extra Data section is stripped from the metadata."""
+        orig_id = "com.example.Hello"
+        expected_id = "org.example.Hi"
+
+        # Generate metadata file, store it in the tree
+        orig_metadata = textwrap.dedent(
+            """
+            [Application]
+            name=com.example.Hello
+            runtime=org.freedesktop.Platform/x86_64/18.08
+            sdk=org.freedesktop.Sdk/x86_64/18.08
+            command=hello
+
+            [Extra Data]
+            name=skypeforlinux-64.deb
+            checksum=e017fa5f3b78104b18c9e3ec00a678e513095cd4129a83b301f2b2c0dbb606a5
+            size=73441958
+            uri=https://repo.skype.com/deb/pool/main/s/skypeforlinux/skypeforlinux_8.34.0.78_amd64.deb
+            """
+        ).strip()
+        self._put_file((), "metadata", orig_metadata)
+
+        # Pop an empty export dir in, to suppress a (legit) warning
+        self._mkdir_p(('export',))
+
+        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+            self.repo, self.mtree, orig_id, expected_id,
+        )
+        self.assertEqual(set(), vendor_prefixes)
+
+        # Check the metadata has been updated with the new name
+        metadata = self._get_metadata()
+        self.assertEqual(metadata.get_string('Application', 'name'), expected_id)
+
+        # and that the Extra Data section has been removed
+        self.assertFalse(metadata.has_group('Extra Data'))
+
+        # TODO: test the end-to-end migration process, including copying the
+        # old extra data into place
+
     def _mkdir_p(self, path):
         mtree = self.mtree
         for name in path:
@@ -166,15 +216,39 @@ class TestMangleDesktopFile(BaseTestCase):
         directory = self._mkdir_p(parents)
         eufr.mtree_add_file(self.repo, directory, stream, info)
 
+    def _get_metadata(self):
+        _, stream, info, _ = self.repo.load_file(self.mtree.get_files()['metadata'])
+        bytes_ = stream.read_bytes(info.get_size())
+
+        kf = GLib.KeyFile()
+        kf.load_from_bytes(bytes_, GLib.KeyFileFlags.NONE)
+        return kf
+
+    def _get_name_from_metadata(self):
+        return self._get_metadata().get_string('Application', 'name')
+
     def _test_simple(self, orig_name, orig_data, expected_name, expected_data):
+        orig_id = "com.example.Hello"
+        expected_id = "org.example.Hi"
+
+        # Generate metadata file, store it in the tree
+        orig_metadata = textwrap.dedent(
+            """
+            [Application]
+            name={orig_id}
+            runtime=org.freedesktop.Platform/x86_64/18.08
+            sdk=org.freedesktop.Sdk/x86_64/18.08
+            command=hello
+            """
+        ).strip().format(orig_id=orig_id)
+        self._put_file((), "metadata", orig_metadata)
+
         # Store the original file in the tree
         desktop_path = ('export', 'share', 'applications')
         self._put_file(desktop_path, orig_name, orig_data)
 
-        # Rename the contents of the export/ directory
-        _, export = self.mtree.ensure_dir("export")
-        vendor_prefixes = eufr.rename_exports(
-            self.repo, export, "com.example.Hello", "org.example.Hi"
+        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+            self.repo, self.mtree, orig_id, expected_id,
         )
         self.assertEqual(set(), vendor_prefixes)
 
@@ -184,6 +258,9 @@ class TestMangleDesktopFile(BaseTestCase):
         _, stream, info, _ = self.repo.load_file(files[expected_name])
         bytes_ = stream.read_bytes(info.get_size())
         self.assertEqual(bytes_.get_data().decode("utf-8").strip(), expected_data)
+
+        # Check the metadata has been updated with the new name
+        self.assertEqual(self._get_name_from_metadata(), expected_id)
 
 
 class TestUpdateDeployFile(BaseTestCase):
