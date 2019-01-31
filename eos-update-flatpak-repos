@@ -1232,8 +1232,13 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
     # folder from the pre-migration deploy folder. the migration function
     # examines the commit metadata of the app being migrated to determine
     # whether the re-deploy has to carry out this extra step.
-    if metadata.has_group(FLATPAK_METADATA_GROUP_EXTRA_DATA):
+    try:
         metadata.remove_group(FLATPAK_METADATA_GROUP_EXTRA_DATA)
+    except GLib.GError as e:
+        if not e.matches(GLib.key_file_error_quark(),
+                         GLib.KeyFileError.GROUP_NOT_FOUND):
+            raise
+    else:
         logging.info('Removing [Extra Data] from {} metadata'.format(old_id))
 
     metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
