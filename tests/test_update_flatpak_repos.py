@@ -159,6 +159,47 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         # Check the metadata has been updated with the new name
         self.assertEqual(self._get_name_from_metadata(), expected_id)
 
+    def test_rename_extra_data(self):
+        """Tests that the Extra Data section is stripped from the metadata."""
+        orig_id = "com.example.Hello"
+        expected_id = "org.example.Hi"
+
+        # Generate metadata file, store it in the tree
+        orig_metadata = textwrap.dedent(
+            """
+            [Application]
+            name=com.example.Hello
+            runtime=org.freedesktop.Platform/x86_64/18.08
+            sdk=org.freedesktop.Sdk/x86_64/18.08
+            command=hello
+
+            [Extra Data]
+            name=skypeforlinux-64.deb
+            checksum=e017fa5f3b78104b18c9e3ec00a678e513095cd4129a83b301f2b2c0dbb606a5
+            size=73441958
+            uri=https://repo.skype.com/deb/pool/main/s/skypeforlinux/skypeforlinux_8.34.0.78_amd64.deb
+            """
+        ).strip()
+        self._put_file((), "metadata", orig_metadata)
+
+        # Pop an empty export dir in, to suppress a (legit) warning
+        self._mkdir_p(('export',))
+
+        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+            self.repo, self.mtree, orig_id, expected_id,
+        )
+        self.assertEqual(set(), vendor_prefixes)
+
+        # Check the metadata has been updated with the new name
+        metadata = self._get_metadata()
+        self.assertEqual(metadata.get_string('Application', 'name'), expected_id)
+
+        # and that the Extra Data section has been removed
+        self.assertFalse(metadata.has_group('Extra Data'))
+
+        # TODO: test the end-to-end migration process, including copying the
+        # old extra data into plaice
+
     def _mkdir_p(self, path):
         mtree = self.mtree
         for name in path:
