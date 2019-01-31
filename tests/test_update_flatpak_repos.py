@@ -39,11 +39,6 @@ class TestMangleDesktopFile(BaseTestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _ensure_dirs(self, mtree, *dirs):
-        for name in dirs:
-            _, mtree = mtree.ensure_dir(name)
-        return mtree
-
     def test_rename_empty_desktop(self):
         '''No keys we care about'''
         orig_name = "com.example.Hello.desktop"
