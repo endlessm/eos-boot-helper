@@ -198,7 +198,7 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         self.assertFalse(metadata.has_group('Extra Data'))
 
         # TODO: test the end-to-end migration process, including copying the
-        # old extra data into plaice
+        # old extra data into plaice 🐟
 
     def _mkdir_p(self, path):
         mtree = self.mtree
