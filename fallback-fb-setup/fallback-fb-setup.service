@@ -4,7 +4,7 @@ Requires=display-manager.service
 After=display-manager.service
 
 [Service]
-ExecStart=/usr/libexec/fallback-fb-setup/fallback-fb-setup
+ExecStart=/usr/lib/eos-boot-helper/fallback-fb-setup/fallback-fb-setup
 
 [Install]
 WantedBy=graphical.target
