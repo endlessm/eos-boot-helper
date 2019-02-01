@@ -24,7 +24,7 @@ Before=systemd-user-sessions.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/eos-factory-reset/eos-factory-reset-users
+ExecStart=/usr/lib/eos-boot-helper/eos-factory-reset/eos-factory-reset-users
 ExecStopPost=/usr/bin/systemctl disable %n
 
 [Install]
