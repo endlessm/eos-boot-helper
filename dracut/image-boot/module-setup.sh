@@ -12,7 +12,7 @@ depends() {
 install() {
   dracut_install blockdev kpartx dmsetup dumpexfat ntfsextents lsblk losetup
   instmods overlay
-  inst_rules 55-dm.rules 60-cdrom_id.rules
+  inst_rules 55-dm.rules 60-cdrom_id.rules 95-dm-notify.rules
   inst_script "$moddir"/eos-image-boot-setup /bin/eos-image-boot-setup
   inst_script "$moddir"/eos-live-early-overlayfs-setup /bin/eos-live-early-overlayfs-setup
   inst_script "$moddir"/eos-map-image-file /bin/eos-map-image-file
