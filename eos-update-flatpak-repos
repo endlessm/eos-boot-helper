@@ -304,6 +304,13 @@ FLATPAKS_TO_MIGRATE = [
         'old-origin': 'gnome',
         'new-origin': 'flathub'
     },
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '3.28',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
     # migrate eos-apps to flathub where the app ID is the same (T20724)
     {
         'name': 'com.google.AndroidStudio',
