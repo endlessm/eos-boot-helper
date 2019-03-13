@@ -29,8 +29,9 @@ disable speech-dispatcherd.service
 disable ssh*.service
 disable ssh.socket
 disable systemd-nspawn@.service
-disable wpa_supplicant@.service
 disable wpa_supplicant.service
+disable wpa_supplicant@.service
+disable wpa_supplicant-wired@.service
 
 # Disable units masked by Debian, as systemctl preset-all fails to
 # handle them. Without this, `systemctl preset-all` will fail with:
