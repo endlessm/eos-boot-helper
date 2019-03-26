@@ -5,8 +5,5 @@
 # delimiter: ,
 # Quote character: "
 
-# Occasional hang upon S3 resume (GTX1060) (T21513)
-Acer,Nitro N50-600
-
 # Massive graphics corruption (940MX) (T23366)
 Acer,TravelMate P648-G2-MG
