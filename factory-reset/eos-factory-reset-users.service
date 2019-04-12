@@ -15,12 +15,16 @@
 # unprivileged users will login before it finishes, as a tmpfile snippet
 # creates /run/nologin during early boot and systemd-user-sessions.service
 # removes it when the boot is finished. See pam_nologin(8) for more info.
+#
+# This unit also needs to be ordered before display-manager.service, to have
+# GDM started only after all users are already removed so it knows it should
+# launch the FBE.
 
 [Unit]
 Description=Remove All Users And Home Directories
 RefuseManualStart=yes
 Wants=dbus.service
-Before=systemd-user-sessions.service
+Before=systemd-user-sessions.service display-manager.service
 
 [Service]
 Type=oneshot
