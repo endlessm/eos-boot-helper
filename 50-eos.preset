@@ -13,6 +13,7 @@ disable apt-daily.timer
 disable apt-daily-upgrade.timer
 disable bluetooth-init.service
 disable crio.service
+disable crio-shutdown.service
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
 disable eos-update-server.service
