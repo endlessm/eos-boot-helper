@@ -16,6 +16,7 @@ disable crio.service
 disable crio-shutdown.service
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
+disable eos-safe-defaults.service
 disable eos-update-server.service
 disable eos-update-server.socket
 disable eos-updater-avahi.path
