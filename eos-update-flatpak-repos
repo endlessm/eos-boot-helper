@@ -1012,6 +1012,15 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate Minecraft to flathub (T26588)
+    {
+        'name': 'com.mojang.Minecraft',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
@@ -1260,7 +1269,7 @@ COMMIT_BODY_INDEX = 4
 
 def copy_commit(repo, src_rev, dest_ref,
                 old_app_id=None, new_app_id=None,
-                collection_id=None):
+                collection_id=None, migrate_extra=False):
     """Copy commit src_rev to dest_ref
     This makes the new commit at dest_ref have the proper collection
     binding for this repo. The caller is expected to manage the
@@ -1332,7 +1341,8 @@ def copy_commit(repo, src_rev, dest_ref,
     mtree = OSTree.MutableTree.new()
     repo.write_directory_to_mtree(src_root, mtree, None)
 
-    if old_app_id and new_app_id and old_app_id != new_app_id:
+    if old_app_id and new_app_id and \
+       (old_app_id != new_app_id or migrate_extra):
         metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
         commit_metadata.insert_value('xa.metadata',
                                      GLib.Variant('s', metadata))
@@ -1493,6 +1503,7 @@ def _migrate_installed_flatpaks():
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
                             kwargs['new_app_id'] = new_name
+                            kwargs['migrate_extra'] = migrate_extra
                         new_commit, vendor_prefixes = copy_commit(
                             repo,
                             ostree_refs[old_ostree_ref],
