@@ -137,7 +137,7 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         kde4_path = ('export', 'share', 'applications', 'kde4')
         self._put_file(kde4_path, orig_id + ".desktop", orig_data)
 
-        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+        metadata_str, vendor_prefixes = eufr.rewrite_metadata(
             self.repo, self.mtree, "com.example.Hello", "org.example.Hi",
         )
         self.assertEqual({'kde4'}, vendor_prefixes)
@@ -185,7 +185,7 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         # Pop an empty export dir in, to suppress a (legit) warning
         self._mkdir_p(('export',))
 
-        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+        metadata_str, vendor_prefixes = eufr.rewrite_metadata(
             self.repo, self.mtree, orig_id, expected_id,
         )
         self.assertEqual(set(), vendor_prefixes)
@@ -247,7 +247,7 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         desktop_path = ('export', 'share', 'applications')
         self._put_file(desktop_path, orig_name, orig_data)
 
-        metadata_str, vendor_prefixes = eufr.rewrite_app_id(
+        metadata_str, vendor_prefixes = eufr.rewrite_metadata(
             self.repo, self.mtree, orig_id, expected_id,
         )
         self.assertEqual(set(), vendor_prefixes)
