@@ -1227,13 +1227,15 @@ FLATPAK_METADATA_GROUP_EXTRA_DATA = 'Extra Data'
 
 def rewrite_metadata(repo, mtree, old_id, new_id):
     metadata, info = mtree_load_keyfile(repo, mtree, FLATPAK_METADATA_FILE)
-    metadata.set_string(FLATPAK_METADATA_APPLICATION,
-                        FLATPAK_METADATA_KEY_NAME, new_id)
 
-    # allow the app to own its old bus name (if the app was relying on this,
-    # it would lose the right to this name with the new ID)
-    metadata.set_string(FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY,
-                        old_id, FLATPAK_METADATA_BUS_POLICY_OWN)
+    if old_id != new_id:
+        metadata.set_string(FLATPAK_METADATA_APPLICATION,
+                            FLATPAK_METADATA_KEY_NAME, new_id)
+
+        # allow the app to own its old bus name (if the app was relying on this,
+        # it would lose the right to this name with the new ID)
+        metadata.set_string(FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY,
+                            old_id, FLATPAK_METADATA_BUS_POLICY_OWN)
 
     # extra data apps are handled by removing the [Extra Data] from the metadata
     # of the migrated app to allow the deploy to be done offline. instead,
