@@ -1225,7 +1225,7 @@ FLATPAK_METADATA_BUS_POLICY_OWN = 'own'
 FLATPAK_METADATA_GROUP_EXTRA_DATA = 'Extra Data'
 
 
-def rewrite_app_id(repo, mtree, old_id, new_id):
+def rewrite_metadata(repo, mtree, old_id, new_id):
     metadata, info = mtree_load_keyfile(repo, mtree, FLATPAK_METADATA_FILE)
     metadata.set_string(FLATPAK_METADATA_APPLICATION,
                         FLATPAK_METADATA_KEY_NAME, new_id)
@@ -1250,6 +1250,10 @@ def rewrite_app_id(repo, mtree, old_id, new_id):
             raise
 
     metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
+
+    if old_id == new_id:
+        vendor_prefixes = frozenset()
+        return metadata_str, vendor_prefixes
 
     dirs = mtree.get_subdirs()
     if 'export' in dirs:
@@ -1343,7 +1347,8 @@ def copy_commit(repo, src_rev, dest_ref,
 
     if old_app_id and new_app_id and \
        (old_app_id != new_app_id or migrate_extra):
-        metadata, vendor_prefixes = rewrite_app_id(repo, mtree, old_app_id, new_app_id)
+        metadata, vendor_prefixes = rewrite_metadata(repo, mtree, old_app_id,
+                                                     new_app_id)
         commit_metadata.insert_value('xa.metadata',
                                      GLib.Variant('s', metadata))
 
