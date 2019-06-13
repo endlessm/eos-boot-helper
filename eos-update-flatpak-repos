@@ -1050,7 +1050,14 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
-    }
+    },
+    # Chess got the titlecase treatment (T27018)
+    {
+        "name": "org.gnome.chess",
+        "new-name": "org.gnome.Chess",
+        "kind": Flatpak.RefKind.APP,
+        "old-origin": "flathub",
+    },
 ]
 
 
