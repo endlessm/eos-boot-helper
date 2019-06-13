@@ -1031,6 +1031,25 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate endlessnetwork apps to flathub (T25928)
+    {
+        'name': 'com.endlessm.MidnightmareTeddy',
+        'new-name': 'com.endlessnetwork.MidnightmareTeddy',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
+    },
+    {
+        'name': 'com.endlessm.MissileMath',
+        'new-name': 'com.endlessnetwork.missilemath',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
