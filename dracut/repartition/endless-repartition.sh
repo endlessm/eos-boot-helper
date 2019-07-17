@@ -248,7 +248,7 @@ orig_root_part_escaped=$(systemd-escape -p $orig_root_part | sed -e 's:\\:\\\\:g
 root_part_escaped=$(systemd-escape -p $root_part | sed -e 's:\\:\\\\:g')
 
 #for PAYG images using sd-boot, this ends up in generator.late
-if [ -a /run/systemd/generator/systemd-fsck-root.service ] ;then
+if [ -e /run/systemd/generator/systemd-fsck-root.service ]; then
   service_file=/run/systemd/generator/systemd-fsck-root.service
 else
   service_file=/run/systemd/generator.late/systemd-fsck-root.service
