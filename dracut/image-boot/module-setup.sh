@@ -14,6 +14,7 @@ install() {
   instmods overlay
   inst_rules 55-dm.rules 60-cdrom_id.rules 95-dm-notify.rules
   inst_script "$moddir"/eos-image-boot-setup /bin/eos-image-boot-setup
+  inst_script "$moddir"/eos-live-storage-setup /bin/eos-live-storage-setup
   inst_script "$moddir"/eos-map-image-file /bin/eos-map-image-file
   inst_simple "$moddir"/eos-image-boot-setup.service \
 	"$systemdsystemunitdir"/eos-image-boot-setup.service
