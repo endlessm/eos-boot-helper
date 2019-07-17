@@ -1,0 +1,98 @@
+#!/bin/sh
+# Copyright (C) 2019 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# When performing a live boot, create a 3rd partition filling the remaining
+# space on the device. This partition will later be used for persistent data
+# storage, so that your documents are kept for next time you boot.
+#
+# The filesystem is not created here (within the initramfs) as that can be
+# deferred until we are running from the real root. We just write a textual
+# marker to the start of the partition to indicate that the partition is
+# pending filesystem creation.
+
+image_partition_dev=$(readlink -f "$1")
+image_partition_type=$(lsblk -d -n -o TYPE "${image_partition_dev}")
+image_partition_sysfs=/sys/class/block/$(lsblk -d -n -o KNAME "${image_partition_dev}")
+
+if [ "${image_partition_type}" = "rom" ]; then
+  echo "Skipping storage setup - read only media"
+  exit 0
+fi
+
+case ${image_partition_dev} in
+  *1)
+    # partition 1 - ok
+    ;;
+  *)
+    echo "Skipping storage setup as image is not on partition 1"
+    exit 0
+    ;;
+esac
+
+case ${image_partition_dev} in
+  /dev/loop*p?)
+    using_loop=1
+    ;;
+esac
+
+host_disk_dev=/dev/$(lsblk -d -n -o PKNAME "${image_partition_dev}")
+host_disk_size=$(blockdev --getsz "${host_disk_dev}")
+
+# Identify EFI partition, which precedes the partition we will create
+efi_partition_dev=${image_partition_dev%?}2
+[ -e "${efi_partition_dev}" ] || exit 0
+
+efi_partition_sysfs=/sys/class/block/$(lsblk -d -n -o KNAME "${efi_partition_dev}")
+efi_partition_start=$(cat "${efi_partition_sysfs}"/start)
+efi_partition_size=$(blockdev --getsz "${efi_partition_dev}")
+[ -z "${efi_partition_start}" ] && exit 1
+
+# Set up target storage partition
+storage_partition_dev=${image_partition_dev%?}3
+[ -e "${storage_partition_dev}" ] && exit 0
+
+# Find a start position after the EFI partition
+storage_partition_start=$(( efi_partition_start + efi_partition_size ))
+
+# Fill the remainder of the disk
+storage_partition_size=$(( host_disk_size - storage_partition_start ))
+
+# Only create a storage partition if we have more than 1GB available,
+# otherwise assume that live mode is preferable.
+if [ ${storage_partition_size} -lt 2097152 ]; then
+  echo "Skip partition creation ($storage_partition_size sectors available)"
+  exit 0
+fi
+
+# Align storage partition start to 1MB boundary
+residue=$(( storage_partition_start % 2048 ))
+if [ $residue -gt 0 ]; then
+  storage_partition_start=$(( storage_partition_start + 2048 - residue ))
+  storage_partition_size=$(( host_disk_size - storage_partition_start ))
+fi
+
+# Just in case we ever want to convert to GPT, reserve 33 sectors at the
+# end of the disk, big enough for the secondary GPT header
+storage_partition_size=$(( storage_partition_size - 33 ))
+
+# udev might still be busy probing the disk, meaning that it will be in use.
+udevadm settle
+
+# Apply partition table change
+echo "start=${storage_partition_start}" |
+  sfdisk --no-reread --append "${host_disk_dev}"
+ret=$?
+echo "sfdisk returned $ret"
+udevadm settle
+
+# Loop devices need a prod for the new partition to show up
+if [ -n "${using_loop}" ]; then
+  partprobe "$host_disk_dev"
+  udevadm settle
+fi
+
+# write marker bytes to new partition, to trigger filesystem creation
+# later during boot
+echo "endless_live_storage_marker" > ${storage_partition_dev}
+exit 0

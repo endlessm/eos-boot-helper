@@ -43,6 +43,9 @@ else
 
   blockdev --setro ${host_device}
 
+  # If possible, create partition for persistent data storage
+  eos-live-storage-setup "${host_device}"
+
   if getargbool 0 endless.live_boot; then
     dm_roflag=--readonly
     kpartx_roflag=-r
