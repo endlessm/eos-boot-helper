@@ -1,4 +1,5 @@
 #!/bin/bash
+# Mount overlays over any directory that might be written to
 
 EXTRA_PATHS=$@
 
@@ -6,10 +7,6 @@ EXTRA_PATHS=$@
 # repo, where they are used to record permissions when run as an unprivileged
 # user.
 mount -o remount,user_xattr /run
-
-# Mount overlays over any directory that might be written to
-# Note that /etc was handled in the initramfs since it must be done early.
-# The rest of these should be done later, to avoid fighting with ostree-remount
 
 # /sysroot/ostree needs special handling:
 setup_ostree_flatpak_overlay() {
@@ -47,18 +44,51 @@ setup_ostree_flatpak_overlay() {
     # via the /var/lib/flatpak symlink.
 }
 
-# Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
-overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
-for dir in $overlay_dirs $EXTRA_PATHS; do
-    [ -d /$dir ] || continue
-    [ -d /run/eos-live/$dir ] && continue
+setup_overlay() {
+    local dir=$1
+    local target=${2:-/$dir}
+    [ -d /$dir ] || return
+    [ -d /run/eos-live/$dir ] && return
     # If the directory is a symlink, assume it's pointing to a location
     # covered by another top level overlay
-    [ -L /$dir ] && continue
+    [ -L /$dir ] && return
     mkdir -p /run/eos-live/$dir /run/eos-live/$dir-workdir
     mount -t overlay -o \
         rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
-        eos-live-$dir /$dir
+        eos-live-$dir $target
+}
+
+# Setup /etc overlay at a special temporary location first, so that we can
+# atomically take care of /etc/machine-id presence.
+mkdir /run/etc.tmp
+setup_overlay etc /run/etc.tmp
+
+# If we booted and systemd was unable to find or create a machine-id,
+# it will create one at /run/machine-id and bind mount it at /etc/machine-id.
+# But the overlay we just set up at /run/etc.tmp does not include that child
+# bind mount, so in the case where this is a brand new empty overlay, we're
+# back to having no machine-id there.
+#
+# In addition to recovering the machine-id, we also want to use this
+# opportunity to store it in the overlayfs, in case the overlayfs is backed
+# by persistent storage.
+#
+# Both goals can be satisfied in simplistic fashion by copying systemd's
+# boot-generated machine-id into place, in the case where we didn't find one
+# in the overlay.
+
+if [[ ! -s /run/etc.tmp/machine-id && -s /run/machine-id ]]; then
+  cp /run/machine-id /run/etc.tmp/machine-id
+fi
+
+# Atomically move our /etc overlay into the right place
+mount --move /run/etc.tmp /etc
+rmdir /run/etc.tmp
+
+# Everything else but /sysroot/{ostree,flatpak} is pretty straightforward:
+overlay_dirs="bin boot endless home lib opt ostree root sbin srv sysroot/home var"
+for dir in $overlay_dirs $EXTRA_PATHS; do
+    setup_overlay $dir
 done
 
 # Once /var is writable, we can set up the special ostree+flatpak overlay:
