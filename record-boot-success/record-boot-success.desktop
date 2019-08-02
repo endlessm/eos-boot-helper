@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Record boot status
+Type=Application
+NoDisplay=true
+Exec=dbus-send --system --type=method_call --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.StartServiceByName string:"com.endlessm.RecordBootSuccess" uint32:0

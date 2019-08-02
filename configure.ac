@@ -20,6 +20,9 @@ m4_define([no_systemdsystempresetdir_error],
 m4_define([no_udev_error],
           [m4_normalize([Could not get udevdir setting from udev]
                         [pkg-config file])])
+m4_define([no_systembusservicesdir_error],
+          [m4_normalize([Could not get system_bus_services_dir setting from]
+                        [dbus pkg-config file])])
 
 AC_ARG_WITH([systemdunitdir],
             [AS_HELP_STRING([--with-systemdunitdir],
@@ -49,11 +52,23 @@ AC_ARG_WITH([udevdir],
             [PKG_CHECK_VAR([udevdir], [udev],
                            [udevdir], [],
                            [AC_MSG_ERROR(no_udev_error)])])
+AC_ARG_WITH([system-bus-services-dir],
+            [AS_HELP_STRING([--with-system-bus-services-dir],
+                            [Path to the system bus services directory])],
+            [system_bus_services_dir="$withval"],
+            [PKG_CHECK_VAR([systembusservicesdir], [dbus-1],
+                           [system_bus_services_dir], [],
+                           [AC_MSG_ERROR(no_systembusservicesdir_error)])])
 AC_ARG_WITH([modprobedir],
             [AS_HELP_STRING([--with-modprobedir],
                             [Path to the system modprobe.d directory])],
             [modprobedir="$withval"], [modprobedir="/lib/modprobe.d"])
 AC_SUBST(modprobedir)
+AC_ARG_WITH([dbussystemconfigdir],
+            [AS_HELP_STRING([--with-dbussystemconfigdir],
+                            [Path to the system dbus-1/system.d directory])],
+            [dbussystemconfigdir="$withval"], [dbussystemconfigdir="/usr/share/dbus-1/system.d"])
+AC_SUBST(dbussystemconfigdir)
 
 AC_CONFIG_FILES([
 	Makefile
@@ -66,6 +81,7 @@ AC_CONFIG_FILES([
 	flatpak-repos/Makefile
 	nvidia/Makefile
 	psi-monitor/Makefile
+	record-boot-success/Makefile
 	tests/Makefile
 ])
 AC_OUTPUT

@@ -1,0 +1,10 @@
+[Unit]
+Description=Record Boot Success
+ConditionPathIsDirectory=/boot/grub
+ConditionFileIsExecutable=/usr/bin/grub-editenv
+
+[Service]
+Type=dbus
+BusName=com.endlessm.RecordBootSuccess
+ExecStart=/usr/lib/eos-boot-helper/record-boot-success/record-boot-success
+RemainAfterExit=yes

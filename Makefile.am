@@ -1,4 +1,4 @@
-SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor tests
+SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success tests
 EXTRA_DIST = debian .flake8
 
 # Install systemd units, generators, preset files, and udev rules
@@ -9,6 +9,8 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdpresetdir='$${prefix}/lib/systemd/system-preset' \
 	--with-udevdir='$${prefix}/lib/udev' \
 	--with-modprobedir='$${prefix}/lib/modprobe.d' \
+	--with-dbussystemconfigdir='$${prefix}/share/dbus-1/system.d' \
+	--with-system-bus-services-dir='$${prefix}/share/dbus-1/system-services' \
 	$(NULL)
 
 dist_systemdunit_DATA = \
