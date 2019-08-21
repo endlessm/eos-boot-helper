@@ -228,6 +228,18 @@ fi
 tune2fs -U random $root_part
 udevadm settle
 
+# If we're an sd-booting image we need to fix-up the copy of the
+# ESP UUID that sd-boot gave us so systemd mounts the ESP
+esp_var=$(echo /sys/firmware/efi/efivars/LoaderDevicePartUUID*)
+if [ -f "${esp_var}" ]; then
+  new_esp_uuid=$(sfdisk $root_disk --part-uuid 1)
+  chattr -i ${esp_var}
+  #We need to start with 0x06 0x00 0x00 0x00 and end with 0x00 0x00
+  #iconv will add the extra 0s
+  printf "\06\00"${new_esp_uuid}"\00" | iconv -f ascii -t unicodelittle > ${esp_var}
+  chattr +i ${esp_var}
+fi
+
 # Now that we changed the UUID, the auto-generated units based on the
 # kernel cmdline root= parameter are wrong. It's easy to override
 # sysroot.mount here
