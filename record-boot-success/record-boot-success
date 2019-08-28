@@ -1,0 +1,46 @@
+#!/usr/bin/python3
+import dbus
+import dbus.service
+import logging
+import os
+import subprocess
+import sys
+
+from systemd import journal
+
+BUSNAME = "com.endlessm.RecordBootSuccess"
+
+
+def record_boot_success():
+    envfile = "/boot/grub/grubenv"
+    program = "/usr/bin/grub-editenv"
+
+    try:
+        if os.path.getsize(envfile) == 0:
+            os.remove(envfile)
+    except FileNotFoundError:
+        pass
+
+    cmd = [program, envfile, "unset", "recordfail"]
+    sp = subprocess.run(cmd)
+    status = sp.returncode
+    if status != 0:
+        logger.error(f"{program} failed with exit code {status}")
+    else:
+        logger.info("Marked boot as successful")
+    return status
+
+
+if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+    logger.addHandler(journal.JournalHandler())
+
+    status = record_boot_success()
+    if status == 0:
+        busname = dbus.service.BusName(BUSNAME, dbus.SystemBus())
+
+    logging.shutdown()
+    sys.exit(status)

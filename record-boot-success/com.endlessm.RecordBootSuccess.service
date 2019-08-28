@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=com.endlessm.RecordBootSuccess
+User=root
+SystemdService=record-boot-success.service
+Exec=/usr/lib/eos-boot-helper/record-boot-success/record-boot-success
