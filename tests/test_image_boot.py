@@ -17,7 +17,6 @@ from .util import (
     losetup,
     mount,
     needs_root,
-    partprobe,
     sfdisk,
     system_script,
     udevadm_settle,
@@ -40,15 +39,13 @@ class ImageTestCase(BaseTestCase):
             sfdisk(host_img.name, b'start=64KiB, type=0x07')
 
             with losetup(host_img.name) as host_disk:
-                partprobe(host_disk)
-                udevadm_settle()
-
                 host_device = host_disk + 'p1'
                 subprocess.check_call([mkfs, host_device])
-                partprobe(host_disk)
-                udevadm_settle()
-                self.assert_fstype(host_device, filesystem)
 
+                # Wait for udev to probe new filesystem type
+                udevadm_settle()
+
+                self.assert_fstype(host_device, filesystem)
                 yield host_device
 
     def assert_readonly(self, device, readonly):

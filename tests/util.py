@@ -81,10 +81,13 @@ def losetup(path):
 
     device = output.decode('utf-8').strip()
     try:
-        partprobe(device)
+        subprocess.call(['partx', '-a', device])
+        udevadm_settle()
         yield device
     finally:
+        subprocess.call(['partx', '-d', device])
         subprocess.check_call(['losetup', '--detach', device])
+        udevadm_settle()
 
 
 class BaseTestCase(unittest.TestCase):
