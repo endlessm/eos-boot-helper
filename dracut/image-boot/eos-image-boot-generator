@@ -25,10 +25,6 @@ mkdir -p /run/udev/rules.d
 echo 'SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="iso9660", GOTO="skip_ignore"' > /run/udev/rules.d/79-endless-image-device.rules
 
 case "${image_device}" in
-PARTUUID=*)
-  echo "SUBSYSTEM==\"block\", ENV{ID_PART_ENTRY_UUID}==\"${image_device#PARTUUID=}\", ENV{DM_NAME}!=\"endless-image-device\", ENV{UDISKS_IGNORE}=\"1\"" >> /run/udev/rules.d/79-endless-image-device.rules
-  image_device=/dev/disk/by-partuuid/${image_device#PARTUUID=}
-  ;;
 UUID=*)
   echo "SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"${image_device#UUID=}\", ENV{DM_NAME}!=\"endless-image-device\", ENV{UDISKS_IGNORE}=\"1\"" >> /run/udev/rules.d/79-endless-image-device.rules
   image_device=/dev/disk/by-uuid/${image_device#UUID=}
@@ -41,10 +37,13 @@ echo 'LABEL="skip_ignore"' >> /run/udev/rules.d/79-endless-image-device.rules
 
 image_device_escaped=$(systemd-escape -p "${image_device}")
 
-# For convenience so that other scripts don't have to parse the cmdline again
-echo "${image_device}" > /var/tmp/endless-image-host
-
-# When the image device appears, run the setup
+# When the image device appears, run the setup.
+# Note that when booting an ISO using HD emulation (e.g. booting an ISO file
+# flashed to USB), udev records that the ISO UUID applies to both the iso9660
+# data partition *and* the parent disk node. So it's a little unwise to
+# rely on the /dev/disk/by-uuid symlink, but it's good enough as a way
+# of ensuring that the overall device has appeared.
+# eos-image-boot-setup will then deal with the UUID clash problem.
 mkdir -p ${GENERATOR_DIR}/initrd-fs.target.wants
 ln -s /lib/systemd/system/eos-image-boot-setup.service \
 	${GENERATOR_DIR}/initrd-fs.target.wants
