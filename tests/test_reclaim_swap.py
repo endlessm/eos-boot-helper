@@ -14,7 +14,7 @@ from .util import (
 
 
 EOS_RECLAIM_SWAP = system_script('eos-reclaim-swap')
-DATA_DIR = './data/reclaim-swap'
+DATA_DIR = os.path.dirname(os.path.realpath(__file__)) + '/data/reclaim-swap'
 
 
 class TestReclaimSwap(BaseTestCase):
