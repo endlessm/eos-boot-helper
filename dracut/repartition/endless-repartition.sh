@@ -236,7 +236,8 @@ if [ -f "${esp_var}" ]; then
   chattr -i ${esp_var}
   #We need to start with 0x06 0x00 0x00 0x00 and end with 0x00 0x00
   #iconv will add the extra 0s
-  printf "\060\000"${new_esp_uuid}"\000" | iconv -f ascii -t unicodelittle > ${esp_var}
+  # Shell gotcha - \06\00 works... until ${new_esp_uuid} starts with a decimal digit.
+  printf "\006\000"${new_esp_uuid}"\000" | iconv -f ascii -t unicodelittle > ${esp_var}
   chattr +i ${esp_var}
 fi
 
