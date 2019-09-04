@@ -233,12 +233,17 @@ udevadm settle
 esp_var=$(echo /sys/firmware/efi/efivars/LoaderDevicePartUUID*)
 if [ -f "${esp_var}" ]; then
   new_esp_uuid=$(sfdisk $root_disk --part-uuid 1)
-  chattr -i ${esp_var}
   #We need to start with 0x06 0x00 0x00 0x00 and end with 0x00 0x00
   #iconv will add the extra 0s
   # Shell gotcha - \06\00 works... until ${new_esp_uuid} starts with a decimal digit.
-  printf "\006\000"${new_esp_uuid}"\000" | iconv -f ascii -t unicodelittle > ${esp_var}
-  chattr +i ${esp_var}
+  printf "\006\000"${new_esp_uuid}"\000" | iconv -f ascii -t unicodelittle > efi_override
+  # Most EFI firmware, with the exception of virtual box, will not allow userspace to
+  # write volatile variables, so we can't just replace esp_var with our change.
+  # Instead, put it in a throwaway file and bind mount it over top. This bind mount
+  # is never unmounted, but is completely harmless, and only happens on the first
+  # boot of an endless device.
+  mount efi_override ${esp_var} -o bind
+  rm efi_override
 fi
 
 # Now that we changed the UUID, the auto-generated units based on the
