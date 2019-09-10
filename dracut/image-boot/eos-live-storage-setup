@@ -2,7 +2,7 @@
 # Copyright (C) 2019 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
-# When performing a live boot, create a 3rd partition filling the remaining
+# When performing a live boot from an ISO image on a writeable medium, create a 3rd partition filling the remaining
 # space on the device. This partition will later be used for persistent data
 # storage, so that your documents are kept for next time you boot.
 #
