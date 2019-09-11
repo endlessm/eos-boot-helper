@@ -26,17 +26,18 @@ else
 
   # When booting an ISO using HD emulation (e.g. booting an ISO file flashed
   # to USB), udev records that the ISO UUID applies to both the iso9660
-  # data partition *and* the parent disk node. So we have to be careful
+  # data partition, the parent disk node, and the persistent data storage
+  # partition (if it has not yet been formatted). So we have to be careful
   # when finding host_device.
 
   # Let udev finish probing all the partitions
   udevadm settle
 
   # To find the data partition, we take advantage of blkid which limits
-  # itself to only searching devices with recognised filesystems. It will
-  # avoid the parent disk node here.
-  host_device=$(blkid --uuid "${image_device#UUID=}")
-  if [ -z "${host_device}" ]; then
+  # itself to only searching devices with recognised filesystems that
+  # match the desired UUID.
+  host_device=$(blkid --output device --match-token "${image_device}")
+  if ! [ -b "${host_device}" ]; then
     echo "Failed to find host partition device"
     exit 1
   fi
