@@ -8,6 +8,50 @@ EXTRA_PATHS=$@
 # user.
 mount -o remount,user_xattr /run
 
+# Attempt to find the partition to act as backing storage for the overlayfses
+find_storage_partition() {
+	local bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
+	bootdev=${bootdev:21}
+	[ -n "${bootdev}" ] || return 1
+
+	local root_partition=$(blkid --output device --match-token "${bootdev}")
+	[ -b "${root_partition}" ] || return 1
+
+	# Check for ISO layout - root partition is partition 1, storage partition
+	# exists at partition 3.
+	[ "${root_partition: -1}" == "1" ] || return 1
+
+	local storage_partition=${root_partition:0:-1}3
+	[ -b "${storage_partition}" ] || return 1
+
+	echo "${storage_partition}"
+	return 0
+}
+
+setup_and_mount_storage() {
+	local device=$1
+	local marker
+	[ -b "${device}" ] || return 1
+
+	# Check for the marker installed at partition creation time.
+	# If found, we know we've found the right partition and it's ready
+	# for formatting.
+	read -r -d '' -N 27 marker < ${device}
+	if [ "${marker}" = "endless_live_storage_marker" ]; then
+		mke2fs -t ext4 -O dir_index,^huge_file -m 1 -L endless-live \
+			"${device}"
+		# let udev become aware of new device filesystem and label
+		udevadm settle
+	fi
+
+	# Check the partition label
+	label=$(lsblk -d -n -o LABEL "${storage_partition}")
+	[ ${label} = "endless-live" ] || return 1
+
+	mkdir -p /run/eos-live
+	mount "${storage_partition}" /run/eos-live
+}
+
 # /sysroot/ostree needs special handling:
 setup_ostree_flatpak_overlay() {
     # The flatpak deployment dirs must be on the same filesystem (namely
@@ -55,6 +99,12 @@ setup_overlay() {
         rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
         eos-live-$dir /$dir
 }
+
+# Use persistent storage to back overlayfses, if available
+storage_partition=$(find_storage_partition)
+if [ -b "${storage_partition}" ]; then
+	setup_and_mount_storage "${storage_partition}"
+fi
 
 # If we booted and systemd was unable to find or create a machine-id,
 # it will create one at /run/machine-id and bind mount it at /etc/machine-id.
