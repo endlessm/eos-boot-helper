@@ -28,6 +28,7 @@ disable openvpn.service
 disable openvpn@.service
 disable rtkit-daemon.service
 disable serial-getty@.service
+disable smartd.service
 disable speech-dispatcherd.service
 disable ssh*.service
 disable ssh.socket
