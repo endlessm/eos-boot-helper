@@ -45,11 +45,11 @@ setup_and_mount_storage() {
 	fi
 
 	# Check the partition label
-	label=$(lsblk -d -n -o LABEL "${storage_partition}")
-	[ ${label} = "endless-live" ] || return 1
+	label=$(lsblk -d -n -o LABEL "${device}")
+	[ "${label}" = "endless-live" ] || return 1
 
 	mkdir -p /run/eos-live
-	mount "${storage_partition}" /run/eos-live
+	mount "${device}" /run/eos-live
 }
 
 # /sysroot/ostree needs special handling:
