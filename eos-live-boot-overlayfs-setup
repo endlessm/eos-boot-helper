@@ -40,12 +40,13 @@ setup_and_mount_storage() {
 	if [ "${marker}" = "endless_live_storage_marker" ]; then
 		mke2fs -t ext4 -O dir_index,^huge_file -m 1 -L endless-live \
 			"${device}"
-		# let udev become aware of new device filesystem and label
+		# let udev become aware of new device
 		udevadm settle
 	fi
 
 	# Check the partition label
-	label=$(lsblk -d -n -o LABEL "${device}")
+	label=$(e2label "${device}" 2>/dev/null)
+	[ $? = 0 ] || return 1
 	[ "${label}" = "endless-live" ] || return 1
 
 	mkdir -p /run/eos-live
