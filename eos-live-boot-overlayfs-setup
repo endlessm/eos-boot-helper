@@ -75,7 +75,6 @@ setup_ostree_flatpak_overlay() {
     local lowerdir=/sysroot/ostree:/sysroot/flatpak
     local upperdir=/run/eos-live/ostree-flatpak
     local workdir=$upperdir-workdir
-    [ -d $workdir ] && return;
     mkdir -p $upperdir $workdir
     mount -t overlay -o \
         rw,upperdir=$upperdir,lowerdir=$lowerdir,workdir=$workdir \
