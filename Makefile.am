@@ -23,6 +23,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
+	hack-remove-global-override.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
