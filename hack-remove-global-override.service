@@ -1,0 +1,21 @@
+[Unit]
+Description=Remove hack flatpak global override
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service eos-updater-flatpak-installer.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+ConditionPathExists=/var/lib/flatpak/overrides/global
+ConditionPathExists=/var/lib/flatpak/app/com.endlessm.HackComponents
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rm /var/lib/flatpak/overrides/global
+
+[Install]
+WantedBy=multi-user.target
