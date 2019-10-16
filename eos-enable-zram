@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2018 Endless Mobile, Inc.
 # Licensed under the GPLv2
 
@@ -10,6 +10,7 @@ fi
 ram_size_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
 
 if [ "$1" -ne 0 ]; then
+    set -e
     if [ ! -e /sys/block/zram0 ]; then
         modprobe zram
     fi
