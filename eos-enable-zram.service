@@ -7,7 +7,7 @@ After=swap.target
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/usr/sbin/eos-enable-zram 1
-ExecStop=/usr/sbin/eos-enable-zram 0
+ExecStopPost=/usr/sbin/eos-enable-zram 0
 
 [Install]
 WantedBy=multi-user.target
