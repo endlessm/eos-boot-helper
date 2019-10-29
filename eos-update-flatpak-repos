@@ -1344,7 +1344,7 @@ def copy_commit(repo, src_rev, dest_ref,
     # commit's parent
     _, dest_parent = repo.resolve_rev_ext(
         dest_ref, allow_noent=True,
-        flags=OSTree.RepoResolveRevExtFlags.REPO_RESOLVE_REV_EXT_NONE)
+        flags=OSTree.RepoResolveRevExtFlags.NONE)
     if dest_parent is not None:
         logging.info('Using %s as new commit parent', dest_parent)
 
