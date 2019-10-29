@@ -1059,6 +1059,15 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
+    },
+    # migrate Etoys from eos-apps to flathub (T28386)
+    {
+        'name': 'org.squeakland.Etoys',
+        'kind': Flatpak.RefKind.APP,
+        'old-branch': 'eos3',
+        'new-branch': 'stable',
+        'old-origin': 'eos-apps',
+        'new-origin': 'flathub'
     }
 ]
 
@@ -1335,7 +1344,7 @@ def copy_commit(repo, src_rev, dest_ref,
     # commit's parent
     _, dest_parent = repo.resolve_rev_ext(
         dest_ref, allow_noent=True,
-        flags=OSTree.RepoResolveRevExtFlags.REPO_RESOLVE_REV_EXT_NONE)
+        flags=OSTree.RepoResolveRevExtFlags.NONE)
     if dest_parent is not None:
         logging.info('Using %s as new commit parent', dest_parent)
 
