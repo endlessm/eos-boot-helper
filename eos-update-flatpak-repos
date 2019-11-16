@@ -396,6 +396,13 @@ FLATPAKS_TO_MIGRATE = [
     {
         'prefix': 'org.gnome.',
         'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '3.22',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.RUNTIME,
         'old-branch': '3.24',
         'old-origin': 'gnome',
         'new-origin': 'flathub'
