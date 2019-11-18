@@ -28,5 +28,10 @@ Type=oneshot
 RemainAfterExit=true
 ExecStart=/usr/sbin/eos-update-flatpak-repos
 
+# Flatpak checks parental controls at deploy time. In order to do this, it
+# needs to talk to accountsservice on the system bus, neither of which are
+# running when this job runs.
+Environment=FLATPAK_SKIP_PARENTAL_CONTROLS_NO_SYSTEM_BUS=1
+
 [Install]
 WantedBy=multi-user.target
