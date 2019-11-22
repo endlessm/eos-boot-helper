@@ -1068,7 +1068,17 @@ FLATPAKS_TO_MIGRATE = [
         'new-branch': 'stable',
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
-    }
+    },
+    # migrate Eclipse from eos-apps to flathub (T28707)
+    {
+        "name": "org.eclipse.Eclipse",
+        "new-name": "org.eclipse.Java",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
 ]
 
 
