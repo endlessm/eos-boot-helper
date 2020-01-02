@@ -282,11 +282,25 @@ FLATPAKS_TO_MIGRATE = [
         'old-origin': 'eos-apps',
         'new-origin': 'flathub'
     },
-    # migrate gnome 3.2[46] and freedesktop 1.6 runtimes to flathub (T20443)
+    # migrate gnome 3.2[02468] and freedesktop 1.[46] runtimes to flathub (T20443 and T25809)
+    {
+        'prefix': 'org.freedesktop.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '1.4',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
     {
         'prefix': 'org.freedesktop.',
         'kind': Flatpak.RefKind.RUNTIME,
         'old-branch': '1.6',
+        'old-origin': 'gnome',
+        'new-origin': 'flathub'
+    },
+    {
+        'prefix': 'org.gnome.',
+        'kind': Flatpak.RefKind.RUNTIME,
+        'old-branch': '3.20',
         'old-origin': 'gnome',
         'new-origin': 'flathub'
     },
