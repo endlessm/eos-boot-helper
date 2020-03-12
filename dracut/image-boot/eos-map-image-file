@@ -26,7 +26,7 @@ if [ "$#" != "3" ]; then
   exit 1
 fi
 
-if ! fstype=$(lsblk --noheadings -o FSTYPE "${host_device}"); then
+if ! fstype=$(lsblk --noheadings --nodeps -o FSTYPE "${host_device}"); then
   echo "image-boot: failed to detect filesystem type for ${host_device}" >&2
   exit 1
 fi
