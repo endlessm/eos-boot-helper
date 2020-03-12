@@ -29,6 +29,7 @@ import logging
 import os
 import subprocess
 import sys
+from urllib.parse import urlparse, urlunparse
 
 from systemd import journal
 
@@ -151,6 +152,55 @@ def _remove_runtimes():
                      .format(refspec, inst.get_path().get_path()))
         subprocess.check_call(['flatpak', 'uninstall', '--system',
                                '--runtime', refspec])
+
+
+# From 3.7.6 through 3.7.8, images were shipped with remote URLs using
+# our internal ostree.endlessm-sf.com domain instead of our
+# ostree.endlessm.com CDN domain.
+#
+# https://phabricator.endlessm.com/T29535
+def _fix_url(url):
+    parts = urlparse(url)
+    if parts.netloc == 'ostree.endlessm-sf.com':
+        parts = parts._replace(netloc='ostree.endlessm.com')
+        url = urlunparse(parts)
+    return url
+
+
+def _fix_remote_urls():
+    _, repo = OSTree.Sysroot().get_repo()
+    repo.open()
+    for remote in repo.remote_list():
+        # Only adjust non-flatpak remotes (xa.disable = true)
+        _, is_os_repo = repo.get_remote_boolean_option(remote, 'xa.disable',
+                                                       False)
+        if not is_os_repo:
+            logging.debug('Skipping non-OSTree remote %s', remote)
+            continue
+
+        _, cur_url = repo.remote_get_url(remote)
+        logging.debug('OSTree remote %s current URL %s', remote, cur_url)
+        new_url = _fix_url(cur_url)
+        if new_url != cur_url:
+            # OSTree offers no reasonable API for this
+            logging.info('Changing OSTree remote %s URL from %s to %s',
+                         remote, cur_url, new_url)
+            config = repo.copy_config()
+            remote_group = 'remote "{}"'.format(remote)
+            config.set_string(remote_group, 'url', new_url)
+            repo.write_config(config)
+
+    for inst in Flatpak.get_system_installations():
+        for remote in inst.list_remotes():
+            cur_url = remote.get_url()
+            logging.debug('Flatpak remote %s current URL %s',
+                          remote.get_name(), cur_url)
+            new_url = _fix_url(cur_url)
+            if new_url != cur_url:
+                logging.info('Changing Flatpak remote %s URL from %s to %s',
+                             remote.get_name(), cur_url, new_url)
+                remote.set_url(new_url)
+                inst.modify_remote(remote)
 
 
 def update_deploy_file_with_origin(deploy_file_path, new_origin):
@@ -1683,6 +1733,9 @@ if __name__ == '__main__':
     _remove_ostree_refs()
     _remove_remotes()
     _remove_runtimes()
+
+    # fix incorrect remote URLs
+    _fix_remote_urls()
 
     # move apps and runtimes between branches and origins as specified above
     _migrate_installed_flatpaks()
