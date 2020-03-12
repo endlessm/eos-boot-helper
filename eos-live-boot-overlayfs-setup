@@ -8,7 +8,7 @@ EXTRA_PATHS=$@
 # user.
 mount -o remount,user_xattr /run
 
-# Attempt to find the partition to act as backing storage for the overlayfses
+# Attempt to find a target to act as backing storage for the overlayfses
 find_storage_partition() {
 	local bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
 	bootdev=${bootdev:21}
@@ -16,6 +16,17 @@ find_storage_partition() {
 
 	local root_partition=$(blkid --output device --match-token "${bootdev}")
 	[ -b "${root_partition}" ] || return 1
+
+
+	dumpexfat -f /endless/persistent.img ${root_partition} &> /dev/null
+	if [[ $? = 0 ]]; then
+		udevadm settle
+		/usr/libexec/eos-map-image-file ${root_partition} /endless/persistent.img endless-live_storage
+		if [[ $? = 0 ]]; then
+			echo /dev/mapper/endless-live_storage
+			return 0
+		fi
+	fi
 
 	# Check for ISO layout - root partition is partition 1, storage partition
 	# exists at partition 3.
