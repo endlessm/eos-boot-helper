@@ -86,6 +86,10 @@ dist_sbin_SCRIPTS = \
 	eos-update-flatpak-repos \
 	$(NULL)
 
+dist_libexec_SCRIPTS = \
+	dracut/image-boot/eos-map-image-file \
+	$(NULL)
+
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
