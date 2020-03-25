@@ -21,7 +21,7 @@ find_storage_partition() {
 	dumpexfat -f /endless/persistent.img ${root_partition} &> /dev/null
 	if [[ $? = 0 ]]; then
 		udevadm settle
-		/usr/libexec/eos-map-image-file ${root_partition} /endless/persistent.img endless-live_storage
+		/usr/lib/eos-boot-helper/eos-map-image-file ${root_partition} /endless/persistent.img endless-live_storage
 		if [[ $? = 0 ]]; then
 			echo /dev/mapper/endless-live_storage
 			return 0
