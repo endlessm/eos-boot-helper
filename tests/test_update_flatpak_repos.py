@@ -247,6 +247,66 @@ class TestMangleMetadataAndDesktopFile(BaseTestCase):
         self.assertEqual(bytes_.get_data().decode("utf-8").strip(),
                          orig_desktop)
 
+    def test_mangle_firefox(self):
+        """Firefox has some special cases."""
+        orig_id = "org.mozilla.Firefox"
+        orig_metadata = textwrap.dedent(
+            """
+            [Application]
+            name=org.mozilla.Firefox
+            runtime=org.freedesktop.Platform/x86_64/19.08
+            sdk=org.freedesktop.Sdk/x86_64/19.08
+            command=firefox
+
+            [Context]
+            shared=network;ipc;
+            sockets=x11;pulseaudio;
+            devices=dri;all;
+            filesystems=xdg-run/dconf;xdg-config/dconf:ro;home;
+
+            [Session Bus Policy]
+            ca.desrt.dconf=talk
+            org.freedesktop.FileManager1=talk
+            org.gnome.SessionManager=talk
+            org.freedesktop.ScreenSaver=talk
+            org.gtk.vfs.*=talk
+            org.a11y.Bus=talk
+            org.gnome.vfs.*=talk
+
+            [System Bus Policy]
+            org.freedesktop.NetworkManager=talk
+
+            [Environment]
+            DCONF_USER_CONFIG_DIR=.config/dconf
+
+            [Extra Data]
+            name=firefox.tar.bz2
+            checksum=c5d9700381c4ad1bde4282735593d5726d9869e3db69ac2e0c24e40597ca4aa6
+            size=67133266
+            uri=https://archive.mozilla.org/pub/firefox/releases/75.0/linux-x86_64/en-US/firefox-75.0.tar.bz2
+            name1=ach.xpi
+            checksum1=e5dda36c10d614f4f800091853c787ef5d110a69b905840f366d00f93bc81b71
+            size1=503112
+            uri1=https://archive.mozilla.org/pub/firefox/releases/75.0/linux-x86_64/xpi/ach.xpi
+            """
+        ).strip()
+        self._put_file((), "metadata", orig_metadata)
+
+        _, _ = eufr.rewrite_metadata(
+            self.repo, self.mtree, orig_id, orig_id,
+            mangle_metadata=eufr.mangle_firefox_metadata,
+        )
+
+        metadata = self._get_metadata()
+        self.assertCountEqual(
+            ("xdg-run/dconf", "xdg-config/dconf:ro", "xdg-download"),
+            metadata.get_string_list("Context", "filesystems"),
+        )
+        self.assertEqual(
+            [".mozilla"],
+            metadata.get_string_list("Context", "persistent"),
+        )
+
     def _mkdir_p(self, path):
         mtree = self.mtree
         for name in path:

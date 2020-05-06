@@ -5,6 +5,7 @@ EXTRA_DIST = debian .flake8
 # under $prefix for distcheck
 AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdunitdir='$${prefix}/lib/systemd/system' \
+	--with-systemduserunitdir='$${prefix}/lib/systemd/user' \
 	--with-systemdgeneratordir='$${prefix}/lib/systemd/system-generators' \
 	--with-systemdpresetdir='$${prefix}/lib/systemd/system-preset' \
 	--with-udevdir='$${prefix}/lib/udev' \
@@ -24,6 +25,10 @@ dist_systemdunit_DATA = \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
 	hack-remove-global-override.service \
+	$(NULL)
+
+dist_systemduserunit_DATA = \
+	eos-migrate-firefox-profile.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
@@ -56,6 +61,8 @@ install-data-hook:
 	$(MKDIR_P) '$(DESTDIR)$(systemdunitdir)'
 	$(INSTALL_DATA) $(srcdir)/var-endless_x2dextra.mount \
 	  '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
+	$(MKDIR_P) '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
+	ln -s ../eos-migrate-firefox-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 
 uninstall-hook:
 	rm -f '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
@@ -88,6 +95,7 @@ dist_sbin_SCRIPTS = \
 
 dist_libexec_SCRIPTS = \
 	dracut/image-boot/eos-map-image-file \
+	eos-migrate-firefox-profile \
 	$(NULL)
 
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
