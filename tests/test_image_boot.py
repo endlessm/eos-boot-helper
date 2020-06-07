@@ -57,6 +57,8 @@ class ImageTestCase(BaseTestCase):
 class TestImageBootSetup(ImageTestCase):
     '''Tests entire eos-image-boot-setup script.'''
     def setUp(self):
+        super().setUp()
+
         self.tmpdir = tempfile.mkdtemp()
         self.endless_img = os.path.join(self.tmpdir, 'endless.img')
 

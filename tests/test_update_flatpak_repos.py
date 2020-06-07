@@ -28,6 +28,8 @@ spec.loader.exec_module(eufr)
 
 class TestMangleMetadataAndDesktopFile(BaseTestCase):
     def setUp(self):
+        super().setUp()
+
         self.tmp = tempfile.TemporaryDirectory()
 
         self.repo = OSTree.Repo.new(Gio.File.new_for_path(self.tmp.name))
@@ -322,6 +324,8 @@ class TestUpdateDeployFile(BaseTestCase):
     OLD_ID = "com.example.Hello"
 
     def setUp(self):
+        super().setUp()
+
         self.deploy_file = tempfile.NamedTemporaryFile()
 
     def tearDown(self):
