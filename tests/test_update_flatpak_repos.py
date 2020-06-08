@@ -3,27 +3,17 @@
 Tests eos-update-flatpak-repos
 """
 
-import importlib.util
-import importlib.machinery
 import tempfile
 import textwrap
 
-from .util import BaseTestCase, system_script
+from .util import BaseTestCase, system_script, import_script_as_module
 import gi
 
 gi.require_version("OSTree", "1.0")
 from gi.repository import GLib, Gio, OSTree  # noqa: E402
 
 
-# Import script as a module, despite its filename not being a legal module name
-spec = importlib.util.spec_from_loader(
-    "eufr",
-    importlib.machinery.SourceFileLoader(
-        "eufr", system_script("eos-update-flatpak-repos")
-    ),
-)
-eufr = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(eufr)
+eufr = import_script_as_module("eufr", system_script("eos-update-flatpak-repos"))
 
 
 class TestMangleMetadataAndDesktopFile(BaseTestCase):

@@ -1,4 +1,6 @@
 import contextlib
+import importlib.machinery
+import importlib.util
 import os
 import subprocess
 import tempfile
@@ -88,3 +90,16 @@ class BaseTestCase(unittest.TestCase):
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)
         self.assertEqual(fstype(partition), type_, msg=msg)
+
+
+def import_script_as_module(module_name, filename):
+    # Import script as a module, despite its filename not being a legal module name
+    spec = importlib.util.spec_from_loader(
+        module_name,
+        importlib.machinery.SourceFileLoader(
+            module_name, system_script(filename)
+        ),
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
