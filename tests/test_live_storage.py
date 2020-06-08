@@ -4,8 +4,7 @@ Tests eos-live-storage-setup. Must be run as a user privileged enough to run
 `losetup`. If run as an unprivileged user, all tests are skipped.
 '''
 from contextlib import contextmanager
-from subprocess import check_call, check_output, CalledProcessError
-import re
+from subprocess import check_call, check_output
 import tempfile
 
 from .util import (
@@ -37,6 +36,7 @@ def _prepare(initial_table):
 
         with losetup(img.name) as img_device:
             yield img, img_device
+
 
 class TestLiveStorage(BaseTestCase):
     @needs_root
@@ -83,7 +83,7 @@ size=65536, type=83
         with _prepare(table) as (img, img_device):
             try:
                 orig_table = check_output(["sfdisk", "--dump", img_device],
-                                         universal_newlines=True)
+                                          universal_newlines=True)
 
                 check_call([EOS_LIVE_STORAGE_SETUP, img_device + "p1"])
 
@@ -105,7 +105,7 @@ start=     4255996, type=ef
         with _prepare(table) as (img, img_device):
             try:
                 orig_table = check_output(["sfdisk", "--dump", img_device],
-                                         universal_newlines=True)
+                                          universal_newlines=True)
 
                 check_call([EOS_LIVE_STORAGE_SETUP, img_device + "p1"])
 
@@ -127,7 +127,7 @@ start=     4255996, size=     4130000, type=ef
         with _prepare(table) as (img, img_device):
             try:
                 orig_table = check_output(["sfdisk", "--dump", img_device],
-                                         universal_newlines=True)
+                                          universal_newlines=True)
 
                 check_call([EOS_LIVE_STORAGE_SETUP, img_device + "p1"])
 
