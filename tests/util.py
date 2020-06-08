@@ -1,6 +1,5 @@
 import contextlib
 import os
-import shutil
 import subprocess
 import tempfile
 import unittest
@@ -51,20 +50,9 @@ def sfdisk(device, partition_table, label='dos'):
 
 
 @contextlib.contextmanager
-def TemporaryDirectory():
-    '''Reimplementation of tempfile.TemporaryDirectory from Python >= 3.5
-    since Endless OS only has Python 3.4.'''
-    d = tempfile.mkdtemp()
-    try:
-        yield d
-    finally:
-        shutil.rmtree(d)
-
-
-@contextlib.contextmanager
 def mount(device):
     '''Mounts device on a freshly-created mount point.'''
-    with TemporaryDirectory() as mount_point:
+    with tempfile.TemporaryDirectory() as mount_point:
         subprocess.check_call(['mount', device, mount_point])
 
         try:
