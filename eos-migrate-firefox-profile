@@ -1,0 +1,76 @@
+#!/usr/bin/python3
+#
+# eos-migrate-firefox-profile: move users' Firefox profile to its new home
+#
+# Copyright © 2020 Endless OS LLC
+# Authors:
+#  Will Thompson <wjt@endlessos.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+#
+# Endless's Firefox Flatpak stored its data in the real ~/.mozilla in the user's
+# home directory. Mozilla's Firefox Flatpak stores its data in what it thinks is
+# ~/.mozilla, but which is actually ~/.var/app/$APP_ID/.mozilla through the magic of
+# --persist=.mozilla.
+#
+# eos-update-flatpak-repos adjusts our Flatpak's permissions to match Mozilla's more
+# restrictive set. This script moves the actual user data.
+import os
+from gi.repository import GLib
+
+APP_DATA_DIR = os.path.expanduser("~/.var/app/org.mozilla.Firefox")
+APP_DATA_DIR_DOT_MOZILLA = os.path.join(APP_DATA_DIR, ".mozilla")
+HOME_DOT_MOZILLA = os.path.expanduser("~/.mozilla")
+PROFILES_INI = os.path.join(HOME_DOT_MOZILLA, "firefox", "profiles.ini")
+
+ENDLESS_FLATPAK_INSTALL_GROUP = "InstallFF6C2EBF42BF07E5"
+MOZILLA_FLATPAK_INSTALL_GROUP = "InstallCF146F38BCAB2D21"
+
+
+def copy_install_section(path):
+    """The default profile is keyed by a hash of the Firefox executable's installed
+    path. Endless's Firefox Flatpak has the executable at a different path to Mozilla's.
+    Copy the Endless installation's data to the group for Mozilla's."""
+    keyfile = GLib.KeyFile()
+    keyfile.load_from_file(
+        path, GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS,
+    )
+
+    has_mozilla_group = keyfile.has_group(MOZILLA_FLATPAK_INSTALL_GROUP)
+    has_endless_group = keyfile.has_group(ENDLESS_FLATPAK_INSTALL_GROUP)
+
+    if not has_mozilla_group and has_endless_group:
+        keys, _length = keyfile.get_keys(ENDLESS_FLATPAK_INSTALL_GROUP)
+        for key in keys:
+            value = keyfile.get_string(ENDLESS_FLATPAK_INSTALL_GROUP, key)
+            keyfile.set_string(MOZILLA_FLATPAK_INSTALL_GROUP, key, value)
+
+        # Uses g_file_set_contents(), is reasonably atomic
+        keyfile.save_to_file(path)
+
+
+def main():
+    if (
+        os.path.isdir(APP_DATA_DIR)
+        and not os.path.isdir(APP_DATA_DIR_DOT_MOZILLA)
+        and os.path.isdir(HOME_DOT_MOZILLA)
+    ):
+        copy_install_section(PROFILES_INI)
+        os.rename(HOME_DOT_MOZILLA, APP_DATA_DIR_DOT_MOZILLA)
+
+
+if __name__ == "__main__":
+    main()

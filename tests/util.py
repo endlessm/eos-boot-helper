@@ -1,6 +1,7 @@
 import contextlib
+import importlib.machinery
+import importlib.util
 import os
-import shutil
 import subprocess
 import tempfile
 import unittest
@@ -51,20 +52,9 @@ def sfdisk(device, partition_table, label='dos'):
 
 
 @contextlib.contextmanager
-def TemporaryDirectory():
-    '''Reimplementation of tempfile.TemporaryDirectory from Python >= 3.5
-    since Endless OS only has Python 3.4.'''
-    d = tempfile.mkdtemp()
-    try:
-        yield d
-    finally:
-        shutil.rmtree(d)
-
-
-@contextlib.contextmanager
 def mount(device):
     '''Mounts device on a freshly-created mount point.'''
-    with TemporaryDirectory() as mount_point:
+    with tempfile.TemporaryDirectory() as mount_point:
         subprocess.check_call(['mount', device, mount_point])
 
         try:
@@ -91,7 +81,25 @@ def losetup(path):
 
 
 class BaseTestCase(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+
+        os.environ["LANG"] = "C.UTF-8"
+
     def assert_fstype(self, partition, type_):
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)
         self.assertEqual(fstype(partition), type_, msg=msg)
+
+
+def import_script_as_module(module_name, filename):
+    # Import script as a module, despite its filename not being a legal module name
+    spec = importlib.util.spec_from_loader(
+        module_name,
+        importlib.machinery.SourceFileLoader(
+            module_name, system_script(filename)
+        ),
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

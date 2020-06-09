@@ -4,10 +4,8 @@
 import os
 import subprocess
 import unittest
-from .util import (
-    system_script,
-    TemporaryDirectory,
-)
+from tempfile import TemporaryDirectory
+from .util import system_script
 
 
 EOS_LIVE_BOOT_GENERATOR = system_script('eos-live-boot-generator')

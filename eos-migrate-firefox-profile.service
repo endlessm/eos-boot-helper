@@ -1,0 +1,15 @@
+[Unit]
+Description=Migrate Firefox profile to new path
+
+ConditionPathIsDirectory=%h/.mozilla
+ConditionPathIsDirectory=%h/.var/app/org.mozilla.Firefox
+ConditionPathIsDirectory=!%h/.var/app/org.mozilla.Firefox/.mozilla
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-boot-helper/eos-migrate-firefox-profile
+Restart=no
+RemainAfterExit=yes
+
+[Install]
+WantedBy=gnome-session.target

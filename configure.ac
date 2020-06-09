@@ -31,6 +31,13 @@ AC_ARG_WITH([systemdunitdir],
             [PKG_CHECK_VAR([systemdunitdir], [systemd],
                            [systemdsystemunitdir], [],
                            [AC_MSG_ERROR(no_systemdunitdir_error)])])
+AC_ARG_WITH([systemduserunitdir],
+            [AS_HELP_STRING([--with-systemduserunitdir],
+                            [Path to the system directory for systemd user units])],
+            [systemduserunitdir="$withval"],
+            [PKG_CHECK_VAR([systemduserunitdir], [systemd],
+                           [systemduserunitdir], [],
+                           [AC_MSG_ERROR(no_systemduserunitdir_error)])])
 AC_ARG_WITH([systemdgeneratordir],
             [AS_HELP_STRING([--with-systemdgeneratordir],
                             [Path to the system directory for systemd generators])],

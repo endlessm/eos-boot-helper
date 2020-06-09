@@ -3,11 +3,12 @@
 # eos-update-flatpak-repos: adds standard flatpak repos, removes legacy remotes
 # and runtimes, and migrates installed flatpaks between origins
 #
-# Copyright (C) 2017 Endless Mobile, Inc.
+# Copyright © 2017–2020 Endless OS LLC
 # Authors:
 #  Mario Sanchez Prada <mario@endlessm.com>
 #  Philip Chimento <philip@endlessm.com>
 #  Robert McQueen <rob@endlessm.com>
+#  Will Thompson <wjt@endlessos.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -274,6 +275,49 @@ def write_deploy_file(deploy_file_path, orig_variant, idx, new_val):
                  .format(deploy_file_path, idx, new_val))
     GLib.file_set_contents(deploy_file_path,
                            new_variant.get_data_as_bytes().get_data())
+
+
+def mangle_firefox_metadata(metadata):
+    """Endless's Firefox Flatpak stored its data in the real ~/.mozilla in the user's
+    home directory. Mozilla's Firefox Flatpak stores its data in what it thinks is
+    ~/.mozilla, but which is actually ~/.var/app/$APP_ID/.mozilla through the magic of
+    --persist=.mozilla. Monkeypatch our Flatpak to match.
+
+    eos-migrate-firefox-profile is run via a systemd user unit to actually move the
+    data."""
+    filesystems = _get_with_default(
+        metadata.get_string_list,
+        FLATPAK_METADATA_GROUP_CONTEXT,
+        FLATPAK_METADATA_FILESYSTEMS,
+        [],
+    )
+
+    if "home" in filesystems:
+        filesystems.remove("home")
+    if "xdg-download" not in filesystems:
+        filesystems.append("xdg-download")
+
+    metadata.set_string_list(
+        FLATPAK_METADATA_GROUP_CONTEXT,
+        FLATPAK_METADATA_FILESYSTEMS,
+        filesystems,
+    )
+
+    persistent = _get_with_default(
+        metadata.get_string_list,
+        FLATPAK_METADATA_GROUP_CONTEXT,
+        FLATPAK_METADATA_PERSISTENT,
+        [],
+    )
+
+    if ".mozilla" not in persistent:
+        persistent.append(".mozilla")
+
+    metadata.set_string_list(
+        FLATPAK_METADATA_GROUP_CONTEXT,
+        FLATPAK_METADATA_PERSISTENT,
+        persistent,
+    )
 
 
 FLATPAKS_TO_MIGRATE = [
@@ -1129,6 +1173,17 @@ FLATPAKS_TO_MIGRATE = [
         "old-origin": "eos-apps",
         "new-origin": "flathub",
     },
+    # migrate Firefox from eos-apps to flathub (T29746)
+    {
+        "name": "org.mozilla.Firefox",
+        "new-name": "org.mozilla.firefox",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+        "mangle-metadata": mangle_firefox_metadata,
+    },
 ]
 
 
@@ -1330,9 +1385,12 @@ FLATPAK_METADATA_KEY_NAME = 'name'
 FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY = 'Session Bus Policy'
 FLATPAK_METADATA_BUS_POLICY_OWN = 'own'
 FLATPAK_METADATA_GROUP_EXTRA_DATA = 'Extra Data'
+FLATPAK_METADATA_GROUP_CONTEXT = "Context"
+FLATPAK_METADATA_FILESYSTEMS = "filesystems"
+FLATPAK_METADATA_PERSISTENT = "persistent"
 
 
-def rewrite_metadata(repo, mtree, old_id, new_id):
+def rewrite_metadata(repo, mtree, old_id, new_id, mangle_metadata=None):
     metadata, info = mtree_load_keyfile(repo, mtree, FLATPAK_METADATA_FILE)
 
     if old_id != new_id:
@@ -1358,6 +1416,9 @@ def rewrite_metadata(repo, mtree, old_id, new_id):
                          GLib.KeyFileError.GROUP_NOT_FOUND):
             raise
 
+    if mangle_metadata is not None:
+        mangle_metadata(metadata)
+
     metadata_str = mtree_add_keyfile(repo, mtree, metadata, info)
 
     if old_id == new_id:
@@ -1382,7 +1443,8 @@ COMMIT_BODY_INDEX = 4
 
 def copy_commit(repo, src_rev, dest_ref,
                 old_app_id=None, new_app_id=None,
-                collection_id=None, migrate_extra=False):
+                collection_id=None, migrate_extra=False,
+                mangle_metadata=None):
     """Copy commit src_rev to dest_ref
     This makes the new commit at dest_ref have the proper collection
     binding for this repo. The caller is expected to manage the
@@ -1457,7 +1519,7 @@ def copy_commit(repo, src_rev, dest_ref,
     if old_app_id and new_app_id and \
        (old_app_id != new_app_id or migrate_extra):
         metadata, vendor_prefixes = rewrite_metadata(repo, mtree, old_app_id,
-                                                     new_app_id)
+                                                     new_app_id, mangle_metadata)
         commit_metadata.insert_value('xa.metadata',
                                      GLib.Variant('s', metadata))
 
@@ -1587,6 +1649,7 @@ def _migrate_installed_flatpaks():
             new_branch = migrate.get('new-branch', branch)
             new_ostree_ref = '{}:{}/{}/{}/{}'.format(new_origin, kind.value_nick,
                                                      new_name, arch, new_branch)
+            mangle_metadata = migrate.get('mangle-metadata')
 
             logging.info('Found {} to migrate to {}'.format(old_ostree_ref,
                          new_ostree_ref))
@@ -1614,6 +1677,7 @@ def _migrate_installed_flatpaks():
                     repo.prepare_transaction()
                     try:
                         kwargs = {}
+                        kwargs["mangle_metadata"] = mangle_metadata
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
                             kwargs['new_app_id'] = new_name
