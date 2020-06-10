@@ -4,7 +4,6 @@ DefaultDependencies=no
 After=ostree-remount.service
 Before=local-fs.target
 ConditionKernelCommandLine=endless.image.device
-ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
 Type=oneshot
