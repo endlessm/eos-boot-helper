@@ -4,6 +4,7 @@ DefaultDependencies=no
 After=ostree-remount.service
 Before=local-fs.target
 ConditionKernelCommandLine=endless.image.device
+ConditionPathExists=!/dev/mapper/endless-image-device
 
 [Service]
 Type=oneshot
