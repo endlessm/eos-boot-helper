@@ -39,6 +39,61 @@ PROFILES_INI = os.path.join(HOME_DOT_MOZILLA, "firefox", "profiles.ini")
 ENDLESS_FLATPAK_INSTALL_GROUP = "InstallFF6C2EBF42BF07E5"
 MOZILLA_FLATPAK_INSTALL_GROUP = "InstallCF146F38BCAB2D21"
 
+MIMEAPPS_LIST = os.path.join(GLib.get_user_config_dir(), "mimeapps.list")
+MIMEAPPS_GROUPS = [
+    "Default Applications",
+    "Added Associations",
+    "Removed Associations",
+]
+OLD_DESKTOP_FILE = "org.mozilla.Firefox.desktop"
+NEW_DESKTOP_FILE = "org.mozilla.firefox.desktop"
+
+
+def update_mimeapps_list(path):
+    """Update file associations, which in particular includes x-scheme-handler/http and
+    friends to specify the default web browser.
+
+    Strictly speaking, a user may have had the old Firefox specified as their default
+    browser without ever having launched it (in which case this script would not be
+    run); in practice, this seems vanishingly unlikely.
+
+    We cannot use GLib's own API to query what mime types the old Firefox desktop file
+    is a handler for, because we can't construct a GDesktopAppInfo for it, because its
+    desktop file no longer exists.
+    """
+
+    keyfile = GLib.KeyFile()
+    try:
+        keyfile.load_from_file(
+            path, GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS,
+        )
+    except GLib.GError as gerror:
+        if gerror.matches(GLib.file_error_quark(), GLib.FileError.NOENT):
+            return
+
+        raise
+
+    changed = False
+
+    for group in MIMEAPPS_GROUPS:
+        if not keyfile.has_group(group):
+            continue
+
+        keys, _length = keyfile.get_keys(group)
+        for key in keys:
+            values = keyfile.get_string_list(group, key)
+            try:
+                i = values.index(OLD_DESKTOP_FILE)
+            except ValueError:
+                pass
+            else:
+                values[i] = NEW_DESKTOP_FILE
+                keyfile.set_string_list(group, key, values)
+                changed = True
+
+    if changed:
+        keyfile.save_to_file(path)
+
 
 def copy_install_section(path):
     """The default profile is keyed by a hash of the Firefox executable's installed
@@ -68,6 +123,7 @@ def main():
         and not os.path.isdir(APP_DATA_DIR_DOT_MOZILLA)
         and os.path.isdir(HOME_DOT_MOZILLA)
     ):
+        update_mimeapps_list(MIMEAPPS_LIST)
         copy_install_section(PROFILES_INI)
         os.rename(HOME_DOT_MOZILLA, APP_DATA_DIR_DOT_MOZILLA)
 
