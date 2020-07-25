@@ -15,10 +15,8 @@
 #define RECOVERY_INTERVAL  15
 #define MEM_THRESHOLD      10
 
-#define SYSRQ_FILE          "/proc/sys/kernel/sysrq"
 #define SYSRQ_TRIGGER_FILE  "/proc/sysrq-trigger"
 #define PSI_MEMORY_FILE     "/proc/pressure/memory"
-#define SYSRQ_MASK          0x40
 #define BUFSIZE             256
 
 static ssize_t fstr(const char *path, char *rbuf, const char *wbuf) {
@@ -53,23 +51,10 @@ static void sysrq_trigger_oom() {
     sleep(RECOVERY_INTERVAL);
 }
 
-static void sysrq_enable_oom() {
-    int sysrq;
-    char buf[BUFSIZE];
-
-    fstr(SYSRQ_FILE, buf, NULL);
-    sysrq = atoi(buf);
-    sysrq |= SYSRQ_MASK;
-    snprintf(buf, BUFSIZE, "%d", sysrq);
-    fstr(SYSRQ_FILE, NULL, buf);
-}
-
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0);
     printf("poll_interval=%ds, recovery_interval=%ds, stall_threshold=%d%%\n",
            POLL_INTERVAL, RECOVERY_INTERVAL, MEM_THRESHOLD);
-
-    sysrq_enable_oom();
 
     while (true) {
         int i;
