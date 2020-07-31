@@ -25,6 +25,7 @@ dist_systemdunit_DATA = \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
 	hack-remove-global-override.service \
+	run-media-eoslive.mount \
 	$(NULL)
 
 dist_systemduserunit_DATA = \

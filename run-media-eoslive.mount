@@ -1,0 +1,11 @@
+[Unit]
+Description=Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionKernelCommandLine=endless.live_boot
+
+[Mount]
+What=/dev/mapper/endless-image-device
+Where=/run/media/eoslive
+
+[Install]
+WantedBy=local-fs.target
