@@ -26,6 +26,7 @@ dist_systemdunit_DATA = \
 	eos-update-flatpak-repos.service \
 	eoslive-kolibrihome-setup.service \
 	hack-remove-global-override.service \
+	run-kiwixhome.mount \
 	run-kolibrihome.mount \
 	run-media-eoslive.mount \
 	$(NULL)
@@ -105,5 +106,6 @@ tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/eos-boot-helper.conf \
+	tmpfiles.d/flatpak-extension-kiwix-usb-content.conf \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
