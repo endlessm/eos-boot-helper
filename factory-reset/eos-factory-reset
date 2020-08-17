@@ -70,13 +70,13 @@ if __name__ == "__main__":
         action = "enable"
         warn_msg = [
             f"Selected stages: {' '.join(stages)}",
-            f"WARNING: You are about to schedule IRREVERSIBLE changes to be",
-            f"performed on the next boot. If you do not want to schedule these",
-            f"changes for the next boot say 'n' now.",
+            "WARNING: You are about to schedule IRREVERSIBLE changes to be",
+            "performed on the next boot. If you do not want to schedule these",
+            "changes for the next boot say 'n' now.",
         ]
         success_msg = [
-            f"A factory reset procedure is scheduled for the next boot.",
-            f"Please reboot the machine to proceed with the reset process.",
+            "A factory reset procedure is scheduled for the next boot.",
+            "Please reboot the machine to proceed with the reset process.",
             f"If this was a mistake, run '{parser.prog} --disable'.",
         ]
     else:
