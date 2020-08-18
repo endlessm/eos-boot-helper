@@ -1,0 +1,13 @@
+[Unit]
+Description=Kolibri data from Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionKernelCommandLine=endless.live_boot
+ConditionDirectoryNotEmpty=/run/media/eoslive/.kolibri
+
+[Mount]
+What=/run/media/eoslive/.kolibri
+Where=/run/kolibrihome
+Options=bind
+
+[Install]
+WantedBy=multi-user.target
