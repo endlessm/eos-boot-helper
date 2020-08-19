@@ -11,14 +11,16 @@ is_live()
     grep -q "\<endless.live_boot\>" "${proc_cmdline:-/proc/cmdline}"
 }
 
-dest_dir="${1:?normal-dir argument missing}"
+if ! is_live; then
+    exit 0
+fi
 
+dest_dir="${1:?normal-dir argument missing}"
 system_dir=/usr/lib/systemd/system
 local_fs_target_wants="$dest_dir/local-fs.target.wants"
-if is_live; then
-    mkdir -p "$local_fs_target_wants"
-    ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
 
-    # Don't try to remount the (read-only) root filesystem read-write
-    ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
-fi
+mkdir -p "$local_fs_target_wants"
+ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
+
+# Don't try to remount the (read-only) root filesystem read-write
+ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
