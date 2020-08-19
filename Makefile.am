@@ -24,9 +24,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
-	eoslive-kolibrihome-setup.service \
 	hack-remove-global-override.service \
-	run-kolibrihome.mount \
 	run-media-eoslive.mount \
 	$(NULL)
 
@@ -105,5 +103,4 @@ tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/eos-boot-helper.conf \
-	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
