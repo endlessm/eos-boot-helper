@@ -24,11 +24,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
-	eoslive-kolibrihome-setup.service \
 	hack-remove-global-override.service \
-	run-kiwixhome.mount \
-	run-kolibrihome.mount \
-	run-media-eoslive.mount \
 	$(NULL)
 
 dist_systemduserunit_DATA = \

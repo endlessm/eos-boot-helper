@@ -11,14 +11,68 @@ is_live()
     grep -q "\<endless.live_boot\>" "${proc_cmdline:-/proc/cmdline}"
 }
 
-dest_dir="${1:?normal-dir argument missing}"
+if ! is_live; then
+    exit 0
+fi
 
+dest_dir="${1:?normal-dir argument missing}"
 system_dir=/usr/lib/systemd/system
 local_fs_target_wants="$dest_dir/local-fs.target.wants"
-if is_live; then
-    mkdir -p "$local_fs_target_wants"
-    ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
 
-    # Don't try to remount the (read-only) root filesystem read-write
-    ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
-fi
+mkdir -p "$local_fs_target_wants"
+ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
+
+# Don't try to remount the (read-only) root filesystem read-write
+ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
+
+cat << MOUNT_EOSLIVE > "$dest_dir/run-media-eoslive.mount"
+[Unit]
+Description=Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+
+[Mount]
+What=/dev/mapper/endless-image-device
+Where=/run/media/eoslive
+MOUNT_EOSLIVE
+
+cat << MOUNT_KOLIBRIHOME > "$dest_dir/run-kolibrihome.mount"
+[Unit]
+Description=Kolibri data from Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/media/eoslive/.kolibri
+
+[Mount]
+What=/run/media/eoslive/.kolibri
+Where=/run/kolibrihome
+Options=bind
+MOUNT_KOLIBRIHOME
+
+cat << SETUP_KOLIBRIHOME > "$dest_dir/eoslive-kolibrihome-setup.service"
+[Unit]
+Description=Setup Kolibri to use data from Endless Live USB Storage
+Requires=run-kolibrihome.mount
+After=systemd-tmpfiles-setup.service
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/kolibrihome
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'echo -e "[Environment]\nKOLIBRI_HOME=/run/kolibrihome" > /run/flatpak/overrides/org.learningequality.Kolibri'
+
+[Install]
+WantedBy=multi-user.target
+SETUP_KOLIBRIHOME
+
+cat << MOUNT_KIWIXHOME > "$dest_dir/run-kiwixhome.mount"
+[Unit]
+Description=Kiwix data from Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/media/eoslive/.kiwix
+Before=systemd-tmpfiles-setup.service
+WantedBy=systemd-tmpfiles-setup.service
+
+[Mount]
+What=/run/media/eoslive/.kiwix
+Where=/run/kiwixhome
+Options=bind
+MOUNT_KIWIXHOME
