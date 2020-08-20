@@ -62,3 +62,17 @@ ExecStart=/bin/bash -c 'echo -e "[Environment]\nKOLIBRI_HOME=/run/kolibrihome" >
 [Install]
 WantedBy=multi-user.target
 SETUP_KOLIBRIHOME
+
+cat << MOUNT_KIWIXHOME > "$dest_dir/run-kiwixhome.mount"
+[Unit]
+Description=Kiwix data from Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/media/eoslive/.kiwix
+Before=systemd-tmpfiles-setup.service
+WantedBy=systemd-tmpfiles-setup.service
+
+[Mount]
+What=/run/media/eoslive/.kiwix
+Where=/run/kiwixhome
+Options=bind
+MOUNT_KIWIXHOME
