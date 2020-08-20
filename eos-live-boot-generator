@@ -24,3 +24,13 @@ ln -sf "$system_dir/systemd-udev-settle.service" "$local_fs_target_wants/"
 
 # Don't try to remount the (read-only) root filesystem read-write
 ln -sf /dev/null "$dest_dir/systemd-remount-fs.service"
+
+cat << MOUNT_EOSLIVE > "$dest_dir/run-media-eoslive.mount"
+[Unit]
+Description=Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+
+[Mount]
+What=/dev/mapper/endless-image-device
+Where=/run/media/eoslive
+MOUNT_EOSLIVE
