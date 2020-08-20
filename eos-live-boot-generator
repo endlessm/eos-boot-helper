@@ -34,3 +34,31 @@ ConditionKernelCommandLine=endless.image.device
 What=/dev/mapper/endless-image-device
 Where=/run/media/eoslive
 MOUNT_EOSLIVE
+
+cat << MOUNT_KOLIBRIHOME > "$dest_dir/run-kolibrihome.mount"
+[Unit]
+Description=Kolibri data from Endless Live USB Storage
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/media/eoslive/.kolibri
+
+[Mount]
+What=/run/media/eoslive/.kolibri
+Where=/run/kolibrihome
+Options=bind
+MOUNT_KOLIBRIHOME
+
+cat << SETUP_KOLIBRIHOME > "$dest_dir/eoslive-kolibrihome-setup.service"
+[Unit]
+Description=Setup Kolibri to use data from Endless Live USB Storage
+Requires=run-kolibrihome.mount
+After=systemd-tmpfiles-setup.service
+ConditionKernelCommandLine=endless.image.device
+ConditionDirectoryNotEmpty=/run/kolibrihome
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'echo -e "[Environment]\nKOLIBRI_HOME=/run/kolibrihome" > /run/flatpak/overrides/org.learningequality.Kolibri'
+
+[Install]
+WantedBy=multi-user.target
+SETUP_KOLIBRIHOME
