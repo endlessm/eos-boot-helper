@@ -102,6 +102,11 @@ tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/eos-boot-helper.conf \
-	tmpfiles.d/flatpak-extension-kiwix-usb-content.conf \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
+
+extratmpfilesdir = $(pkgdatadir)/tmpfiles.d
+dist_extratmpfiles_DATA = \
+	tmpfiles.d/flatpak-extension-kiwix-usb-content.conf \
+	$(NULL)
+
