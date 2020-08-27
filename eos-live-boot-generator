@@ -48,8 +48,8 @@ cat << SETUP_KOLIBRIHOME > "$unit_path"
 
 [Unit]
 Description=Setup Kolibri to use data from Endless Live USB Storage
-Requires=run-kolibrihome.mount
-After=run-kolibrihome.mount systemd-tmpfiles-setup.service
+Requires=run-media-eoslive.mount
+After=run-media-eoslive.mount systemd-tmpfiles-setup.service
 ConditionKernelCommandLine=endless.image.device
 ConditionDirectoryNotEmpty=/run/media/eoslive/.kolibri
 
