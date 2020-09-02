@@ -34,6 +34,9 @@
 #
 # Based on code from dracut-modules-olpc.
 
+# GPT length in sectors
+GPT_LEN=33
+
 if [ $# -ge 1 ]; then
   # For testing
   orig_root_part="$1"
@@ -176,7 +179,7 @@ else
 
   # Subtract the size of the secondary GPT header at the end of the disk. We do
   # this also for MBR in case we want to convert MBR->GPT later
-  new_size=$(( new_size - 33 ))
+  new_size=$(( new_size - GPT_LEN ))
 fi
 
 # remove the last-lba line so that we fill the disk
