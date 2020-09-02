@@ -168,6 +168,15 @@ part_start=$(echo "$parts" | sed -n -e '$ s/.*start=[ ]\+\([0-9]\+\).*$/\1/p')
 part_end=$(( part_start + part_size ))
 echo "Dsize $disk_size PreserveStart $preserve_start Psize $part_size Pstart $part_start Pend $part_end"
 
+# Look for metrics Deployment ID data
+eos_data=$(dd if=$root_disk bs=512 count=1 skip=$(( part_end + GPT_LEN )) status=none)
+deployment_id=$(echo "$eos_data" | sed -n -e 's/.*EOS_DEPLOYMENT_ID=\(.*\);.*/\1/p')
+if [ -n "$deployment_id" ] ; then
+  echo "Found deployment ID \"$deployment_id\""
+  mkdir -p /run/eos-metrics
+  echo "$deployment_id" > /run/eos-metrics/deployment-id.txt
+fi
+
 # Calculate the new root partition size, assuming that it will expand to fill
 # all available space
 if [ -n "$preserve_start" ]; then
