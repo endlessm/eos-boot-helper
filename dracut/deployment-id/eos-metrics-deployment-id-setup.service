@@ -1,0 +1,14 @@
+[Unit]
+Description=Set Metrics Deployment ID
+DefaultDependencies=no
+ConditionPathExists=/etc/initrd-release
+ConditionPathExists=/run/eos-metrics/deployment-id.txt
+After=sysroot.mount
+Requires=sysroot.mount
+
+[Service]
+Type=oneshot
+ExecStart=/bin/eos-metrics-deployment-id-setup
+StandardInput=null
+StandardOutput=syslog
+StandardError=syslog+console
