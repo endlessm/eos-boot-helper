@@ -1,5 +1,5 @@
 # Systemd unit file presets for EOS. We do not install a wildcard
-# "disable *" rule, so here we simply blacklist any units that aren't
+# "disable *" rule, so here we simply disable any units that aren't
 # desired. All others will be enabled by systemd.
 
 # Reverse systemd defaults
