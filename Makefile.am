@@ -8,6 +8,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemduserunitdir='$${prefix}/lib/systemd/user' \
 	--with-systemdgeneratordir='$${prefix}/lib/systemd/system-generators' \
 	--with-systemdpresetdir='$${prefix}/lib/systemd/system-preset' \
+	--with-systemduserpresetdir='$${prefix}/lib/systemd/user-preset' \
 	--with-udevdir='$${prefix}/lib/udev' \
 	--with-modprobedir='$${prefix}/lib/modprobe.d' \
 	--with-dbussystemconfigdir='$${prefix}/share/dbus-1/system.d' \
@@ -38,6 +39,10 @@ dist_systemdgenerator_SCRIPTS = \
 
 dist_systemdpreset_DATA = \
 	50-eos.preset \
+	$(NULL)
+
+dist_systemduserpreset_DATA = \
+	50-eos-user.preset \
 	$(NULL)
 
 # Network Manager dispatcher script for the firewall - scripts which
