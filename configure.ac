@@ -92,6 +92,7 @@ AC_CONFIG_FILES([
 	dracut/Makefile
 	dracut/image-boot/Makefile
 	dracut/repartition/Makefile
+	dracut/deployment-id/Makefile
 	dracut/customization/Makefile
 	factory-reset/Makefile
 	fallback-fb-setup/Makefile
