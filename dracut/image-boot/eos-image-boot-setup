@@ -113,7 +113,8 @@ iso9660)
   fi
 
   # Create a loopback device backing the squashfs
-  if ! image_device=$(losetup --find --show /cd/${image_path}); then
+  image_device=$(losetup -f)
+  if ! image_device=$(losetup ${image_device} /cd/${image_path}); then
     echo "losetup failed for /cd/${image_path}"
     exit 1
   fi
@@ -138,9 +139,10 @@ if [ -n "$squash_device" ]; then
     echo "Failed to mount ${squash_device}"
     exit 1
   fi
-  
+
   # Create a loopback device backing the endless image
-  host_device=$(losetup --find --show /squash/endless.img)
+  host_device=$(losetup -f)
+  losetup ${host_device} /squash/endless.img
   linear_map "$host_device"
 fi
 
