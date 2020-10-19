@@ -114,7 +114,8 @@ iso9660)
 
   # Create a loopback device backing the squashfs
   image_device=$(losetup -f)
-  if ! image_device=$(losetup ${image_device} /cd/${image_path}); then
+  losetup ${image_device} /cd/${image_path}
+  if [ $? != 0 ]; then
     echo "losetup failed for /cd/${image_path}"
     exit 1
   fi
