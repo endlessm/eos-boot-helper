@@ -23,6 +23,7 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-model-s2idle.service \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
 	hack-remove-global-override.service \

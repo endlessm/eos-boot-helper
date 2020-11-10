@@ -1,0 +1,9 @@
+[Unit]
+Description=Make system sleep with s2idle
+ConditionArchitecture=arm64
+
+[Service]
+ExecStart=/usr/bin/sh -c 'grep -q "Pine64 Pinebook Pro" /sys/firmware/devicetree/base/model && echo s2idle > /sys/power/mem_sleep'
+
+[Install]
+WantedBy=multi-user.target
