@@ -1,0 +1,13 @@
+[Unit]
+Description=Migrate Chromium profile to new path
+
+ConditionPathExists=!%h/.var/app/org.chromium.Chromium/.migrated
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-boot-helper/eos-migrate-chromium-profile
+Restart=no
+RemainAfterExit=yes
+
+[Install]
+WantedBy=gnome-session.target

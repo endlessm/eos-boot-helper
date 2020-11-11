@@ -1,0 +1,150 @@
+#!/usr/bin/python3
+#
+# eos-migrate-chromium-profile: move users' Chromium profile to its new home
+#
+# This script is based on eos-migrate-firefox-profile.
+#
+# Copyright © 2020 Endless OS Foundation LLC
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+import fileinput
+import os
+from gi.repository import GLib
+
+USER_HOME_DIR = os.path.expanduser("~/")
+DESKTOP_SHORTCUTS_DIR = os.path.join(USER_HOME_DIR, ".local", "share", "applications")
+OLD_CHROMIUM_CONFIG_DIR = os.path.join(USER_HOME_DIR, ".config", "chromium")
+NEW_CHROMIUM_DATA_DIR = os.path.join(USER_HOME_DIR, ".var", "app",
+                                     "org.chromium.Chromium")
+NEW_CHROMIUM_CONFIG_DIR = os.path.join(NEW_CHROMIUM_DATA_DIR, "config", "chromium")
+
+OLD_WIDEVINE_SYSTEM_DIR = os.path.join(os.path.sep, "usr", "lib",
+                                       "chromium-browser", "WidevineCdm")
+
+MIMEAPPS_LIST = os.path.join(GLib.get_user_config_dir(), "mimeapps.list")
+MIMEAPPS_GROUPS = [
+    "Default Applications",
+    "Added Associations",
+    "Removed Associations",
+]
+OLD_DESKTOP_FILE = "chromium-browser.desktop"
+NEW_DESKTOP_FILE = "org.chromium.Chromium.desktop"
+
+
+def update_mimeapps_list(path):
+    """Update file associations, which in particular includes x-scheme-handler/http and
+    friends to specify the default web browser.
+
+    We cannot use GLib's own API to query what mime types the old Chromium desktop file
+    is a handler for, because we can't construct a GDesktopAppInfo for it, because its
+    desktop file no longer exists.
+    """
+
+    keyfile = GLib.KeyFile()
+    try:
+        keyfile.load_from_file(
+            path, GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS,
+        )
+    except GLib.GError as gerror:
+        if gerror.matches(GLib.file_error_quark(), GLib.FileError.NOENT):
+            return
+
+        raise
+
+    changed = False
+
+    for group in MIMEAPPS_GROUPS:
+        if not keyfile.has_group(group):
+            continue
+
+        keys, _length = keyfile.get_keys(group)
+        for key in keys:
+            values = keyfile.get_string_list(group, key)
+            try:
+                i = values.index(OLD_DESKTOP_FILE)
+            except ValueError:
+                pass
+            else:
+                values[i] = NEW_DESKTOP_FILE
+                keyfile.set_string_list(group, key, values)
+                changed = True
+
+    if changed:
+        keyfile.save_to_file(path)
+
+
+def update_desktop_shortcut(path):
+    keyfile = GLib.KeyFile()
+    print("path: " + path)
+    keyfile.load_from_file(path, GLib.KeyFileFlags.NONE)
+
+    group = "Desktop Entry"
+    if not keyfile.has_group(group):
+        return
+
+    exec_cmd = keyfile.get_string(group, "Exec")
+    if not exec_cmd.startswith("/usr/bin/chromium-browser"):
+        return
+
+    keyfile.set_string(group, "Exec",
+                       "/usr/bin/flatpak run org.chromium.Chromium" +
+                       exec_cmd[len("/usr/bin/chromium-browser"):])
+    keyfile.set_string(group, "X-Flatpak-Part-Of", "org.chromium.Chromium")
+    keyfile.save_to_file(path)
+
+
+def update_desktop_shortcuts():
+    for filename in os.listdir(DESKTOP_SHORTCUTS_DIR):
+        if filename.endswith(".desktop"):
+            update_desktop_shortcut(os.path.join(DESKTOP_SHORTCUTS_DIR,
+                                                 filename))
+
+
+def update_old_config_references(path):
+    if not os.path.isfile(path):
+        return
+
+    for line in fileinput.input(path, inplace=True):
+        line = line.replace(OLD_CHROMIUM_CONFIG_DIR, NEW_CHROMIUM_CONFIG_DIR)
+        line = line.replace(OLD_WIDEVINE_SYSTEM_DIR, "")
+        print(line, end='')
+
+
+def main():
+    migrated_file = os.path.join(NEW_CHROMIUM_DATA_DIR, ".migrated")
+    if os.path.exists(migrated_file):
+        return
+
+    update_mimeapps_list(MIMEAPPS_LIST)
+    update_desktop_shortcuts()
+
+    if (
+        os.path.isdir(OLD_CHROMIUM_CONFIG_DIR) and
+        not os.path.isdir(NEW_CHROMIUM_CONFIG_DIR)
+    ):
+        update_old_config_references(
+            os.path.join(OLD_CHROMIUM_CONFIG_DIR,
+                         "WidevineCdm", "latest-component-updated-widevine-cdm"))
+        os.makedirs(os.path.dirname(NEW_CHROMIUM_CONFIG_DIR), exist_ok=True)
+        os.rename(OLD_CHROMIUM_CONFIG_DIR, NEW_CHROMIUM_CONFIG_DIR)
+
+    os.makedirs(NEW_CHROMIUM_DATA_DIR, exist_ok=True)
+
+    os.mknod(migrated_file)
+
+
+if __name__ == "__main__":
+    main()

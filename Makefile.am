@@ -29,6 +29,7 @@ dist_systemdunit_DATA = \
 	$(NULL)
 
 dist_systemduserunit_DATA = \
+	eos-migrate-chromium-profile.service \
 	eos-migrate-firefox-profile.service \
 	$(NULL)
 
@@ -67,6 +68,7 @@ install-data-hook:
 	$(INSTALL_DATA) $(srcdir)/var-endless_x2dextra.mount \
 	  '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 	$(MKDIR_P) '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
+	ln -s ../eos-migrate-chromium-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-firefox-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 
 uninstall-hook:
@@ -100,6 +102,7 @@ dist_sbin_SCRIPTS = \
 
 dist_libexec_SCRIPTS = \
 	dracut/image-boot/eos-map-image-file \
+	eos-migrate-chromium-profile \
 	eos-migrate-firefox-profile \
 	$(NULL)
 
