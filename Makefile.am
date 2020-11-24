@@ -109,6 +109,7 @@ dist_libexec_SCRIPTS = \
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
+	tmpfiles.d/chromium-system-services.conf \
 	tmpfiles.d/eos-boot-helper.conf \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
