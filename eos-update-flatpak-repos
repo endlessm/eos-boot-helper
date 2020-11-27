@@ -1213,6 +1213,39 @@ FLATPAKS_TO_MIGRATE = [
         "new-origin": "flathub",
         "mangle-metadata": mangle_firefox_metadata,
     },
+    # migrate Hack apps from eos-apps to flathub (T31133)
+    {
+        "name": "com.hack_computer.Clubhouse",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
+    {
+        "name": "com.hack_computer.Clippy.Extension",
+        "kind": Flatpak.RefKind.RUNTIME,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
+    {
+        "name": "com.hack_computer.OperatingSystemApp",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
+    {
+        "name": "com.hack_computer.Sidetrack",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
 ]
 
 
