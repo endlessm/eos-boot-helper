@@ -5,6 +5,7 @@ AC_CONFIG_SRCDIR([eos-firstboot])
 PKG_PROG_PKG_CONFIG
 
 AC_PROG_CC
+AC_CANONICAL_TARGET
 
 dnl Get systemd unit and udev rules directories. Add options so that they
 dnl can be set under $prefix for distcheck.
@@ -87,6 +88,17 @@ AC_ARG_WITH([dbussystemconfigdir],
             [dbussystemconfigdir="$withval"], [dbussystemconfigdir="/usr/share/dbus-1/system.d"])
 AC_SUBST(dbussystemconfigdir)
 
+FLATPAK_ARCH="x86_64"
+case $target_cpu in
+  arm*)
+    FLATPAK_ARCH="arm"
+  ;;
+  aarch64*)
+    FLATPAK_ARCH="aarch64"
+  ;;
+esac
+AC_SUBST(FLATPAK_ARCH)
+
 AC_CONFIG_FILES([
 	Makefile
 	dracut/Makefile
@@ -100,5 +112,6 @@ AC_CONFIG_FILES([
 	psi-monitor/Makefile
 	record-boot-success/Makefile
 	tests/Makefile
+	tmpfiles.d/chromium-system-services.conf
 ])
 AC_OUTPUT
