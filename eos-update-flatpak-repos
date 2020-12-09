@@ -1704,6 +1704,7 @@ def _migrate_installed_flatpaks():
 
         for ref in matching_refs:
             origin = ref.get_origin()
+            kind = ref.get_kind()
             name = ref.get_name()
             arch = ref.get_arch()
             branch = ref.get_branch()
@@ -1789,8 +1790,10 @@ def _migrate_installed_flatpaks():
 
                         triggers_needed = True
                     except GLib.Error as err:
-                        if not err.matches(Flatpak.error_quark(),
-                                           Flatpak.Error.NOT_INSTALLED):
+                        if err.matches(Flatpak.error_quark(),
+                                       Flatpak.Error.NOT_INSTALLED):
+                            logging.warning("Uninstall failed", exc_info=True)
+                        else:
                             raise
 
                     # TODO: ideally we would defer the removal of the old app
