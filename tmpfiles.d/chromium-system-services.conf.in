@@ -1,3 +1,4 @@
+D /etc/chromium-browser 0755 - - -
 D /run/flatpak/extension/org.chromium.Chromium.Policy.system-policies 0755 - - -
 D /run/flatpak/extension/org.chromium.Chromium.Policy.system-policies/@FLATPAK_ARCH@ 0755 - - -
 L /run/flatpak/extension/org.chromium.Chromium.Policy.system-policies/@FLATPAK_ARCH@/1 - - - - /etc/chromium-browser
