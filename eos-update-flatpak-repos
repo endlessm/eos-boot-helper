@@ -1521,8 +1521,9 @@ def copy_commit(repo, src_rev, dest_ref,
 
     # Only copy normal commits
     if src_state != 0:
-        raise Exception('Cannot copy irregular commit {}'
-                        .format(src_rev))
+        raise Exception(
+            f"Cannot copy irregular commit {src_rev} with state {src_state}"
+        )
 
     # If the dest ref exists, use the current commit as the new
     # commit's parent
