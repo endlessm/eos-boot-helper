@@ -4,7 +4,6 @@ Priority: optional
 Maintainer: Daniel Drake <drake@endlessm.com>
 Build-Depends: automake,
                debhelper (>= 8),
-               dh-systemd,
                flake8 <!nocheck>,
                gir1.2-flatpak-1.0 <!nocheck>,
                gir1.2-glib-2.0 <!nocheck>,
