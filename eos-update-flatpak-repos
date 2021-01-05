@@ -132,6 +132,11 @@ def _remove_remotes():
 
 # dict of remote -> list of runtimes
 RUNTIMES_TO_REMOVE = {
+    "eos-apps": [
+        # remove partially-installed, empty extension (which can't currently
+        # be migrated) before migrating main app (T31185)
+        "com.hack_computer.Clubhouse.Locale",
+    ],
 }
 
 
