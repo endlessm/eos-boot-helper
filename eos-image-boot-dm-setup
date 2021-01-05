@@ -3,7 +3,9 @@
 # Licensed under the GPLv2
 #
 # When booting from an image file hosted on a filesystem, this program maps the
-# host filesystem to a dm-device with holes where the image file lives.
+# host filesystem to a dm-device with holes where the image file and
+# persistent.img files live.
+
 if [ $# -ge 1 ]; then
   # For testing
   host_device="$1"
