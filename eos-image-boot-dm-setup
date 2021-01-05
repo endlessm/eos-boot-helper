@@ -50,15 +50,7 @@ fi
 
 case "${fstype}" in
 exfat)
-  # our windows installer USB sticks are exfat, and in that case there might
-  # also be a persistent.img file to make a hole around so our installer can
-  # mount the device mapper device and access the boot zip files.
-  # Letting dumpexfat fail is the easiest way to see if the file exists.
   extents=$(dumpexfat -f "${image_path}" "${host_device}")
-  persist_extents=$(dumpexfat -f "/endless/persistent.img" "${host_device}" 2>/dev/null)
-  if [ $? == 0 ]; then
-    extents="$extents"$'\n'"$persist_extents"
-  fi
   ;;
 ntfs)
   extents=$(ntfsextents "${host_device}" "${image_path}")
@@ -72,6 +64,17 @@ esac
 if [ $? != 0 ]; then
   echo "Failed to lookup ${image_path} on ${host_device} (${fstype})"
   exit 1
+fi
+
+if [ ${fstype} == "exfat" ] ; then
+  # exFAT USB sticks may have a persistent.img file for persistent storage, in
+  # which case we need to poke a hole where it lives as well, so our installer
+  # can mount the device mapper device and access the boot zip files.
+  # Letting dumpexfat fail is the easiest way to see if such file exists.
+  persist_extents=$(dumpexfat -f "/endless/persistent.img" "${host_device}" 2>/dev/null)
+  if [ $? == 0 ]; then
+    extents="$extents"$'\n'"$persist_extents"
+  fi
 fi
 
 # Sort the file extents so we create the holes in the correct places
