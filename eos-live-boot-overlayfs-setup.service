@@ -8,6 +8,7 @@ ConditionKernelCommandLine=endless.live_boot
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/eos-live-boot-overlayfs-setup
+RemainAfterExit=yes
 
 [Install]
 WantedBy=local-fs.target
