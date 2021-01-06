@@ -8,6 +8,7 @@ ConditionKernelCommandLine=endless.image.device
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/eos-image-boot-dm-setup
+RemainAfterExit=yes
 
 [Install]
 WantedBy=local-fs.target
