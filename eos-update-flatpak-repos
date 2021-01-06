@@ -132,6 +132,11 @@ def _remove_remotes():
 
 # dict of remote -> list of runtimes
 RUNTIMES_TO_REMOVE = {
+    "eos-apps": [
+        # remove partially-installed, empty extension (which can't currently
+        # be migrated) before migrating main app (T31185)
+        "com.hack_computer.Clubhouse.Locale",
+    ],
 }
 
 
@@ -152,7 +157,7 @@ def _remove_runtimes():
         logging.info("Removing runtime {} from {}"
                      .format(refspec, inst.get_path().get_path()))
         subprocess.check_call(['flatpak', 'uninstall', '--system',
-                               '--runtime', refspec])
+                               '--runtime', '--noninteractive', refspec])
 
 
 # From 3.7.6 through 3.7.8, images were shipped with remote URLs using
