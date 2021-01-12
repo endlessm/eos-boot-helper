@@ -17,7 +17,7 @@ find_storage_partition() {
 		return 1
 	fi
 
-	local root_partition=$(blkid --output device --match-token "${bootdev}")
+	local root_partition=$(blkid --list-one --output device --match-token "${bootdev}")
 	if [ ! -b "${root_partition}" ] ; then
 		echo "String passed on endless.image.device does not represent a block device" >&2
 		return 1
