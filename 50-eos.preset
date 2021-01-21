@@ -14,6 +14,7 @@ disable apt-daily-upgrade.timer
 disable bluetooth-init.service
 disable crio.service
 disable crio-shutdown.service
+disable cron.service
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
 disable eos-safe-defaults.service
@@ -21,11 +22,14 @@ disable eos-update-server.service
 disable eos-update-server.socket
 disable eos-updater-avahi.path
 disable eos-updater-avahi.service
+disable ifupdown-wait-online.service
+disable networking.service
 disable NetworkManager-wait-online.service
 disable openvpn-client@.service
 disable openvpn-server@.service
 disable openvpn.service
 disable openvpn@.service
+disable pppd-dns.service
 disable rtkit-daemon.service
 disable serial-getty@.service
 disable smartd.service
