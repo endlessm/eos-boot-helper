@@ -8,7 +8,6 @@ This test is based on test_migrate_firefox_profile.py.
 import tempfile
 import textwrap
 import os
-import unittest
 
 from .util import BaseTestCase, system_script, import_script_as_module
 
@@ -101,7 +100,6 @@ class TestUpdateDesktopShortcuts(BaseTestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    @unittest.expectedFailure
     def test_no_shortcuts_dir(self):
         emfp.update_desktop_shortcuts(os.path.join(self.tmp.name, "no-such-directory"))
 
