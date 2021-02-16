@@ -106,11 +106,15 @@ def update_desktop_shortcut(path):
     keyfile.save_to_file(path)
 
 
-def update_desktop_shortcuts():
-    for filename in os.listdir(DESKTOP_SHORTCUTS_DIR):
+def update_desktop_shortcuts(path=DESKTOP_SHORTCUTS_DIR):
+    try:
+        shortcuts = os.listdir(path)
+    except FileNotFoundError:
+        return
+
+    for filename in shortcuts:
         if filename.endswith(".desktop"):
-            update_desktop_shortcut(os.path.join(DESKTOP_SHORTCUTS_DIR,
-                                                 filename))
+            update_desktop_shortcut(os.path.join(path, filename))
 
 
 def update_old_config_references(path):

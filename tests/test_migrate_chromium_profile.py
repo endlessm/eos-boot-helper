@@ -100,6 +100,12 @@ class TestUpdateDesktopShortcuts(BaseTestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_no_shortcuts_dir(self):
+        emfp.update_desktop_shortcuts(os.path.join(self.tmp.name, "no-such-directory"))
+
+    def test_empty_shortcuts_dir(self):
+        emfp.update_desktop_shortcuts(self.tmp.name)
+
     def test_not_there(self):
         orig_data = textwrap.dedent(
             """
@@ -134,7 +140,7 @@ class TestUpdateDesktopShortcuts(BaseTestCase):
         with open(test_desktop, "w") as f:
             f.write(orig_data)
 
-        emfp.update_desktop_shortcut(test_desktop)
+        emfp.update_desktop_shortcuts(self.tmp.name)
         with open(test_desktop, "r") as f:
             new_data = f.read()
 
