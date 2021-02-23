@@ -88,7 +88,7 @@ ConditionDirectoryNotEmpty=/run/media/eoslive/KOLIBRI_DATA
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'echo -e "[Context]\nfilesystems=/run/media/eoslive/KOLIBRI_DATA;\n\n[Environment]\nKOLIBRI_HOME=/run/media/eoslive/KOLIBRI_DATA" > /run/flatpak/overrides/org.learningequality.Kolibri'
+ExecStart=/bin/bash -c 'echo -e "[Context]\nfilesystems=/run/media/eoslive/KOLIBRI_DATA;\n\n[Environment]\nKOLIBRI_HOME=/run/media/eoslive/KOLIBRI_DATA\nPYTHONPATH=/run/media/eoslive/KOLIBRI_DATA/extensions" > /run/flatpak/overrides/org.learningequality.Kolibri'
 SETUP_KOLIBRIHOME
 ln -sf "$unit_path" "$multi_user_target_wants/"
 
