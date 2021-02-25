@@ -25,7 +25,6 @@ Description: Endless boot helper
 Depends: ${misc:Depends},
          dracut,
          xinit,
-         xterm,
          iptables,
          ostree,
          flatpak,
