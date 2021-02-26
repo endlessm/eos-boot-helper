@@ -24,7 +24,6 @@ Architecture: any
 Description: Endless boot helper
 Depends: ${misc:Depends},
          dracut,
-         xinit,
          iptables,
          ostree,
          flatpak,
