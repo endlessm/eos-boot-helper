@@ -25,14 +25,16 @@ disable eos-updater-avahi.service
 disable ifupdown-wait-online.service
 disable networking.service
 disable NetworkManager-wait-online.service
+disable logrotate.timer
 disable openvpn-client@.service
 disable openvpn-server@.service
 disable openvpn.service
 disable openvpn@.service
 disable pppd-dns.service
 disable rtkit-daemon.service
+disable rsyslog.service
 disable serial-getty@.service
-disable smartd.service
+disable smartmontools.service
 disable speech-dispatcherd.service
 disable ssh*.service
 disable ssh.socket
