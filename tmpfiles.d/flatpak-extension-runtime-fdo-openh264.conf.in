@@ -1,0 +1,2 @@
+D /run/lib 0755 - - -
+L /run/lib/openh264 - - - - /var/lib/flatpak/runtime/org.freedesktop.Platform.openh264/@FLATPAK_ARCH@/2.0/active/files/extra

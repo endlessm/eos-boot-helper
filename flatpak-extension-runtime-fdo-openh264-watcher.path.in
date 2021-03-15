@@ -1,0 +1,8 @@
+[Unit]
+After=systemd-tmpfiles-setup.service
+
+[Path]
+PathChanged=/var/lib/flatpak/runtime/org.freedesktop.Platform.openh264/@FLATPAK_ARCH@/2.0/active/files/extra/libopenh264.so.6
+
+[Install]
+WantedBy=multi-user.target
