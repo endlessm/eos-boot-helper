@@ -25,6 +25,9 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-reclaim-swap.service \
 	eos-update-flatpak-repos.service \
+	flatpak-extension-runtime-fdo-openh264-ldconfig.service \
+	flatpak-extension-runtime-fdo-openh264-watcher.path \
+	flatpak-extension-runtime-fdo-openh264-watcher.service \
 	hack-remove-global-override.service \
 	$(NULL)
 
@@ -111,6 +114,7 @@ dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/chromium-system-services.conf \
 	tmpfiles.d/eos-boot-helper.conf \
+	tmpfiles.d/flatpak-extension-runtime-fdo-openh264.conf \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
 
@@ -119,3 +123,6 @@ dist_extratmpfiles_DATA = \
 	tmpfiles.d/flatpak-extension-kiwix-usb-content.conf \
 	$(NULL)
 
+ldconfdir = $(sysconfdir)/ld.so.conf.d
+dist_ldconf_DATA = \
+	ld.so.conf.d/flatpak-extension-runtime-fdo-openh264.conf

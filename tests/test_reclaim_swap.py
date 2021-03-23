@@ -48,10 +48,10 @@ class TestReclaimSwap(BaseTestCase):
         '''
         lines = table.splitlines(keepends=True)
         out = []
-        for l in lines:
-            if l.startswith(b'Disk identifier:'):
+        for line in lines:
+            if line.startswith(b'Disk identifier:'):
                 continue
-            out.append(l)
+            out.append(line)
         return bytes().join(out)
 
     def run_test(self, test):
