@@ -1,0 +1,25 @@
+[Unit]
+Description=Split Flatpak repo from system OSTree repo
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# This is only needed when the flatpak dir or repo is a symlink
+ConditionPathIsSymbolicLink=|/var/lib/flatpak
+ConditionPathIsSymbolicLink=|/var/lib/flatpak/repo
+
+# Try to run before any ostree and flatpak clients so that the repo can
+# be exclusively locked.
+Before=eos-autoupdater.service eos-updater.service
+Before=eos-update-flatpak-repos.service
+Before=eos-updater-avahi.service eos-update-server.service
+Before=eos-updater-flatpak-installer.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-split-flatpak-repos
+
+[Install]
+WantedBy=multi-user.target

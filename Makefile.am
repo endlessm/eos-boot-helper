@@ -23,6 +23,7 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-split-flatpak-repo.service \
 	eos-update-flatpak-repos.service \
 	flatpak-extension-runtime-fdo-openh264-ldconfig.service \
 	flatpak-extension-runtime-fdo-openh264-watcher.path \
@@ -98,6 +99,7 @@ dist_sbin_SCRIPTS = \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-repartition-mbr \
+	eos-split-flatpak-repo \
 	eos-update-flatpak-repos \
 	$(NULL)
 
