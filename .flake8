@@ -4,3 +4,13 @@
 # some empirical research on reducing annoying line wrapping on real source
 # code.
 max-line-length = 88
+
+# Include scripts to check in addition to the default *.py.
+filename =
+    *.py,
+    ./eos-migrate-chromium-profile,
+    ./eos-migrate-firefox-profile,
+    ./eos-update-flatpak-repos,
+    ./factory-reset/eos-factory-reset,
+    ./record-boot-success/record-boot-success,
+    ./tests/check-syntax
