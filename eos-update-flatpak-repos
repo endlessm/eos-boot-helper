@@ -1251,6 +1251,24 @@ FLATPAKS_TO_MIGRATE = [
         "old-origin": "eos-apps",
         "new-origin": "flathub",
     },
+    {
+        "name": "org.gnome.Solitaire",
+        "new-name": "org.gnome.Aisleriot",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
+    {
+        "name": "org.gnome.Freecell",
+        "new-name": "org.gnome.Aisleriot",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
 ]
 
 
