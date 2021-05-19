@@ -103,3 +103,15 @@ def import_script_as_module(module_name, filename):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def relative_link(src, dst):
+    """Create a relative symbolic link pointing to src named dst."""
+    if not os.path.isabs(src):
+        raise ValueError(f'Source path "{src}" must be absolute')
+    if not os.path.isabs(dst):
+        raise ValueError(f'Destination path "{dst}" must be absolute')
+    dstdir = os.path.dirname(dst)
+    target = os.path.relpath(src, dstdir)
+    os.makedirs(dstdir, exist_ok=True)
+    os.symlink(target, dst)
