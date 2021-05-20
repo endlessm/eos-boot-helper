@@ -19,7 +19,7 @@ Before=eos-updater-flatpak-installer.service
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/sbin/eos-split-flatpak-repos
+ExecStart=/usr/sbin/eos-split-flatpak-repo
 
 [Install]
 WantedBy=multi-user.target
