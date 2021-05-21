@@ -1510,7 +1510,7 @@ COMMIT_BODY_INDEX = 4
 
 def copy_commit(repo, src_rev, dest_ref,
                 old_app_id=None, new_app_id=None,
-                collection_id=None, migrate_extra=False,
+                collection_id=None,
                 mangle_metadata=None):
     """Copy commit src_rev to dest_ref
     This makes the new commit at dest_ref have the proper collection
@@ -1631,12 +1631,6 @@ def migrate_extra_data(old_ref, new_ref):
         os.rename(new_extra + '.tmp', new_extra)
 
 
-def is_extra_data(repo, rev):
-    _, commit_variant, _ = repo.load_commit(rev)
-    commit_metadata = GLib.VariantDict.new(commit_variant.get_child_value(0))
-    return commit_metadata.contains('xa.extra-data-sources')
-
-
 def _migrate_installed_flatpaks():
     insts = Flatpak.get_system_installations()
     inst = insts[0]
@@ -1743,7 +1737,6 @@ def _migrate_installed_flatpaks():
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
                                          new_ostree_ref))
-                    migrate_extra = is_extra_data(repo, ostree_refs[old_ostree_ref])
                     repo.prepare_transaction()
                     try:
                         kwargs = {}
@@ -1751,7 +1744,6 @@ def _migrate_installed_flatpaks():
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
                             kwargs['new_app_id'] = new_name
-                            kwargs['migrate_extra'] = migrate_extra
                         new_commit, vendor_prefixes = copy_commit(
                             repo,
                             ostree_refs[old_ostree_ref],
