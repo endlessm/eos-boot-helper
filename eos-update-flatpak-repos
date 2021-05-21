@@ -1583,8 +1583,7 @@ def copy_commit(repo, src_rev, dest_ref,
     mtree = OSTree.MutableTree.new()
     repo.write_directory_to_mtree(src_root, mtree, None)
 
-    if old_app_id and new_app_id and \
-       (old_app_id != new_app_id or migrate_extra):
+    if old_app_id and new_app_id:
         metadata, vendor_prefixes = rewrite_metadata(repo, mtree, old_app_id,
                                                      new_app_id, mangle_metadata)
         commit_metadata.insert_value('xa.metadata',
