@@ -301,6 +301,35 @@ class TestSplitRepo(BaseTestCase):
         _, flatpak_refs = flatpak_repo.list_refs()
         self.assertEqual(flatpak_refs, refs)
 
+    def test_split_orphaned(self):
+        """Test that orphaned refs go to the right places"""
+        orig_os_refs = self.create_os_commits()
+        orig_flatpak_refs = self.create_flatpak_commits()
+
+        # Delete an OS and flatpak remote
+        self.os_repo.remote_delete('eos')
+        self.os_repo.remote_delete('eos-sdk')
+        split = esfr.split_repo(root=self.root)
+        self.assertTrue(split)
+
+        # The OS repo should have the original OS refs + the deleted
+        # flatpak repo's ostree-metadata ref.
+        os_repo = OSTree.Repo.new(Gio.File.new_for_path(self.os_repo_path))
+        os_repo.open()
+        _, os_refs = os_repo.list_refs()
+        expected_refs = orig_os_refs.copy()
+        expected_refs['eos-sdk:ostree-metadata'] = \
+            orig_flatpak_refs['eos-sdk:ostree-metadata']
+        self.assertEqual(os_refs, expected_refs)
+
+        # The flatpak repo should only have the original flatpak refs
+        # since the OS remote didn't have an ostree-metadata ref.
+        flatpak_repo = OSTree.Repo.new(
+            Gio.File.new_for_path(self.flatpak_repo_path))
+        flatpak_repo.open()
+        _, flatpak_refs = flatpak_repo.list_refs()
+        self.assertEqual(flatpak_refs, orig_flatpak_refs)
+
     def test_prune(self):
         """Test if repos are pruned when requested"""
         self.create_os_commits()
@@ -341,10 +370,16 @@ class TestSplitRepo(BaseTestCase):
         self.create_flatpak_commits()
         self.random_commit(
             self.os_repo,
-            ('ostree-metadata',
-             'appstream/x86_64',
-             'appstream2/x86_64',
-             'foobar')
+            (
+                'ostree-metadata',
+                'appstream/x86_64',
+                'appstream2/x86_64',
+                'foobar',
+                'deleted:ostree-metadata',
+                'deleted:appstream2/x86_64',
+                'deleted:app/com.example.Foo/x86_64/stable',
+                'deploy/app/com.example.Foo/x86_64/stable',
+            )
         )
 
         os_remotes = ['eos']
@@ -352,15 +387,28 @@ class TestSplitRepo(BaseTestCase):
         with self.assertLogs(esfr.logger, logging.WARNING) as logs:
             os_refs, flatpak_refs, other_refs = esfr.gather_refs(
                 self.os_repo, os_remotes, flatpak_remotes)
-        self.assertEqual(logs.output,
-                         [('WARNING:eos-split-flatpak-repo:'
-                           'Ignoring unrecognized ref: foobar')])
+        self.assertEqual(logs.output, [
+            ('WARNING:eos-split-flatpak-repo:'
+             'Refspec deleted:app/com.example.Foo/x86_64/stable remote '
+             'deleted no longer exists'),
+            ('WARNING:eos-split-flatpak-repo:'
+             'Refspec deleted:appstream2/x86_64 remote '
+             'deleted no longer exists'),
+            ('WARNING:eos-split-flatpak-repo:'
+             'Refspec deleted:ostree-metadata remote '
+             'deleted no longer exists'),
+            ('WARNING:eos-split-flatpak-repo:'
+             'Ignoring unrecognized ref: foobar'),
+        ])
         self.assertEqual(os_refs, [
             'eos:os/eos/amd64/eos3a',
             'ostree/0/1/0',
             'ostree/0/1/1',
         ])
         self.assertEqual(flatpak_refs, [
+            'deleted:app/com.example.Foo/x86_64/stable',
+            'deleted:appstream2/x86_64',
+            'deploy/app/com.example.Foo/x86_64/stable',
             'deploy/app/org.gnome.Totem/x86_64/stable',
             'deploy/runtime/com.endlessm.apps.Platform/x86_64/6',
             'deploy/runtime/org.freedesktop.Platform/x86_64/20.08',
@@ -377,6 +425,7 @@ class TestSplitRepo(BaseTestCase):
         self.assertEqual(other_refs, [
             'appstream/x86_64',
             'appstream2/x86_64',
+            'deleted:ostree-metadata',
             'foobar',
             'ostree-metadata',
         ])
