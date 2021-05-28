@@ -117,7 +117,8 @@ def gather_remotes(repo):
 def get_refspec_repo_type(refspec, os_remotes, flatpak_remotes):
     """Determine the repo type this refspec should be a part of
 
-    Returns a RepoType or None if it can't be determined.
+    Returns a RepoType or None if it can't be determined. os_remotes and
+    flatpak_remotes must be disjoint sets.
     """
     _, remote, ref = OSTree.parse_refspec(refspec)
     if remote:
@@ -163,6 +164,15 @@ def get_refspec_repo_type(refspec, os_remotes, flatpak_remotes):
 
 def gather_refs(repo, os_remotes, flatpak_remotes):
     """Gather refs into OS and Flatpak lists"""
+    # Put the remotes into sets for get_refspec_repo_type and ensure
+    # they're disjoint.
+    os_remotes = set(os_remotes)
+    flatpak_remotes = set(flatpak_remotes)
+    if not os_remotes.isdisjoint(flatpak_remotes):
+        overlap = os_remotes.intersection(flatpak_remotes)
+        raise SplitError('{} in both OS and Flatpak remotes'
+                         .format(' '.join(overlap)))
+
     os_refs = []
     flatpak_refs = []
     other_refs = []

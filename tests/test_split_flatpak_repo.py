@@ -429,3 +429,10 @@ class TestSplitRepo(BaseTestCase):
             'foobar',
             'ostree-metadata',
         ])
+
+        # Make sure an exception is raised if a remote is in both lists.
+        os_remotes = ['eos']
+        flatpak_remotes = ['eos', 'eos-sdk', 'flathub']
+        with self.assertRaisesRegex(esfr.SplitError,
+                                    'eos in both OS and Flatpak remotes'):
+            esfr.gather_refs(self.os_repo, os_remotes, flatpak_remotes)
