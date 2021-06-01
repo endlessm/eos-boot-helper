@@ -114,47 +114,79 @@ def gather_remotes(repo):
     return os_remotes, flatpak_remotes
 
 
+def get_refspec_repo_type(refspec, os_remotes, flatpak_remotes):
+    """Determine the repo type this refspec should be a part of
+
+    Returns a RepoType or None if it can't be determined. os_remotes and
+    flatpak_remotes must be disjoint sets.
+    """
+    _, remote, ref = OSTree.parse_refspec(refspec)
+    if remote:
+        if remote in os_remotes:
+            return RepoType.OS
+        elif remote in flatpak_remotes:
+            return RepoType.Flatpak
+        else:
+            # The remote has been deleted, so fall through to the
+            # ref heuristics.
+            logger.warning('Refspec %s remote %s no longer exists',
+                           refspec, remote)
+
+    ref_parts = ref.split('/')
+    if len(ref_parts) > 1:
+        ref_prefix = ref_parts[0]
+    else:
+        ref_prefix = ''
+
+    if ref_prefix in ('app', 'runtime', 'deploy'):
+        return RepoType.Flatpak
+    elif ref_prefix in ('os', 'ostree'):
+        return RepoType.OS
+    elif ref_prefix in ('appstream', 'appstream2'):
+        if remote:
+            # This came from a deleted flatpak remote
+            return RepoType.Flatpak
+        else:
+            # Ignore locally generated appstream refs in case someone
+            # ran flatpak build-update-repo.
+            logger.debug('Ignoring generated ref: %s', ref)
+            return None
+    elif ref == 'ostree-metadata':
+        # Even if this came from a remote we don't know what type it
+        # was, so just ignore it.
+        logger.debug('Ignoring generated ref: %s', ref)
+        return None
+    else:
+        # XXX: Should this fail here?
+        logger.warning('Ignoring unrecognized ref: %s', ref)
+        return None
+
+
 def gather_refs(repo, os_remotes, flatpak_remotes):
     """Gather refs into OS and Flatpak lists"""
+    # Put the remotes into sets for get_refspec_repo_type and ensure
+    # they're disjoint.
+    os_remotes = set(os_remotes)
+    flatpak_remotes = set(flatpak_remotes)
+    if not os_remotes.isdisjoint(flatpak_remotes):
+        overlap = os_remotes.intersection(flatpak_remotes)
+        raise SplitError('{} in both OS and Flatpak remotes'
+                         .format(' '.join(overlap)))
+
     os_refs = []
     flatpak_refs = []
     other_refs = []
     _, all_refs = repo.list_refs_ext(None, OSTree.RepoListRefsExtFlags.NONE)
     for refspec in sorted(all_refs.keys()):
-        _, remote, ref = OSTree.parse_refspec(refspec)
-        if remote:
-            if remote in os_remotes:
-                logger.debug('Adding OS ref: %s', refspec)
-                os_refs.append(refspec)
-            elif remote in flatpak_remotes:
-                logger.debug('Adding Flatpak ref: %s', refspec)
-                flatpak_refs.append(refspec)
-            else:
-                # This really shouldn't happen
-                raise SplitError('Refspec {} remote {} not in OS remotes ({}) '
-                                 'or Flatpak remotes ({})'
-                                 .format(refspec, remote,
-                                         ' '.join(sorted(os_remotes)),
-                                         ' '.join(sorted(flatpak_remotes))))
+        ref_type = get_refspec_repo_type(refspec, os_remotes, flatpak_remotes)
+        if ref_type == RepoType.OS:
+            logger.debug('Adding OS ref: %s', refspec)
+            os_refs.append(refspec)
+        elif ref_type == RepoType.Flatpak:
+            logger.debug('Adding Flatpak ref: %s', refspec)
+            flatpak_refs.append(refspec)
         else:
-            if ref.startswith('deploy/'):
-                logger.debug('Adding Flatpak ref: %s', refspec)
-                flatpak_refs.append(refspec)
-            elif ref.startswith('ostree/'):
-                logger.debug('Adding OS ref: %s', refspec)
-                os_refs.append(refspec)
-            elif (ref == 'ostree-metadata' or
-                  ref.startswith('appstream/') or
-                  ref.startswith('appstream2/')):
-                # Ignore generated refs in case someone updated the repo
-                # metadata with ostree summary --update or flatpak
-                # build-update-repo.
-                logger.debug('Ignoring generated ref: %s', ref)
-                other_refs.append(refspec)
-            else:
-                # XXX: Should this fail here?
-                logger.warning('Ignoring unrecognized ref: %s', ref)
-                other_refs.append(refspec)
+            other_refs.append(refspec)
 
     return os_refs, flatpak_refs, other_refs
 
