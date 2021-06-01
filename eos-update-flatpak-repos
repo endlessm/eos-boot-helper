@@ -1251,6 +1251,24 @@ FLATPAKS_TO_MIGRATE = [
         "old-origin": "eos-apps",
         "new-origin": "flathub",
     },
+    {
+        "name": "org.gnome.Solitaire",
+        "new-name": "org.gnome.Aisleriot",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
+    {
+        "name": "org.gnome.Freecell",
+        "new-name": "org.gnome.Aisleriot",
+        "kind": Flatpak.RefKind.APP,
+        "old-branch": "eos3",
+        "new-branch": "stable",
+        "old-origin": "eos-apps",
+        "new-origin": "flathub",
+    },
 ]
 
 
@@ -1510,7 +1528,7 @@ COMMIT_BODY_INDEX = 4
 
 def copy_commit(repo, src_rev, dest_ref,
                 old_app_id=None, new_app_id=None,
-                collection_id=None, migrate_extra=False,
+                collection_id=None,
                 mangle_metadata=None):
     """Copy commit src_rev to dest_ref
     This makes the new commit at dest_ref have the proper collection
@@ -1583,8 +1601,7 @@ def copy_commit(repo, src_rev, dest_ref,
     mtree = OSTree.MutableTree.new()
     repo.write_directory_to_mtree(src_root, mtree, None)
 
-    if old_app_id and new_app_id and \
-       (old_app_id != new_app_id or migrate_extra):
+    if old_app_id and new_app_id:
         metadata, vendor_prefixes = rewrite_metadata(repo, mtree, old_app_id,
                                                      new_app_id, mangle_metadata)
         commit_metadata.insert_value('xa.metadata',
@@ -1630,12 +1647,6 @@ def migrate_extra_data(old_ref, new_ref):
                       old_ref.format_ref(), new_ref.format_ref())
         subprocess.check_call(['cp', '-alT', old_extra, new_extra + '.tmp'])
         os.rename(new_extra + '.tmp', new_extra)
-
-
-def is_extra_data(repo, rev):
-    _, commit_variant, _ = repo.load_commit(rev)
-    commit_metadata = GLib.VariantDict.new(commit_variant.get_child_value(0))
-    return commit_metadata.contains('xa.extra-data-sources')
 
 
 def _migrate_installed_flatpaks():
@@ -1744,7 +1755,6 @@ def _migrate_installed_flatpaks():
                                  .format(old_ostree_ref,
                                          ostree_refs[old_ostree_ref],
                                          new_ostree_ref))
-                    migrate_extra = is_extra_data(repo, ostree_refs[old_ostree_ref])
                     repo.prepare_transaction()
                     try:
                         kwargs = {}
@@ -1752,7 +1762,6 @@ def _migrate_installed_flatpaks():
                         if kind == Flatpak.RefKind.APP:
                             kwargs['old_app_id'] = name
                             kwargs['new_app_id'] = new_name
-                            kwargs['migrate_extra'] = migrate_extra
                         new_commit, vendor_prefixes = copy_commit(
                             repo,
                             ostree_refs[old_ostree_ref],
