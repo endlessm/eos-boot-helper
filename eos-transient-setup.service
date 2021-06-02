@@ -1,0 +1,13 @@
+[Unit]
+Description=Adjust desktop settings for live boot
+After=eos-live-boot-overlayfs-setup.service
+Before=display-manager.service
+ConditionKernelCommandLine=endless.live_boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-transient-setup --mode live
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
