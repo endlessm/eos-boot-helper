@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+# eos-transient-setup – configures the system for transient sessions
+# Copyright (C) 2016-2018 Endless Mobile, Ltd.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import argparse
+import enum
+import glob
+import json
+import logging
+import os
+import subprocess
+import sys
+import tempfile
+
+import gi
+gi.require_version('OSTree', '1.0')
+from gi.repository import GLib, Gio, OSTree  # noqa: E402
+
+log = logging.getLogger(sys.argv[0])
+
+ICON_GRID_DIR = '/var/lib/eos-image-defaults/icon-grid'
+
+DESKTOP_GRID_ID = 'desktop'
+
+EOS_INSTALLER = 'com.endlessm.Installer.desktop'
+EOS_INSTALLER_PATH = os.path.join('/usr/share/applications', EOS_INSTALLER)
+LOCAL_APPS_DIR = '/usr/local/share/applications'
+LOCAL_DESKTOP_PATH = os.path.join(LOCAL_APPS_DIR, EOS_INSTALLER)
+
+GOOGLE_CHROME = 'google-chrome.desktop'
+CHROMIUM_BROWSER = 'chromium-browser.desktop'
+
+LIVE_SETTINGS_DB = '/var/lib/eos-image-defaults/settings.live'
+USER_PROFILE_PATH = '/usr/local/share/dconf/profile/user'
+USER_PROFILE = '''user-db:user
+file-db:/var/lib/eos-image-defaults/settings.live
+file-db:/var/lib/eos-image-defaults/settings
+file-db:/usr/share/eos-default-settings/settings
+'''
+
+SHELL_SCHEMA = 'org.gnome.shell'
+FAVORITE_APPS_KEY = 'favorite-apps'
+
+GS_SCHEMA = 'org.gnome.software'
+ALLOW_UPDATES = 'allow-updates'
+
+GSD_POWER_SCHEMA = "org.gnome.settings-daemon.plugins.power"
+GSD_SLEEP_INACTIVE_AC_TYPE = "sleep-inactive-ac-type"
+GSD_SLEEP_INACTIVE_AC_TIMEOUT = "sleep-inactive-ac-timeout"
+GSD_SLEEP_INACTIVE_BATTERY_TYPE = "sleep-inactive-battery-type"
+GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT = "sleep-inactive-battery-timeout"
+
+ONE_MINUTE = 60
+
+
+# The other mode here (demo mode) was removed with the rebase to 3.38. The
+# --mode argument has been kept around to maintain CLI API compatibility.
+class Mode(enum.Enum):
+    live = 1
+
+
+class AdjustGSettings(object):
+    def __init__(self):
+        self.keyfile = GLib.KeyFile()
+
+    def update(self, schema, key, variant):
+        """Stages 'variant' as the new value for 'key' in 'schema'."""
+        value = variant.print_(False)
+        log.info('Updating %s: %s to %s', schema, key, value)
+        self.keyfile.set_string(schema.replace('.', '/'), key, value)
+
+    def prepare(self, mode):
+        """Stage all settings to be overridden."""
+        self.update_favorite_apps(mode)
+        self.disallow_app_center_updates()
+
+    def write_dconf_compile(self):
+        """Write dconf database with overridden settings.
+
+        We also adjust the 'user' profile to use it.
+        """
+        with tempfile.TemporaryDirectory(suffix='.d') as d:
+            keyfile_path = os.path.join(d, '00-live')
+            log.info('writing keyfile to %s', keyfile_path)
+            self.keyfile.save_to_file(keyfile_path)
+
+            os.makedirs(os.path.dirname(LIVE_SETTINGS_DB), exist_ok=True)
+
+            args = ['dconf', 'compile', LIVE_SETTINGS_DB, d]
+            log.info('$ %s', ' '.join(args))
+            subprocess.check_call(args)
+
+        log.info('Installing new DConf profile to %s', USER_PROFILE_PATH)
+        os.makedirs(os.path.dirname(USER_PROFILE_PATH), exist_ok=True)
+        with open(USER_PROFILE_PATH, 'w') as f:
+            f.write(USER_PROFILE)
+
+    def write_stdout(self):
+        """Write keyfile with overridden settings to stdout, for debugging."""
+        data, length = self.keyfile.to_data()
+        print(data)
+
+    def adjust_power_settings(self):
+        """Configure session to log out after a short period of inactivity."""
+        for key in (GSD_SLEEP_INACTIVE_AC_TYPE,
+                    GSD_SLEEP_INACTIVE_BATTERY_TYPE):
+            self.update(GSD_POWER_SCHEMA, key,
+                        GLib.Variant('s', 'logout'))
+
+        for key in (GSD_SLEEP_INACTIVE_AC_TIMEOUT,
+                    GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT):
+            self.update(GSD_POWER_SCHEMA, key,
+                        GLib.Variant('i', ONE_MINUTE))
+
+    def update_favorite_apps(self, mode):
+        """Adjust default favourite apps, which are shown on the taskbar."""
+        settings = Gio.Settings(schema=SHELL_SCHEMA)
+        favorite_apps = settings.get_strv(FAVORITE_APPS_KEY)
+        changed = False
+
+        if mode == Mode.live:
+            # Prepend installer icon
+            if EOS_INSTALLER not in favorite_apps:
+                favorite_apps.insert(0, EOS_INSTALLER)
+                changed = True
+
+        # Replace Chrome (downloaded on demand) with Chromium (pre-installed).
+        # This effectively undoes a step taken in the image builder,
+        # pre-seeding /var/eos-image-defaults/settings with the opposite
+        # change.
+        if replace_chrome_with_chromium(favorite_apps):
+            changed = True
+
+        if changed:
+            self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
+                        GLib.Variant('as', favorite_apps))
+
+    def disallow_app_center_updates(self):
+        """Forbid installing app updates."""
+        self.update(GS_SCHEMA, ALLOW_UPDATES, GLib.Variant('b', False))
+
+
+def install_installer_desktop_file():
+    """Make eos-installer visible in user sessions.
+
+    eos-installer is shipped in all images, but its desktop file contains
+    NoDisplay=true. Make a copy with this setting removed so it can be added to
+    the desktop and taskbar and found via search.
+    """
+    log.info('Copying %s to %s with NoDisplay removed',
+             EOS_INSTALLER_PATH, LOCAL_DESKTOP_PATH)
+    os.makedirs(LOCAL_APPS_DIR, exist_ok=True)
+
+    kf = GLib.KeyFile()
+    kf.load_from_file(EOS_INSTALLER_PATH,
+                      GLib.KeyFileFlags.KEEP_COMMENTS |
+                      GLib.KeyFileFlags.KEEP_TRANSLATIONS)
+    kf.remove_key('Desktop Entry', 'NoDisplay')
+    kf.save_to_file(LOCAL_DESKTOP_PATH)
+
+
+def disable_chrome_auto_download():
+    """Prevent Chrome auto-downloader from running."""
+    cmd = os.path.join('/usr/share/eos-google-chrome-helper',
+                       'eos-google-chrome-system-helper.py')
+    log.info('$ %s', cmd)
+    subprocess.check_call([cmd])
+
+
+def replace_chrome_with_chromium(apps):
+    """Replace Chrome with Chromium in a list of .desktop file names."""
+    if GOOGLE_CHROME in apps:
+        apps[apps.index(GOOGLE_CHROME)] = CHROMIUM_BROWSER
+        return True
+    else:
+        return False
+
+
+def remove_chrome_from_icon_grids():
+    """Replace Chrome with Chromium in icon grids, if needed."""
+    pattern = os.path.join(ICON_GRID_DIR, 'icon-grid-*.json')
+    for path in glob.glob(pattern):
+        log.info("Checking %s", path)
+        try:
+            with open(path, 'r') as f:
+                grid = json.load(fp=f)
+
+            if replace_chrome_with_chromium(grid[DESKTOP_GRID_ID]):
+                log.info("Updating %s", path)
+
+                with open(path, 'w') as f:
+                    json.dump(grid, fp=f)
+        except Exception:
+            log.exception("while processing %s", path)
+
+
+def prepend_installer_to_icon_grid():
+    """Prepend installer to icon grid."""
+    pattern = os.path.join(ICON_GRID_DIR, 'icon-grid-prepend-*.json')
+    c_path = os.path.join(ICON_GRID_DIR, 'icon-grid-prepend-C.json')
+    paths = glob.glob(pattern)
+    if c_path not in paths:
+        paths.append(c_path)
+
+    for path in paths:
+        try:
+            try:
+                with open(path, 'r') as f:
+                    log.info("reading existing file %s", path)
+                    grid = json.load(fp=f)
+            except FileNotFoundError:
+                grid = {}
+
+            desktop = grid.setdefault(DESKTOP_GRID_ID, [])
+            if EOS_INSTALLER not in desktop:
+                desktop.insert(0, EOS_INSTALLER)
+
+                log.info("Writing %s: %s", path, json.dumps(obj=grid))
+                with open(path, 'w') as f:
+                    json.dump(obj=grid, fp=f)
+        except Exception:
+            log.exception("while processing %s", path)
+
+
+def reduce_ostree_min_free_space():
+    '''Don't require any free space on disk when installing apps. On live
+    systems, free space is at most half of physical RAM, and running out is not
+    a big deal.'''
+    repo = OSTree.Repo.new_default()
+    repo.open()
+    config = repo.copy_config()
+    # -size alone takes precedence but set both for clarity.
+    config.set_string('core', 'min-free-space-size', '0MB')
+    config.set_integer('core', 'min-free-space-percent', 0)
+    repo.write_config(config)
+
+
+def main():
+    """Configures system settings for live sessions."""
+    p = argparse.ArgumentParser(description=main.__doc__)
+    p.add_argument('--mode', choices=[m.name for m in Mode], required=True,
+                   default='live',
+                   help='Whether to adjust settings for live mode')
+    p.add_argument('--dry-run', action='store_true',
+                   help='Just print the DConf keyfile to stdout')
+    a = p.parse_args()
+    mode = Mode[a.mode]
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(name)s:%(lineno)-3s %(funcName)20s %(levelname)7s: '
+               '%(message)s')
+
+    setup = AdjustGSettings()
+    setup.prepare(mode=mode)
+
+    if a.dry_run:
+        setup.write_stdout()
+    else:
+        setup.write_dconf_compile()
+
+        disable_chrome_auto_download()
+        remove_chrome_from_icon_grids()
+        reduce_ostree_min_free_space()
+
+        if mode == Mode.live:
+            install_installer_desktop_file()
+            prepend_installer_to_icon_grid()
+
+
+if __name__ == '__main__':
+    main()
