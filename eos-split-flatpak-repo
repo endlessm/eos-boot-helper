@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 import enum
 import gi
-from gi.repository import Gio
+from gi.repository import GLib, Gio
 import logging
 import os
 import shutil
@@ -32,7 +32,12 @@ import tempfile
 gi.require_version('OSTree', '1.0')
 from gi.repository import OSTree  # noqa: E402
 
+gi.require_version("EosMetrics", "0")
+from gi.repository import EosMetrics  # noqa: E402
+
 logger = logging.getLogger(os.path.basename(__file__))
+
+EOS_UPDATER_METRIC_FAILURE = "927d0f61-4890-4912-a513-b2cb0205908f"
 
 
 class SplitError(Exception):
@@ -375,7 +380,15 @@ def main():
 
     logging.basicConfig(level=args.log_level)
 
-    split_repo(prune=args.prune)
+    try:
+        split_repo(prune=args.prune)
+    except Exception as e:
+        recorder = EosMetrics.EventRecorder.get_default()
+        recorder.record_event_sync(
+            EOS_UPDATER_METRIC_FAILURE,
+            GLib.Variant("(ss)", ("eos-split-flatpak-repo", str(e))),
+        )
+        raise
 
 
 if __name__ == '__main__':
