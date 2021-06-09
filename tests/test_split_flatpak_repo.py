@@ -66,6 +66,13 @@ class TestSplitRepo(BaseTestCase):
         self.os_repo_path = os.path.realpath(
             self.os_repo.get_path().get_path())
 
+        # Set the repo locking timeout to 0 seconds so that locking
+        # failures don't block tests.
+        config = self.os_repo.copy_config()
+        config.set_integer('core', 'lock-timeout-secs', 0)
+        self.os_repo.write_config(config)
+        self.os_repo.reload_config()
+
         # /sysroot/ostree
         self.ostree_path = os.path.dirname(self.os_repo_path)
         # /ostree
