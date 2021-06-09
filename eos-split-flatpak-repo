@@ -96,11 +96,13 @@ def duplicate_repo(src, dst):
 @contextmanager
 def repo_lock(repo, lock_type):
     """OSTree repo lock context"""
-    # FIXME: Fill this in when repo locking is public
-    # https://github.com/ostreedev/ostree/issues/2286
     logger.info('Locking repo %s', repo.path)
-    yield
-    logger.info('Unlocking repo %s', repo.path)
+    repo.lock_push(lock_type)
+    try:
+        yield
+    finally:
+        logger.info('Unlocking repo %s', repo.path)
+        repo.lock_pop(lock_type)
 
 
 @contextmanager
@@ -310,7 +312,7 @@ def split_repo(prune=False, root='/'):
         changed = True
 
         # Lock the current repo
-        with repo_lock(ostree_repo, 'exclusive'):
+        with repo_lock(ostree_repo, OSTree.RepoLockType.EXCLUSIVE):
             # Create the new flatpak repo
             new_flatpak_repo_path = os.path.join(
                 os.path.dirname(ostree_repo.path), 'new-flatpak-repo')
@@ -323,7 +325,7 @@ def split_repo(prune=False, root='/'):
             set_repo_path_attr(new_flatpak_repo)
 
             # Lock the new repo
-            with repo_lock(new_flatpak_repo, 'exclusive'):
+            with repo_lock(new_flatpak_repo, OSTree.RepoLockType.EXCLUSIVE):
                 # Gather the remotes
                 logger.info('Gathering OS and Flatpak remotes')
                 os_remotes, flatpak_remotes = gather_remotes(ostree_repo)
