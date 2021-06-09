@@ -52,8 +52,12 @@ def set_repo_path_attr(repo):
     repo.path = os.path.realpath(repo.get_path().get_path())
 
 
-def duplicate_dir(src, dst):
-    """Duplicate a directory with hard links"""
+def duplicate_repo(src, dst):
+    """Duplicate an OSTree repo with hard links where appropriate
+
+    All commit data is copied with hard links while other repository
+    metadata is duplicated.
+    """
     try:
         if os.path.islink(dst):
             logger.debug('Deleting symlink %s', dst)
@@ -64,9 +68,29 @@ def duplicate_dir(src, dst):
     except FileNotFoundError:
         pass
 
+    def _copy_ostree_file(a, b):
+        # For actual commit data in objects or deltas, use a hardlink.
+        # For everything else, make a copy to ensure the repos don't
+        # operate on each other's metadata.
+        #
+        # Potentially some fetched but not committed objects in tmp
+        # would be useful to link, but it's mixed with other data that
+        # might not be safe to link.
+        src_path_parts = os.path.relpath(a, src).split(os.sep)
+        if len(src_path_parts) > 1:
+            src_repodir = src_path_parts[0]
+        else:
+            src_repodir = None
+        if src_repodir in ('objects', 'deltas'):
+            logger.debug('Linking %s to %s', a, b)
+            return os.link(a, b)
+
+        logger.debug('Copying %s to %s', a, b)
+        return shutil.copy2(a, b)
+
     logger.debug('Duplicating %s to %s', src, dst)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    shutil.copytree(src, dst, symlinks=True, copy_function=os.link)
+    shutil.copytree(src, dst, symlinks=True, copy_function=_copy_ostree_file)
 
 
 @contextmanager
@@ -292,7 +316,7 @@ def split_repo(prune=False, root='/'):
                 os.path.dirname(ostree_repo.path), 'new-flatpak-repo')
             logger.info('Creating new Flatpak repo at %s',
                         new_flatpak_repo_path)
-            duplicate_dir(ostree_repo.path, new_flatpak_repo_path)
+            duplicate_repo(ostree_repo.path, new_flatpak_repo_path)
             new_flatpak_repo = OSTree.Repo.new(
                 Gio.File.new_for_path(new_flatpak_repo_path))
             new_flatpak_repo.open()
