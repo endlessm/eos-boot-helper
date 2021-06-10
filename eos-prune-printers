@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+
+# eos-prune-printers: Purge all installed printers and corresponding drivers
+#
+# Copyright (C) 2021 Endless OS Foundation LLC
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <http://www.gnu.org/licenses/>.
+
+# Exit if the stamp file exists. The service file checks for this, but also
+# guard against an accidental execution.
+stamp_file=/var/lib/eos4-prune-printers
+[ -e $stamp_file ] && exit 0
+
+# Purge and cancel all print jobs
+cancel -xa
+
+# Delete all printers with CUPS tool
+for printer in $(lpstat -p | awk '/^printer/{print $2}')
+do
+	echo Deleting "$printer"
+	lpadmin -x "$printer"
+done
+
+# Remove the printer drivers and residual print cache files
+systemctl stop cups
+
+# remove stamp file from eos-config-printer (from 4.0 use driverless printers)
+rm -rf /var/lib/eos-config-printer
+# clean up the residual print cache files
+rm -rf /var/cache/cups/*
+
+systemctl start cups
+
+touch $stamp_file

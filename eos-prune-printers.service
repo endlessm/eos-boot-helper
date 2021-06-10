@@ -1,0 +1,14 @@
+[Unit]
+Description=Endless prune printers
+After=cups.service
+Requires=cups.service
+ConditionPathExists=!/var/lib/eos4-printers-pruned
+ConditionKernelCommandLine=!endless.live_boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/eos-prune-printers
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
