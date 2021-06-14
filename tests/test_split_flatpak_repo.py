@@ -23,6 +23,7 @@
 Tests eos-split-flatpak-repo
 """
 
+import filecmp
 import gi
 import logging
 import os
@@ -65,6 +66,13 @@ class TestSplitRepo(BaseTestCase):
         _, self.os_repo = self.sysroot.get_repo()
         self.os_repo_path = os.path.realpath(
             self.os_repo.get_path().get_path())
+
+        # Set the repo locking timeout to 0 seconds so that locking
+        # failures don't block tests.
+        config = self.os_repo.copy_config()
+        config.set_integer('core', 'lock-timeout-secs', 0)
+        self.os_repo.write_config(config)
+        self.os_repo.reload_config()
 
         # /sysroot/ostree
         self.ostree_path = os.path.dirname(self.os_repo_path)
@@ -436,3 +444,38 @@ class TestSplitRepo(BaseTestCase):
         with self.assertRaisesRegex(esfr.SplitError,
                                     'eos in both OS and Flatpak remotes'):
             esfr.gather_refs(self.os_repo, os_remotes, flatpak_remotes)
+
+    def assertDircmpNoDiffs(self, dircmp):
+        """Recursively assert that a dircmp object has no differences"""
+        logger.debug("Comparing %s to %s", dircmp.left, dircmp.right)
+        self.assertEqual(dircmp.left_only, [])
+        self.assertEqual(dircmp.right_only, [])
+        self.assertEqual(dircmp.diff_files, [])
+
+        for sub in dircmp.subdirs.values():
+            self.assertDircmpNoDiffs(sub)
+
+    def test_duplicate_repo(self):
+        """Test duplicate_repo functionality"""
+        self.create_os_commits()
+        self.create_flatpak_commits()
+
+        dup_path = os.path.join(self.tmp, 'dup')
+        esfr.duplicate_repo(self.os_repo_path, dup_path)
+
+        # The directories should be identical.
+        dcmp = filecmp.dircmp(self.os_repo_path, dup_path, ignore=[])
+        self.assertDircmpNoDiffs(dcmp)
+
+        # Make sure the number of hardlinks is correct.
+        for root, dirs, files in os.walk(dup_path):
+            repo_dir = os.path.relpath(root, dup_path).split(os.sep)[0]
+            if repo_dir in ('objects', 'deltas'):
+                expected_links = 2
+            else:
+                expected_links = 1
+            for f in files:
+                path = os.path.join(root, f)
+                logger.debug('Getting number of links for %s', path)
+                stat = os.lstat(path)
+                self.assertEqual(stat.st_nlink, expected_links)
