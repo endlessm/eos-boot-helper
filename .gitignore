@@ -3,6 +3,7 @@
 .deps/
 .pytest_cache/
 __pycache__/
+com.endlessm.TestMode.policy
 Makefile
 Makefile.in
 aclocal.m4

@@ -1,5 +1,6 @@
 SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success tests
 EXTRA_DIST = debian .flake8
+CLEANFILES =
 
 # Install systemd units, generators, preset files, and udev rules
 # under $prefix for distcheck
@@ -101,6 +102,7 @@ dist_sbin_SCRIPTS = \
 	eos-live-boot-overlayfs-setup \
 	eos-repartition-mbr \
 	eos-split-flatpak-repo \
+	eos-test-mode \
 	eos-transient-setup \
 	eos-update-flatpak-repos \
 	$(NULL)
@@ -128,3 +130,16 @@ dist_extratmpfiles_DATA = \
 ldconfdir = $(sysconfdir)/ld.so.conf.d
 dist_ldconf_DATA = \
 	ld.so.conf.d/flatpak-extension-runtime-fdo-openh264.conf
+
+com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in
+	$(AM_V_GEN) $(SED) -e 's|[@]sbindir@|$(sbindir)|g' < "$<" > "$@"
+
+policydir = $(POLKIT_POLICYDIR)
+policy_DATA = \
+	com.endlessm.TestMode.policy \
+	$(NULL)
+
+CLEANFILES += \
+	com.endlessm.TestMode.policy
+EXTRA_DIST += \
+	com.endlessm.TestMode.policy.in

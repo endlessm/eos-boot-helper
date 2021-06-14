@@ -5,6 +5,7 @@ AC_CONFIG_SRCDIR([eos-firstboot])
 PKG_PROG_PKG_CONFIG
 
 AC_PROG_CC
+AC_PROG_SED
 AC_CANONICAL_TARGET
 
 dnl Get systemd unit and udev rules directories. Add options so that they
@@ -87,6 +88,8 @@ AC_ARG_WITH([dbussystemconfigdir],
                             [Path to the system dbus-1/system.d directory])],
             [dbussystemconfigdir="$withval"], [dbussystemconfigdir="/usr/share/dbus-1/system.d"])
 AC_SUBST(dbussystemconfigdir)
+
+PKG_CHECK_VAR([POLKIT_POLICYDIR], [polkit-gobject-1], [policydir])
 
 FLATPAK_ARCH="x86_64"
 case $target_cpu in
