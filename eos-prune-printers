@@ -36,9 +36,22 @@ done
 systemctl stop cups
 
 # remove stamp file from eos-config-printer (from 4.0 use driverless printers)
-rm -rf /var/lib/eos-config-printer
+LIB_CONFIG_PRINTER=/var/lib/eos-config-printer
+if [ -d $LIB_CONFIG_PRINTER ]; then
+	echo Removing $LIB_CONFIG_PRINTER
+	rm -rf $LIB_CONFIG_PRINTER
+else
+	echo $LIB_CONFIG_PRINTER does not exist
+fi
+
 # clean up the residual print cache files
-rm -rf /var/cache/cups/*
+CACHE_CUPS=/var/cache/cups
+if [ -d $CACHE_CUPS ]; then
+	echo Removing "$CACHE_CUPS/*"
+	rm -rf ${CACHE_CUPS:?}/*
+else
+	echo $CACHE_CUPS does not exist
+fi
 
 systemctl start cups
 
