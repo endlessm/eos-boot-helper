@@ -1,0 +1,88 @@
+#!/bin/bash -e
+
+# eos-test-mode - Setup system for non-persistent testing.
+# Copyright (C) 2015  Dan Nicholson <nicholson@endlessm.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# Check to see if we've run eos-live-boot-overlayfs-setup already
+[ -d /run/eos-live ] && exit 0
+
+# The /var/endless-extra SD card filesystem needs to be unmounted before
+# adding the overlays below since the /var overlay will mask it.
+extra_unit="var-endless\x2dextra.mount"
+systemctl -q is-active "$extra_unit" && extra_active=true || extra_active=false
+
+# Unmount the SD card
+$extra_active && systemctl stop "$extra_unit"
+
+# Mount overlays over any directory that might be written to
+eos-live-boot-overlayfs-setup etc
+
+# Allow xattrs in the user namespace on /run, and by extension in the ostree
+# repo, where they are used to record permissions when run as an unprivileged
+# user.
+mount -o remount,user_xattr /run
+
+# /sysroot/ostree needs special handling:
+setup_ostree_flatpak_overlay() {
+    # The flatpak deployment dirs must be on the same filesystem (namely
+    # /sysroot) as the ostree repo, so files can be hardlinked between them
+    # rather than copied. We normally achieve this with these symlinks:
+    #
+    # /var/lib/flatpak      --> /sysroot/flatpak
+    # /sysroot/flatpak/repo --> /ostree/repo
+    # /ostree               --> /sysroot/ostree
+    #
+    # For a live boot, we cannot overlay /sysroot directly: we need to read an
+    # xattr from the real (lower) directory, but if the upper dir exists (which
+    # it always does at the root of the mount!) then overlayfs returns xattrs
+    # from that. But if we put separate overlays on /sysroot/ostree and
+    # /sysroot/flatpak, hardlinks between them do not work.
+    #
+    # It just so happens that the only entry that /sysroot/ostree and
+    # /sysroot/flatpak have in common is 'repo', which is meant to be identical
+    # anyway. So, we merge both directories together over /sysroot/ostree:
+    local lowerdir=/sysroot/ostree:/sysroot/flatpak
+    local upperdir=/run/eos-test/ostree-flatpak
+    local workdir=$upperdir-workdir
+    [ -d $workdir ] && return;
+    mkdir -p $upperdir $workdir
+    mount -t overlay -o \
+        rw,upperdir=$upperdir,lowerdir=$lowerdir,workdir=$workdir \
+        eos-test-ostree-flatpak /sysroot/ostree
+
+    # Adjust the symlink to point to this ostree/flatpak chimera:
+    rm -f /var/lib/flatpak
+    ln -s /sysroot/ostree /var/lib/flatpak
+
+    # And leave /sysroot/flatpak uncovered; since it is only ever referenced
+    # via the /var/lib/flatpak symlink.
+}
+
+# Once /var is writable, we can set up the special ostree+flatpak overlay:
+setup_ostree_flatpak_overlay
+
+# Remount the SD card and mount a scratch overlay over it
+if $extra_active; then
+    systemctl start "$extra_unit"
+    eos-live-boot-overlayfs-setup var/endless-extra
+fi
+
+# Disable the updater for this boot
+systemctl mask --runtime --now eos-autoupdater.timer eos-autoupdater.service
+
+# Disable phoning home for this boot, too
+systemctl mask --runtime --now eos-phone-home.{service,timer,path}
