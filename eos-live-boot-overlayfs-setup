@@ -87,6 +87,10 @@ setup_overlay() {
     # If the directory is a symlink, assume it's pointing to a location
     # covered by another top level overlay
     [ -L "/$dir" ] && return
+    # Make sure there's not already an overlay mounted here to allow the
+    # same path to be passed multiple times or the script to run
+    # multiple times.
+    findmnt -t overlay "/$dir" >/dev/null && return 0
     mkdir -p "/run/eos-live/$dir" "/run/eos-live/$dir-workdir"
     mount -t overlay -o \
         "rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir" \
