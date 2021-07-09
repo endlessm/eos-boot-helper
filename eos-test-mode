@@ -31,11 +31,6 @@ $extra_active && systemctl stop "$extra_unit"
 # Mount overlays over any directory that might be written to
 eos-live-boot-overlayfs-setup etc
 
-# Allow xattrs in the user namespace on /run, and by extension in the ostree
-# repo, where they are used to record permissions when run as an unprivileged
-# user.
-mount -o remount,user_xattr /run
-
 # Remount the SD card and mount a scratch overlay over it
 if $extra_active; then
     systemctl start "$extra_unit"
