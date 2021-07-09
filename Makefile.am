@@ -20,7 +20,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 dist_systemdunit_DATA = \
 	eos-config-journal.service \
 	eos-enable-zram.service \
-	eos-extra-resize.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
@@ -41,7 +40,6 @@ dist_systemduserunit_DATA = \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
-	eos-extra-target-generator \
 	eos-live-boot-generator \
 	$(NULL)
 
@@ -61,26 +59,17 @@ networkscriptdir = $(sysconfdir)/NetworkManager/dispatcher.d
 networkscriptnowaitdir = $(networkscriptdir)/no-wait.d
 dist_networkscriptnowait_DATA = eos-firewall-localonly-nm
 
-# Unfortunately, the escaped \x2d is handled poorly, so we distribute
-# this unit under another name and install it by hand.
-EXTRA_DIST += \
-	var-endless_x2dextra.mount
-
 install-data-hook:
 	$(MKDIR_P) '$(DESTDIR)$(networkscriptdir)'
 	ln -s 'no-wait.d/eos-firewall-localonly-nm' \
 	  '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
 	chmod +x '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
-	$(MKDIR_P) '$(DESTDIR)$(systemdunitdir)'
-	$(INSTALL_DATA) $(srcdir)/var-endless_x2dextra.mount \
-	  '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 	$(MKDIR_P) '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-chromium-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-firefox-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 
 uninstall-hook:
 	rm -f '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
-	rm -f '$(DESTDIR)$(systemdunitdir)/var-endless\x2dextra.mount'
 
 udevrulesdir = $(udevdir)/rules.d
 dist_udevrules_DATA = \
@@ -97,7 +86,6 @@ dist_polkitrules_DATA = \
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
 	eos-enable-zram \
-	eos-extra-resize \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-image-boot-dm-setup \

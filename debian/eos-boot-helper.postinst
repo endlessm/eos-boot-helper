@@ -1,11 +1,6 @@
 #DEBHELPER#
 
 # Cleanup old wants symlinks for services we don't ship anymore
-rm -rf "/etc/systemd/system/systemd-fsck@dev-disk-by\x2dlabel-extra.service.wants" \
-	/etc/systemd/system/systemd-fsck@dev-disk-byx2dlabel-extra.service.wants
-rm -f /etc/systemd/system/local-fs.target.wants/eos-extra-resize.service
-rm -f "/etc/systemd/system/local-fs.target.wants/var-endless\x2dextra.mount" \
-	/etc/systemd/system/local-fs.target.wants/var-endlessx2dextra.mount
 rm -f /etc/systemd/system/local-fs.target.wants/sysroot-boot.mount
 rm -f /etc/systemd/system/local-fs.target.wants/boot.mount
 rm -rf /etc/systemd/system/"dev-disk-by\x2dlabel-eos\x2dswap.device.wants"
