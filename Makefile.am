@@ -14,6 +14,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-modprobedir='$${prefix}/lib/modprobe.d' \
 	--with-dbussystemconfigdir='$${prefix}/share/dbus-1/system.d' \
 	--with-system-bus-services-dir='$${prefix}/share/dbus-1/system-services' \
+	--with-polkitpolicydir='$${prefix}/share/polkit-1/actions' \
 	$(NULL)
 
 dist_systemdunit_DATA = \
@@ -136,8 +137,7 @@ dist_ldconf_DATA = \
 com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in
 	$(AM_V_GEN) $(SED) -e 's|[@]sbindir@|$(sbindir)|g' < "$<" > "$@"
 
-policydir = $(POLKIT_POLICYDIR)
-policy_DATA = \
+polkitpolicy_DATA = \
 	com.endlessm.TestMode.policy \
 	$(NULL)
 
