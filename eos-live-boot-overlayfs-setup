@@ -1,7 +1,7 @@
 #!/bin/bash
 # Mount overlays over any directory that might be written to
 
-EXTRA_PATHS=$@
+EXTRA_PATHS=("$@")
 
 # Allow xattrs in the user namespace on /run, and by extension in the ostree
 # repo, where they are used to record permissions when run as an unprivileged
@@ -10,14 +10,16 @@ mount -o remount,user_xattr /run
 
 # Attempt to find a target to act as backing storage for the overlayfses
 find_storage_partition() {
-	local bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
+	local bootdev
+	bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
 	bootdev=${bootdev:21}
 	if [ -z "${bootdev}" ] ; then
 		echo "Failed to extract endless.image.device from kernel command line" >&2
 		return 1
 	fi
 
-	local root_partition=$(blkid --list-one --output device --match-token "${bootdev}")
+	local root_partition
+	root_partition=$(blkid --list-one --output device --match-token "${bootdev}")
 	if [ ! -b "${root_partition}" ] ; then
 		echo "String passed on endless.image.device does not represent a block device" >&2
 		return 1
@@ -28,12 +30,10 @@ find_storage_partition() {
 	# persistent storage file at the expected path; eos-map-image-file will
 	# run dumpexfat again to find the file extents.
 	local pfpath="/endless/persistent.img"
-	dumpexfat -f ${pfpath} ${root_partition} &> /dev/null
-	if [[ $? = 0 ]]; then
+	if dumpexfat -f ${pfpath} "${root_partition}" &> /dev/null; then
 		echo "Found ${pfpath} in ${root_partition} (exfat), using it for persistent storage" >&2
 		udevadm settle
-		/usr/lib/eos-boot-helper/eos-map-image-file ${root_partition} ${pfpath} endless-live_storage
-		if [[ $? = 0 ]]; then
+		if /usr/lib/eos-boot-helper/eos-map-image-file "${root_partition}" ${pfpath} endless-live_storage; then
 			echo /dev/mapper/endless-live_storage
 			return 0
 		fi
@@ -62,7 +62,7 @@ setup_and_mount_storage() {
 	# If found, we know we've found the right partition and it's ready
 	# for formatting.
 	echo "Looking for endless_live_storage_marker in ${device}" >&2
-	read -r -d '' -N 27 marker < ${device}
+	read -r -d '' -N 27 marker < "${device}"
 	if [ "${marker}" = "endless_live_storage_marker" ]; then
 		echo "Marker found, formatting ${device}" >&2
 		mke2fs -t ext4 -O dir_index,^huge_file -m 1 -L endless-live \
@@ -73,8 +73,7 @@ setup_and_mount_storage() {
 
 	# Check the partition label
 	echo "Checking the endless-live label in ${device}" >&2
-	label=$(e2label "${device}" 2>/dev/null)
-	[ $? = 0 ] || return 1
+	label=$(e2label "${device}" 2>/dev/null) || return 1
 	[ "${label}" = "endless-live" ] || return 1
 
 	echo "endless-live label matched, mounting ${device}" >&2
@@ -119,14 +118,14 @@ setup_ostree_flatpak_overlay() {
 
 setup_overlay() {
     local dir=$1
-    [ -d /$dir ] || return
+    [ -d "/$dir" ] || return
     # If the directory is a symlink, assume it's pointing to a location
     # covered by another top level overlay
-    [ -L /$dir ] && return
-    mkdir -p /run/eos-live/$dir /run/eos-live/$dir-workdir
+    [ -L "/$dir" ] && return
+    mkdir -p "/run/eos-live/$dir" "/run/eos-live/$dir-workdir"
     mount -t overlay -o \
-        rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
-        eos-live-$dir /$dir
+        "rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir" \
+        "eos-live-$dir" "/$dir"
 }
 
 # Use persistent storage to back overlayfses, if available
@@ -152,8 +151,8 @@ fi
 
 # Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
 overlay_dirs="etc bin boot endless home lib opt ostree root sbin srv sysroot/home var"
-for dir in $overlay_dirs $EXTRA_PATHS; do
-    setup_overlay $dir
+for dir in $overlay_dirs "${EXTRA_PATHS[@]}"; do
+    setup_overlay "$dir"
 done
 
 # Once /var is writable, we can set up the special ostree+flatpak overlay:
