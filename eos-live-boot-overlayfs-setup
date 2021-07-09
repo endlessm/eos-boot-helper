@@ -150,7 +150,7 @@ if [[ -s /run/machine-id ]]; then
 fi
 
 # Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
-overlay_dirs="etc bin boot endless home lib opt ostree root sbin srv sysroot/home var"
+overlay_dirs="boot etc srv sysroot/home var"
 for dir in $overlay_dirs "${EXTRA_PATHS[@]}"; do
     setup_overlay "$dir"
 done
