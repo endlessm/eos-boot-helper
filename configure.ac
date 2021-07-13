@@ -28,6 +28,9 @@ m4_define([no_udev_error],
 m4_define([no_systembusservicesdir_error],
           [m4_normalize([Could not get system_bus_services_dir setting from]
                         [dbus pkg-config file])])
+m4_define([no_polkitpolicydir_error],
+          [m4_normalize([Could not get policydir setting from]
+                        [polkit-gobject-1 pkg-config file])])
 
 AC_ARG_WITH([systemdunitdir],
             [AS_HELP_STRING([--with-systemdunitdir],
@@ -88,8 +91,13 @@ AC_ARG_WITH([dbussystemconfigdir],
                             [Path to the system dbus-1/system.d directory])],
             [dbussystemconfigdir="$withval"], [dbussystemconfigdir="/usr/share/dbus-1/system.d"])
 AC_SUBST(dbussystemconfigdir)
-
-PKG_CHECK_VAR([POLKIT_POLICYDIR], [polkit-gobject-1], [policydir])
+AC_ARG_WITH([polkitpolicydir],
+            [AS_HELP_STRING([--with-polkitpolicydir],
+                            [Path to the system polkit policy directory])],
+            [polkitpolicydir="$withval"],
+            [PKG_CHECK_VAR([polkitpolicydir], [polkit-gobject-1],
+                           [policydir], [],
+                           [AC_MSG_ERROR(no_polkitpolicydir_error)])])
 
 FLATPAK_ARCH="x86_64"
 case $target_cpu in

@@ -20,22 +20,8 @@
 # Check to see if we've run eos-live-boot-overlayfs-setup already
 [ -d /run/eos-live ] && exit 0
 
-# The /var/endless-extra SD card filesystem needs to be unmounted before
-# adding the overlays below since the /var overlay will mask it.
-extra_unit="var-endless\x2dextra.mount"
-systemctl -q is-active "$extra_unit" && extra_active=true || extra_active=false
-
-# Unmount the SD card
-$extra_active && systemctl stop "$extra_unit"
-
 # Mount overlays over any directory that might be written to
 eos-live-boot-overlayfs-setup etc
-
-# Remount the SD card and mount a scratch overlay over it
-if $extra_active; then
-    systemctl start "$extra_unit"
-    eos-live-boot-overlayfs-setup var/endless-extra
-fi
 
 # Disable the updater for this boot
 systemctl mask --runtime --now eos-autoupdater.timer eos-autoupdater.service

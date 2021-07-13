@@ -13,10 +13,6 @@ Before=multi-user.target systemd-update-done.service
 ConditionNeedsUpdate=|/etc
 ConditionNeedsUpdate=|/var
 
-# Ensure that the extra disk for a split-disk system has been mounted
-Requires=eos-extra-settled.target
-After=eos-extra-settled.target
-
 # Try to run before any ostree and flatpak clients so that they all see
 # the updated repo configuration
 Before=eos-autoupdater.service eos-updater.service
