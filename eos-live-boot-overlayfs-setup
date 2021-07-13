@@ -1,23 +1,20 @@
 #!/bin/bash
 # Mount overlays over any directory that might be written to
 
-EXTRA_PATHS=$@
-
-# Allow xattrs in the user namespace on /run, and by extension in the ostree
-# repo, where they are used to record permissions when run as an unprivileged
-# user.
-mount -o remount,user_xattr /run
+EXTRA_PATHS=("$@")
 
 # Attempt to find a target to act as backing storage for the overlayfses
 find_storage_partition() {
-	local bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
+	local bootdev
+	bootdev=$(grep -oP "endless\.image\.device=UUID=[^ ]+" /proc/cmdline)
 	bootdev=${bootdev:21}
 	if [ -z "${bootdev}" ] ; then
 		echo "Failed to extract endless.image.device from kernel command line" >&2
 		return 1
 	fi
 
-	local root_partition=$(blkid --list-one --output device --match-token "${bootdev}")
+	local root_partition
+	root_partition=$(blkid --list-one --output device --match-token "${bootdev}")
 	if [ ! -b "${root_partition}" ] ; then
 		echo "String passed on endless.image.device does not represent a block device" >&2
 		return 1
@@ -28,12 +25,10 @@ find_storage_partition() {
 	# persistent storage file at the expected path; eos-map-image-file will
 	# run dumpexfat again to find the file extents.
 	local pfpath="/endless/persistent.img"
-	dumpexfat -f ${pfpath} ${root_partition} &> /dev/null
-	if [[ $? = 0 ]]; then
+	if dumpexfat -f ${pfpath} "${root_partition}" &> /dev/null; then
 		echo "Found ${pfpath} in ${root_partition} (exfat), using it for persistent storage" >&2
 		udevadm settle
-		/usr/lib/eos-boot-helper/eos-map-image-file ${root_partition} ${pfpath} endless-live_storage
-		if [[ $? = 0 ]]; then
+		if /usr/lib/eos-boot-helper/eos-map-image-file "${root_partition}" ${pfpath} endless-live_storage; then
 			echo /dev/mapper/endless-live_storage
 			return 0
 		fi
@@ -62,7 +57,7 @@ setup_and_mount_storage() {
 	# If found, we know we've found the right partition and it's ready
 	# for formatting.
 	echo "Looking for endless_live_storage_marker in ${device}" >&2
-	read -r -d '' -N 27 marker < ${device}
+	read -r -d '' -N 27 marker < "${device}"
 	if [ "${marker}" = "endless_live_storage_marker" ]; then
 		echo "Marker found, formatting ${device}" >&2
 		mke2fs -t ext4 -O dir_index,^huge_file -m 1 -L endless-live \
@@ -73,8 +68,7 @@ setup_and_mount_storage() {
 
 	# Check the partition label
 	echo "Checking the endless-live label in ${device}" >&2
-	label=$(e2label "${device}" 2>/dev/null)
-	[ $? = 0 ] || return 1
+	label=$(e2label "${device}" 2>/dev/null) || return 1
 	[ "${label}" = "endless-live" ] || return 1
 
 	echo "endless-live label matched, mounting ${device}" >&2
@@ -82,52 +76,34 @@ setup_and_mount_storage() {
 	mount "${device}" /run/eos-live
 }
 
-# /sysroot/ostree needs special handling:
-setup_ostree_flatpak_overlay() {
-    # The flatpak deployment dirs must be on the same filesystem (namely
-    # /sysroot) as the ostree repo, so files can be hardlinked between them
-    # rather than copied. We normally achieve this with these symlinks:
-    #
-    # /var/lib/flatpak      --> /sysroot/flatpak
-    # /sysroot/flatpak/repo --> /ostree/repo
-    # /ostree               --> /sysroot/ostree
-    #
-    # For a live boot, we cannot overlay /sysroot directly: we need to read an
-    # xattr from the real (lower) directory, but if the upper dir exists (which
-    # it always does at the root of the mount!) then overlayfs returns xattrs
-    # from that. But if we put separate overlays on /sysroot/ostree and
-    # /sysroot/flatpak, hardlinks between them do not work.
-    #
-    # It just so happens that the only entry that /sysroot/ostree and
-    # /sysroot/flatpak have in common is 'repo', which is meant to be identical
-    # anyway. So, we merge both directories together over /sysroot/ostree:
-    local lowerdir=/sysroot/ostree:/sysroot/flatpak
-    local upperdir=/run/eos-live/ostree-flatpak
-    local workdir=$upperdir-workdir
-    mkdir -p $upperdir $workdir
-    mount -t overlay -o \
-        rw,upperdir=$upperdir,lowerdir=$lowerdir,workdir=$workdir \
-        eos-live-ostree-flatpak /sysroot/ostree
-
-    # Adjust the symlink to point to this ostree/flatpak chimera:
-    rm -f /var/lib/flatpak
-    ln -s /sysroot/ostree /var/lib/flatpak
-
-    # And leave /sysroot/flatpak uncovered; since it is only ever referenced
-    # via the /var/lib/flatpak symlink.
-}
-
 setup_overlay() {
     local dir=$1
-    [ -d /$dir ] || return
+    [ -d "/$dir" ] || return
     # If the directory is a symlink, assume it's pointing to a location
     # covered by another top level overlay
-    [ -L /$dir ] && return
-    mkdir -p /run/eos-live/$dir /run/eos-live/$dir-workdir
+    [ -L "/$dir" ] && return
+    # Make sure there's not already an overlay mounted here to allow the
+    # same path to be passed multiple times or the script to run
+    # multiple times.
+    findmnt -t overlay "/$dir" >/dev/null && return 0
+    mkdir -p "/run/eos-live/$dir" "/run/eos-live/$dir-workdir"
     mount -t overlay -o \
-        rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir \
-        eos-live-$dir /$dir
+        "rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir" \
+        "eos-live-$dir" "/$dir"
 }
+
+# Prior to EOS 4 the system flatpak repo was a symlink to the system
+# ostree repo to allow flatpak and OS commits to share objects. The
+# repos have been split now, but an updated system may not have been
+# successfully migrated. In that case refuse to setup the overlays since
+# it requires a complicated configuration that's no longer supported
+# here.
+flatpak_repo_path=$(readlink -f /var/lib/flatpak/repo)
+if [ "${flatpak_repo_path}" = /ostree/repo ]; then
+    echo "Flatpak repo /var/lib/flatpak/repo has not been split from" \
+	"OS repo /ostree/repo" >&2
+    exit 1
+fi
 
 # Use persistent storage to back overlayfses, if available
 storage_partition=$(find_storage_partition)
@@ -150,11 +126,11 @@ if [[ -s /run/machine-id ]]; then
   cp /run/machine-id /run/eos-live/etc/machine-id
 fi
 
-# Everything but /sysroot/{ostree,flatpak} is pretty straightforward:
-overlay_dirs="etc bin boot endless home lib opt ostree root sbin srv sysroot/home var"
-for dir in $overlay_dirs $EXTRA_PATHS; do
-    setup_overlay $dir
+# For a live boot, we cannot overlay /sysroot directly: we need to read
+# an xattr from the real (lower) directory, but if the upper dir exists
+# (which it always does at the root of the mount!) then overlayfs
+# returns xattrs from that.
+overlay_dirs="boot etc srv sysroot/home sysroot/ostree var"
+for dir in $overlay_dirs "${EXTRA_PATHS[@]}"; do
+    setup_overlay "$dir"
 done
-
-# Once /var is writable, we can set up the special ostree+flatpak overlay:
-setup_ostree_flatpak_overlay
