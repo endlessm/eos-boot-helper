@@ -3,7 +3,6 @@
 # desired. All others will be enabled by systemd.
 
 # Reverse systemd defaults
-disable systemd-timesyncd.service
 disable systemd-networkd.service
 disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
