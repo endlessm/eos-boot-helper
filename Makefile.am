@@ -41,6 +41,7 @@ dist_systemduserunit_DATA = \
 
 dist_systemdgenerator_SCRIPTS = \
 	eos-live-boot-generator \
+	eos-vm-generator \
 	$(NULL)
 
 dist_systemdpreset_DATA = \
