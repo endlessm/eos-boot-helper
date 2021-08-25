@@ -46,6 +46,13 @@ disable wpa_supplicant-nl80211@.service
 disable wpa_supplicant-wired@.service
 disable xl2tpd.service
 
+# Disable virtualbox-guest-utils.service by default. It will be enabled
+# dynamically by eos-vm-generator when running in virtualbox.
+# ConditionVirtualization=oracle on the unit is not enought as it will
+# prevent conflicted units (systemd-timesyncd.service) from starting.
+# https://phabricator.endlessm.com/T32330#906081
+disable virtualbox-guest-utils.service
+
 # Disable units masked by Debian, as systemctl preset-all fails to
 # handle them. Without this, `systemctl preset-all` will fail with:
 #

@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Usage: eos-vm-generator normal-dir [...]
+#
+# Conditionally adds additional boot dependencies for vm boots.
+# This script implements systemd.generator(7).
+
+dest_dir="${1:?normal-dir argument missing}"
+system_dir=/usr/lib/systemd/system
+multi_user_target_wants_dir="$dest_dir/multi-user.target.wants"
+
+# Only run on virtualbox
+vm_string=$(/usr/bin/systemd-detect-virt)
+if [ "$vm_string" != "oracle" ] ; then
+  exit 0
+fi
+
+unit_path="$system_dir/virtualbox-guest-utils.service"
+mkdir -p "$multi_user_target_wants_dir"
+ln -sf "$unit_path" "$multi_user_target_wants_dir/"
