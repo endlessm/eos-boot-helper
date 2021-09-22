@@ -11,6 +11,7 @@ disable systemd-networkd-wait-online.service
 disable apt-daily.timer
 disable apt-daily-upgrade.timer
 disable bluetooth-init.service
+disable checkbox-ng.service
 disable cni-dhcp.service
 disable crio.service
 disable crio-shutdown.service
