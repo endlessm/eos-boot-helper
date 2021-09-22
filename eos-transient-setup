@@ -41,9 +41,6 @@ EOS_INSTALLER_PATH = os.path.join('/usr/share/applications', EOS_INSTALLER)
 LOCAL_APPS_DIR = '/usr/local/share/applications'
 LOCAL_DESKTOP_PATH = os.path.join(LOCAL_APPS_DIR, EOS_INSTALLER)
 
-GOOGLE_CHROME = 'google-chrome.desktop'
-CHROMIUM_BROWSER = 'chromium-browser.desktop'
-
 LIVE_SETTINGS_DB = '/var/lib/eos-image-defaults/settings.live'
 USER_PROFILE_PATH = '/usr/local/share/dconf/profile/user'
 USER_PROFILE = '''user-db:user
@@ -138,13 +135,6 @@ class AdjustGSettings(object):
                 favorite_apps.insert(0, EOS_INSTALLER)
                 changed = True
 
-        # Replace Chrome (downloaded on demand) with Chromium (pre-installed).
-        # This effectively undoes a step taken in the image builder,
-        # pre-seeding /var/eos-image-defaults/settings with the opposite
-        # change.
-        if replace_chrome_with_chromium(favorite_apps):
-            changed = True
-
         if changed:
             self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
                         GLib.Variant('as', favorite_apps))
@@ -171,41 +161,6 @@ def install_installer_desktop_file():
                       GLib.KeyFileFlags.KEEP_TRANSLATIONS)
     kf.remove_key('Desktop Entry', 'NoDisplay')
     kf.save_to_file(LOCAL_DESKTOP_PATH)
-
-
-def disable_chrome_auto_download():
-    """Prevent Chrome auto-downloader from running."""
-    cmd = os.path.join('/usr/share/eos-google-chrome-helper',
-                       'eos-google-chrome-system-helper.py')
-    log.info('$ %s', cmd)
-    subprocess.check_call([cmd])
-
-
-def replace_chrome_with_chromium(apps):
-    """Replace Chrome with Chromium in a list of .desktop file names."""
-    if GOOGLE_CHROME in apps:
-        apps[apps.index(GOOGLE_CHROME)] = CHROMIUM_BROWSER
-        return True
-    else:
-        return False
-
-
-def remove_chrome_from_icon_grids():
-    """Replace Chrome with Chromium in icon grids, if needed."""
-    pattern = os.path.join(ICON_GRID_DIR, 'icon-grid-*.json')
-    for path in glob.glob(pattern):
-        log.info("Checking %s", path)
-        try:
-            with open(path, 'r') as f:
-                grid = json.load(fp=f)
-
-            if replace_chrome_with_chromium(grid[DESKTOP_GRID_ID]):
-                log.info("Updating %s", path)
-
-                with open(path, 'w') as f:
-                    json.dump(grid, fp=f)
-        except Exception:
-            log.exception("while processing %s", path)
 
 
 def prepend_installer_to_icon_grid():
@@ -273,8 +228,6 @@ def main():
     else:
         setup.write_dconf_compile()
 
-        disable_chrome_auto_download()
-        remove_chrome_from_icon_grids()
         reduce_ostree_min_free_space()
 
         if mode == Mode.live:
