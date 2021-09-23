@@ -27,6 +27,7 @@ import tempfile
 
 import gi
 gi.require_version('OSTree', '1.0')
+# pylint: disable=wrong-import-position
 from gi.repository import GLib, Gio, OSTree  # noqa: E402
 
 log = logging.getLogger(sys.argv[0])
