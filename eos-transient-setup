@@ -55,15 +55,6 @@ FAVORITE_APPS_KEY = 'favorite-apps'
 GS_SCHEMA = 'org.gnome.software'
 ALLOW_UPDATES = 'allow-updates'
 
-GSD_POWER_SCHEMA = "org.gnome.settings-daemon.plugins.power"
-GSD_SLEEP_INACTIVE_AC_TYPE = "sleep-inactive-ac-type"
-GSD_SLEEP_INACTIVE_AC_TIMEOUT = "sleep-inactive-ac-timeout"
-GSD_SLEEP_INACTIVE_BATTERY_TYPE = "sleep-inactive-battery-type"
-GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT = "sleep-inactive-battery-timeout"
-
-ONE_MINUTE = 60
-
-
 # The other mode here (demo mode) was removed with the rebase to 3.38. The
 # --mode argument has been kept around to maintain CLI API compatibility.
 class Mode(enum.Enum):
@@ -110,18 +101,6 @@ class AdjustGSettings(object):
         """Write keyfile with overridden settings to stdout, for debugging."""
         data, length = self.keyfile.to_data()
         print(data)
-
-    def adjust_power_settings(self):
-        """Configure session to log out after a short period of inactivity."""
-        for key in (GSD_SLEEP_INACTIVE_AC_TYPE,
-                    GSD_SLEEP_INACTIVE_BATTERY_TYPE):
-            self.update(GSD_POWER_SCHEMA, key,
-                        GLib.Variant('s', 'logout'))
-
-        for key in (GSD_SLEEP_INACTIVE_AC_TIMEOUT,
-                    GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT):
-            self.update(GSD_POWER_SCHEMA, key,
-                        GLib.Variant('i', ONE_MINUTE))
 
     def update_favorite_apps(self, mode):
         """Adjust default favourite apps, which are shown on the taskbar."""
