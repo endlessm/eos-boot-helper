@@ -17,7 +17,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
-import enum
 import glob
 import json
 import logging
@@ -55,11 +54,6 @@ FAVORITE_APPS_KEY = 'favorite-apps'
 GS_SCHEMA = 'org.gnome.software'
 ALLOW_UPDATES = 'allow-updates'
 
-# The other mode here (demo mode) was removed with the rebase to 3.38. The
-# --mode argument has been kept around to maintain CLI API compatibility.
-class Mode(enum.Enum):
-    live = 1
-
 
 class AdjustGSettings(object):
     def __init__(self):
@@ -71,9 +65,9 @@ class AdjustGSettings(object):
         log.info('Updating %s: %s to %s', schema, key, value)
         self.keyfile.set_string(schema.replace('.', '/'), key, value)
 
-    def prepare(self, mode):
+    def prepare(self):
         """Stage all settings to be overridden."""
-        self.update_favorite_apps(mode)
+        self.update_favorite_apps()
         self.disallow_app_center_updates()
 
     def write_dconf_compile(self):
@@ -102,21 +96,17 @@ class AdjustGSettings(object):
         data, length = self.keyfile.to_data()
         print(data)
 
-    def update_favorite_apps(self, mode):
+    def update_favorite_apps(self):
         """Adjust default favourite apps, which are shown on the taskbar."""
         settings = Gio.Settings(schema=SHELL_SCHEMA)
         favorite_apps = settings.get_strv(FAVORITE_APPS_KEY)
-        changed = False
 
-        if mode == Mode.live:
-            # Prepend installer icon
-            if EOS_INSTALLER not in favorite_apps:
-                favorite_apps.insert(0, EOS_INSTALLER)
-                changed = True
+        # Prepend installer icon
+        if EOS_INSTALLER not in favorite_apps:
+            favorite_apps.insert(0, EOS_INSTALLER)
 
-        if changed:
-            self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
-                        GLib.Variant('as', favorite_apps))
+        self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
+                    GLib.Variant('as', favorite_apps))
 
     def disallow_app_center_updates(self):
         """Forbid installing app updates."""
@@ -186,13 +176,9 @@ def reduce_ostree_min_free_space():
 def main():
     """Configures system settings for live sessions."""
     p = argparse.ArgumentParser(description=main.__doc__)
-    p.add_argument('--mode', choices=[m.name for m in Mode], required=True,
-                   default='live',
-                   help='Whether to adjust settings for live mode')
     p.add_argument('--dry-run', action='store_true',
                    help='Just print the DConf keyfile to stdout')
     a = p.parse_args()
-    mode = Mode[a.mode]
 
     logging.basicConfig(
         level=logging.INFO,
@@ -200,7 +186,7 @@ def main():
                '%(message)s')
 
     setup = AdjustGSettings()
-    setup.prepare(mode=mode)
+    setup.prepare()
 
     if a.dry_run:
         setup.write_stdout()
@@ -208,10 +194,8 @@ def main():
         setup.write_dconf_compile()
 
         reduce_ostree_min_free_space()
-
-        if mode == Mode.live:
-            install_installer_desktop_file()
-            prepend_installer_to_icon_grid()
+        install_installer_desktop_file()
+        prepend_installer_to_icon_grid()
 
 
 if __name__ == '__main__':

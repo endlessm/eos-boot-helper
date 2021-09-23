@@ -6,7 +6,7 @@ ConditionKernelCommandLine=endless.live_boot
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/eos-transient-setup --mode live
+ExecStart=/usr/sbin/eos-transient-setup
 RemainAfterExit=yes
 
 [Install]
