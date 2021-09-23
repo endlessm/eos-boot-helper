@@ -93,7 +93,7 @@ class AdjustGSettings:
 
     def write_stdout(self):
         """Write keyfile with overridden settings to stdout, for debugging."""
-        data, length = self.keyfile.to_data()
+        data, _ = self.keyfile.to_data()
         print(data)
 
     def update_favorite_apps(self):
