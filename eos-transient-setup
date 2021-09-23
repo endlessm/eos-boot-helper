@@ -55,7 +55,7 @@ GS_SCHEMA = 'org.gnome.software'
 ALLOW_UPDATES = 'allow-updates'
 
 
-class AdjustGSettings(object):
+class AdjustGSettings:
     def __init__(self):
         self.keyfile = GLib.KeyFile()
 
