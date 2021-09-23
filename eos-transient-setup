@@ -17,7 +17,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
-import enum
 import glob
 import json
 import logging
@@ -28,6 +27,7 @@ import tempfile
 
 import gi
 gi.require_version('OSTree', '1.0')
+# pylint: disable=wrong-import-position
 from gi.repository import GLib, Gio, OSTree  # noqa: E402
 
 log = logging.getLogger(sys.argv[0])
@@ -55,22 +55,8 @@ FAVORITE_APPS_KEY = 'favorite-apps'
 GS_SCHEMA = 'org.gnome.software'
 ALLOW_UPDATES = 'allow-updates'
 
-GSD_POWER_SCHEMA = "org.gnome.settings-daemon.plugins.power"
-GSD_SLEEP_INACTIVE_AC_TYPE = "sleep-inactive-ac-type"
-GSD_SLEEP_INACTIVE_AC_TIMEOUT = "sleep-inactive-ac-timeout"
-GSD_SLEEP_INACTIVE_BATTERY_TYPE = "sleep-inactive-battery-type"
-GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT = "sleep-inactive-battery-timeout"
 
-ONE_MINUTE = 60
-
-
-# The other mode here (demo mode) was removed with the rebase to 3.38. The
-# --mode argument has been kept around to maintain CLI API compatibility.
-class Mode(enum.Enum):
-    live = 1
-
-
-class AdjustGSettings(object):
+class AdjustGSettings:
     def __init__(self):
         self.keyfile = GLib.KeyFile()
 
@@ -80,9 +66,9 @@ class AdjustGSettings(object):
         log.info('Updating %s: %s to %s', schema, key, value)
         self.keyfile.set_string(schema.replace('.', '/'), key, value)
 
-    def prepare(self, mode):
+    def prepare(self):
         """Stage all settings to be overridden."""
-        self.update_favorite_apps(mode)
+        self.update_favorite_apps()
         self.disallow_app_center_updates()
 
     def write_dconf_compile(self):
@@ -90,54 +76,38 @@ class AdjustGSettings(object):
 
         We also adjust the 'user' profile to use it.
         """
-        with tempfile.TemporaryDirectory(suffix='.d') as d:
-            keyfile_path = os.path.join(d, '00-live')
+        with tempfile.TemporaryDirectory(suffix='.d') as tempdir:
+            keyfile_path = os.path.join(tempdir, '00-live')
             log.info('writing keyfile to %s', keyfile_path)
             self.keyfile.save_to_file(keyfile_path)
 
             os.makedirs(os.path.dirname(LIVE_SETTINGS_DB), exist_ok=True)
 
-            args = ['dconf', 'compile', LIVE_SETTINGS_DB, d]
+            args = ['dconf', 'compile', LIVE_SETTINGS_DB, tempdir]
             log.info('$ %s', ' '.join(args))
             subprocess.check_call(args)
 
         log.info('Installing new DConf profile to %s', USER_PROFILE_PATH)
         os.makedirs(os.path.dirname(USER_PROFILE_PATH), exist_ok=True)
-        with open(USER_PROFILE_PATH, 'w') as f:
-            f.write(USER_PROFILE)
+        with open(USER_PROFILE_PATH, 'w') as user_profile_file:
+            user_profile_file.write(USER_PROFILE)
 
     def write_stdout(self):
         """Write keyfile with overridden settings to stdout, for debugging."""
-        data, length = self.keyfile.to_data()
+        data, _ = self.keyfile.to_data()
         print(data)
 
-    def adjust_power_settings(self):
-        """Configure session to log out after a short period of inactivity."""
-        for key in (GSD_SLEEP_INACTIVE_AC_TYPE,
-                    GSD_SLEEP_INACTIVE_BATTERY_TYPE):
-            self.update(GSD_POWER_SCHEMA, key,
-                        GLib.Variant('s', 'logout'))
-
-        for key in (GSD_SLEEP_INACTIVE_AC_TIMEOUT,
-                    GSD_SLEEP_INACTIVE_BATTERY_TIMEOUT):
-            self.update(GSD_POWER_SCHEMA, key,
-                        GLib.Variant('i', ONE_MINUTE))
-
-    def update_favorite_apps(self, mode):
+    def update_favorite_apps(self):
         """Adjust default favourite apps, which are shown on the taskbar."""
         settings = Gio.Settings(schema=SHELL_SCHEMA)
         favorite_apps = settings.get_strv(FAVORITE_APPS_KEY)
-        changed = False
 
-        if mode == Mode.live:
-            # Prepend installer icon
-            if EOS_INSTALLER not in favorite_apps:
-                favorite_apps.insert(0, EOS_INSTALLER)
-                changed = True
+        # Prepend installer icon
+        if EOS_INSTALLER not in favorite_apps:
+            favorite_apps.insert(0, EOS_INSTALLER)
 
-        if changed:
-            self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
-                        GLib.Variant('as', favorite_apps))
+        self.update(SHELL_SCHEMA, FAVORITE_APPS_KEY,
+                    GLib.Variant('as', favorite_apps))
 
     def disallow_app_center_updates(self):
         """Forbid installing app updates."""
@@ -155,12 +125,13 @@ def install_installer_desktop_file():
              EOS_INSTALLER_PATH, LOCAL_DESKTOP_PATH)
     os.makedirs(LOCAL_APPS_DIR, exist_ok=True)
 
-    kf = GLib.KeyFile()
-    kf.load_from_file(EOS_INSTALLER_PATH,
-                      GLib.KeyFileFlags.KEEP_COMMENTS |
-                      GLib.KeyFileFlags.KEEP_TRANSLATIONS)
-    kf.remove_key('Desktop Entry', 'NoDisplay')
-    kf.save_to_file(LOCAL_DESKTOP_PATH)
+    eos_installer_desktop = GLib.KeyFile()
+    eos_installer_desktop.load_from_file(
+        EOS_INSTALLER_PATH,
+        GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS,
+    )
+    eos_installer_desktop.remove_key('Desktop Entry', 'NoDisplay')
+    eos_installer_desktop.save_to_file(LOCAL_DESKTOP_PATH)
 
 
 def prepend_installer_to_icon_grid():
@@ -174,9 +145,9 @@ def prepend_installer_to_icon_grid():
     for path in paths:
         try:
             try:
-                with open(path, 'r') as f:
+                with open(path, 'r') as grid_file:
                     log.info("reading existing file %s", path)
-                    grid = json.load(fp=f)
+                    grid = json.load(fp=grid_file)
             except FileNotFoundError:
                 grid = {}
 
@@ -185,8 +156,8 @@ def prepend_installer_to_icon_grid():
                 desktop.insert(0, EOS_INSTALLER)
 
                 log.info("Writing %s: %s", path, json.dumps(obj=grid))
-                with open(path, 'w') as f:
-                    json.dump(obj=grid, fp=f)
+                with open(path, 'w') as grid_file:
+                    json.dump(obj=grid, fp=grid_file)
         except Exception:
             log.exception("while processing %s", path)
 
@@ -206,14 +177,13 @@ def reduce_ostree_min_free_space():
 
 def main():
     """Configures system settings for live sessions."""
-    p = argparse.ArgumentParser(description=main.__doc__)
-    p.add_argument('--mode', choices=[m.name for m in Mode], required=True,
-                   default='live',
-                   help='Whether to adjust settings for live mode')
-    p.add_argument('--dry-run', action='store_true',
-                   help='Just print the DConf keyfile to stdout')
-    a = p.parse_args()
-    mode = Mode[a.mode]
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Just print the DConf keyfile to stdout",
+    )
+    args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
@@ -221,18 +191,16 @@ def main():
                '%(message)s')
 
     setup = AdjustGSettings()
-    setup.prepare(mode=mode)
+    setup.prepare()
 
-    if a.dry_run:
+    if args.dry_run:
         setup.write_stdout()
     else:
         setup.write_dconf_compile()
 
         reduce_ostree_min_free_space()
-
-        if mode == Mode.live:
-            install_installer_desktop_file()
-            prepend_installer_to_icon_grid()
+        install_installer_desktop_file()
+        prepend_installer_to_icon_grid()
 
 
 if __name__ == '__main__':
