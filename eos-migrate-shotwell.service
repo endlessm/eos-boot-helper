@@ -1,0 +1,16 @@
+[Unit]
+Description=Migrate Shotwell database to new flatpak path
+
+# Only run if we have something to migrate and a flatpak db does not exist
+ConditionPathExists=%h/.local/share/shotwell/data/photo.db
+ConditionPathExists=!%h/.var/app/org.gnome.Shotwell/data/shotwell/data/photo.db
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/mkdir -p %h/.var/app/org.gnome.Shotwell/data/shotwell/data/
+ExecStart=/usr/bin/cp %h/.local/share/shotwell/data/photo.db %h/.var/app/org.gnome.Shotwell/data/shotwell/data/photo.db
+Restart=no
+RemainAfterExit=yes
+
+[Install]
+WantedBy=gnome-session.target

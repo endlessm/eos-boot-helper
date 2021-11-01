@@ -37,6 +37,7 @@ dist_systemdunit_DATA = \
 dist_systemduserunit_DATA = \
 	eos-migrate-chromium-profile.service \
 	eos-migrate-firefox-profile.service \
+	eos-migrate-shotwell.service \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
@@ -68,6 +69,7 @@ install-data-hook:
 	$(MKDIR_P) '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-chromium-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-firefox-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
+	ln -s ../eos-migrate-shotwell.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 
 uninstall-hook:
 	rm -f '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
