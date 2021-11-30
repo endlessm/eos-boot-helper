@@ -77,10 +77,6 @@ def duplicate_repo(src, dst):
         # For actual commit data in objects or deltas, use a hardlink.
         # For everything else, make a copy to ensure the repos don't
         # operate on each other's metadata.
-        #
-        # Potentially some fetched but not committed objects in tmp
-        # would be useful to link, but it's mixed with other data that
-        # might not be safe to link.
         src_path_parts = os.path.relpath(a, src).split(os.sep)
         if len(src_path_parts) > 1:
             src_repodir = src_path_parts[0]
@@ -89,6 +85,9 @@ def duplicate_repo(src, dst):
         if src_repodir in ('objects', 'deltas'):
             logger.debug('Linking %s to %s', a, b)
             return os.link(a, b)
+        elif src_repodir == 'tmp':
+            logger.debug('Skipping temporary file %s', a)
+            return None
 
         logger.debug('Copying %s to %s', a, b)
         return shutil.copy2(a, b)
