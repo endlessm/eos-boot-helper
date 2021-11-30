@@ -27,6 +27,7 @@ from gi.repository import GLib, Gio
 import logging
 import os
 import shutil
+import subprocess
 import tempfile
 
 gi.require_version('OSTree', '1.0')
@@ -73,28 +74,25 @@ def duplicate_repo(src, dst):
     except FileNotFoundError:
         pass
 
-    def _copy_ostree_file(a, b):
-        # For actual commit data in objects or deltas, use a hardlink.
-        # For everything else, make a copy to ensure the repos don't
-        # operate on each other's metadata.
-        src_path_parts = os.path.relpath(a, src).split(os.sep)
-        if len(src_path_parts) > 1:
-            src_repodir = src_path_parts[0]
-        else:
-            src_repodir = None
-        if src_repodir in ('objects', 'deltas'):
-            logger.debug('Linking %s to %s', a, b)
-            return os.link(a, b)
-        elif src_repodir == 'tmp':
-            logger.debug('Skipping temporary file %s', a)
-            return None
-
-        logger.debug('Copying %s to %s', a, b)
-        return shutil.copy2(a, b)
-
     logger.debug('Duplicating %s to %s', src, dst)
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    shutil.copytree(src, dst, symlinks=True, copy_function=_copy_ostree_file)
+    os.makedirs(dst, exist_ok=True)
+    for entry in os.scandir(src):
+        if entry.name == 'tmp':
+            logger.debug('Skipping temporary directory %s', entry.path)
+
+        # Use cp instead of shutil.copytree since the former is
+        # considerably faster.
+        cmd = ['cp', '--archive', '--no-target-directory']
+        tgt = os.path.join(dst, entry.name)
+        if entry.name in ('objects', 'deltas'):
+            logger.info('Linking %s to %s', entry.path, tgt)
+            cmd.append('--link')
+        else:
+            logger.info('Copying %s to %s', entry.path, tgt)
+
+        cmd += [entry.path, tgt]
+        logger.debug('Executing %s', ' '.join(cmd))
+        subprocess.run(cmd, check=True)
 
 
 @contextmanager
