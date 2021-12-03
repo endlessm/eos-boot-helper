@@ -43,6 +43,7 @@ from gi.repository import EosMetrics  # noqa: E402
 logger = logging.getLogger(os.path.basename(__file__))
 
 EOS_UPDATER_METRIC_FAILURE = "927d0f61-4890-4912-a513-b2cb0205908f"
+SPLIT_FLATPAK_REPO_STATS = "880fd091-2e68-4bd2-baa1-f6810fabcc1c"
 
 
 class SplitError(Exception):
@@ -515,20 +516,36 @@ def main():
 
     logging.basicConfig(level=args.log_level)
 
+    recorder = EosMetrics.EventRecorder.get_default()
+
     try:
         with SplitStats() as stats:
             split_repo(prune=args.prune, stats=stats)
     except Exception as e:
-        recorder = EosMetrics.EventRecorder.get_default()
         recorder.record_event_sync(
             EOS_UPDATER_METRIC_FAILURE,
             GLib.Variant("(ss)", ("eos-split-flatpak-repo", str(e))),
         )
         raise
 
-    # If anything changed, show the statistics.
+    # If anything changed, show the statistics and send metrics.
     if stats.changed:
         stats.log_results()
+        recorder.record_event_sync(
+            SPLIT_FLATPAK_REPO_STATS,
+            GLib.Variant('(uuuuuuutut)', (
+                int(stats.elapsed),
+                stats.num_os_refs,
+                stats.num_flatpak_refs,
+                stats.num_other_refs,
+                stats.num_objects,
+                stats.num_deltas,
+                stats.num_apps,
+                stats.size_apps,
+                stats.num_runtimes,
+                stats.size_runtimes,
+            ))
+        )
 
 
 if __name__ == '__main__':
