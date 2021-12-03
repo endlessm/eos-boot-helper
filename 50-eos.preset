@@ -31,6 +31,8 @@ disable openvpn-client@.service
 disable openvpn-server@.service
 disable openvpn.service
 disable openvpn@.service
+disable podman-auto-update.service
+disable podman-auto-update.timer
 disable pppd-dns.service
 disable rtkit-daemon.service
 disable rsyslog.service
