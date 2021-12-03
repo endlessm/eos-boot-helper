@@ -29,6 +29,10 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
+
+gi.require_version('Flatpak', '1.0')
+from gi.repository import Flatpak  # noqa: E402
 
 gi.require_version('OSTree', '1.0')
 from gi.repository import OSTree  # noqa: E402
@@ -43,6 +47,53 @@ EOS_UPDATER_METRIC_FAILURE = "927d0f61-4890-4912-a513-b2cb0205908f"
 
 class SplitError(Exception):
     pass
+
+
+class SplitStats:
+    """Statistics for repo splitting"""
+    def __init__(self):
+        self.changed = False
+        self.num_os_refs = 0
+        self.num_flatpak_refs = 0
+        self.num_other_refs = 0
+        self.num_objects = 0
+        self.num_deltas = 0
+        self.num_apps = 0
+        self.size_apps = 0
+        self.num_runtimes = 0
+        self.size_runtimes = 0
+
+        self._start_time = 0
+        self._end_time = 0
+
+    @property
+    def elapsed(self):
+        return self._end_time - self._start_time
+
+    def start_timing(self):
+        self._start_time = time.monotonic()
+
+    def end_timing(self):
+        self._end_time = time.monotonic()
+
+    def log_results(self):
+        logger.info('Time elapsed: %.1f seconds', self.elapsed)
+        logger.info('Number of OS refs: %i', self.num_os_refs)
+        logger.info('Number of Flatpak refs: %i', self.num_flatpak_refs)
+        logger.info('Number of other refs: %i', self.num_other_refs)
+        logger.info('Number of objects: %i', self.num_objects)
+        logger.info('Number of deltas: %i', self.num_deltas)
+        logger.info('Number of Flatpak apps: %i', self.num_apps)
+        logger.info('Size of Flatpak apps: %i', self.size_apps)
+        logger.info('Number of Flatpak runtimes: %i', self.num_runtimes)
+        logger.info('Size of Flatpak runtimes: %i', self.size_runtimes)
+
+    def __enter__(self):
+        self.start_timing()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_timing()
 
 
 class RepoType(enum.Enum):
@@ -190,7 +241,7 @@ def get_refspec_repo_type(refspec, os_remotes, flatpak_remotes):
         return None
 
 
-def gather_refs(repo, os_remotes, flatpak_remotes):
+def gather_refs(repo, stats, os_remotes, flatpak_remotes):
     """Gather refs into OS and Flatpak lists"""
     # Put the remotes into sets for get_refspec_repo_type and ensure
     # they're disjoint.
@@ -216,7 +267,55 @@ def gather_refs(repo, os_remotes, flatpak_remotes):
         else:
             other_refs.append(refspec)
 
+    stats.num_os_refs = len(os_refs)
+    stats.num_flatpak_refs = len(flatpak_refs)
+    stats.num_other_refs = len(other_refs)
+
     return os_refs, flatpak_refs, other_refs
+
+
+def get_num_repo_objects(repo):
+    """Get the count of objects in a repository
+
+    Normally you'd use OSTree.Repo.list_objects, but that's too slow as
+    it tries each potential object subdirectory and then serializes each
+    found object name into a GVariant.
+
+    All we care about is the count, so this function uses knowledge of
+    the 2 level content addressed object storage and just looks at
+    directory entries.
+    """
+    objsdir = os.path.join(repo.path, 'objects')
+    nobjs = 0
+    for entry in os.scandir(objsdir):
+        if not entry.is_dir():
+            continue
+        nobjs += len(os.listdir(entry.path))
+    return nobjs
+
+
+def record_repo_stats(repo, stats):
+    """Record statistics for repository data"""
+    logger.info('Recording repository %s stats', repo.path)
+
+    stats.num_objects = get_num_repo_objects(repo)
+
+    _, deltas = repo.list_static_delta_names()
+    stats.num_deltas = len(deltas)
+
+
+def record_flatpak_stats(inst, stats):
+    """Record Flatpak statistics"""
+    logger.info('Recording Flatpak installation %s stats',
+                inst.get_path().get_path())
+
+    apps = inst.list_installed_refs_by_kind(Flatpak.RefKind.APP)
+    stats.num_apps = len(apps)
+    stats.size_apps = sum([ref.get_installed_size() for ref in apps])
+
+    runtimes = inst.list_installed_refs_by_kind(Flatpak.RefKind.RUNTIME)
+    stats.num_runtimes = len(runtimes)
+    stats.size_runtimes = sum([ref.get_installed_size() for ref in runtimes])
 
 
 def remove_remotes(repo, repo_type, remotes):
@@ -277,7 +376,7 @@ def replace_symlink(link, path):
 # both the unused flatpak objects as well as the non-rollback OS
 # objects. However, until /var/lib/flatpak/repo was pruned, those
 # non-rollback OS objects would still exist on disk.
-def split_repo(prune=False, root='/'):
+def split_repo(prune=False, stats=None, root='/'):
     """Split out flatpak repo from system ostree repo
 
     Returns True when the repos have been split or False when no
@@ -288,6 +387,9 @@ def split_repo(prune=False, root='/'):
     primarily for testing as it doesn't work well with the absolute
     symlinks present on a real system.
     """
+    if stats is None:
+        stats = SplitStats()
+
     logger.debug('Loading sysroot %s', root)
     sysroot = OSTree.Sysroot.new(Gio.File.new_for_path(root))
     sysroot.load()
@@ -307,11 +409,15 @@ def split_repo(prune=False, root='/'):
     flatpak_repo_path = os.path.join(flatpak_dir_path, 'repo')
     logger.debug('Flatpak repo path: %s', flatpak_repo_path)
 
-    changed = False
+    flatpak_inst = Flatpak.Installation.new_for_path(
+        Gio.File.new_for_path(flatpak_dir_path),
+        user=False,
+    )
+
     if not os.path.samefile(ostree_repo.path, flatpak_repo_path):
         logger.info('OSTree repo and Flatpak repo have already been split')
     else:
-        changed = True
+        stats.changed = True
 
         # Lock the current repo
         with repo_lock(ostree_repo, OSTree.RepoLockType.EXCLUSIVE):
@@ -334,8 +440,16 @@ def split_repo(prune=False, root='/'):
 
                 # Gather the refs
                 logger.info('Gathering OS and Flatpak refs')
-                os_refs, flatpak_refs, _ = gather_refs(ostree_repo, os_remotes,
+                os_refs, flatpak_refs, _ = gather_refs(ostree_repo,
+                                                       stats,
+                                                       os_remotes,
                                                        flatpak_remotes)
+
+                # Record number of objects and deltas
+                record_repo_stats(ostree_repo, stats)
+
+                # Record flatpak stats
+                record_flatpak_stats(flatpak_inst, stats)
 
                 # Remove OS remotes and refs from the flatpak repo
                 remove_remotes(new_flatpak_repo, RepoType.OS, os_remotes)
@@ -379,7 +493,7 @@ def split_repo(prune=False, root='/'):
     if not os.path.islink(flatpak_dir_path):
         logger.info('Flatpak dir %s is not a symlink', flatpak_dir_path)
     else:
-        changed = True
+        stats.changed = True
         real_flatpak_dir_path = os.path.realpath(flatpak_dir_path)
         logger.info('Replacing Flatpak dir symlink %s with %s',
                     flatpak_dir_path, real_flatpak_dir_path)
@@ -388,8 +502,6 @@ def split_repo(prune=False, root='/'):
         # Sync to make sure the symlink swap is on disk.
         logger.info('Synchronizing changes to disk')
         os.sync()
-
-    return changed
 
 
 def main():
@@ -404,7 +516,8 @@ def main():
     logging.basicConfig(level=args.log_level)
 
     try:
-        split_repo(prune=args.prune)
+        with SplitStats() as stats:
+            split_repo(prune=args.prune, stats=stats)
     except Exception as e:
         recorder = EosMetrics.EventRecorder.get_default()
         recorder.record_event_sync(
@@ -412,6 +525,10 @@ def main():
             GLib.Variant("(ss)", ("eos-split-flatpak-repo", str(e))),
         )
         raise
+
+    # If anything changed, show the statistics.
+    if stats.changed:
+        stats.log_results()
 
 
 if __name__ == '__main__':
