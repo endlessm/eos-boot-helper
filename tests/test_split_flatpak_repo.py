@@ -326,8 +326,9 @@ class TestSplitRepo(BaseTestCase):
             for ref in self.sys_flatpak_inst.list_installed_refs()
         }
 
-        split = esfr.split_repo(root=self.root)
-        self.assertTrue(split)
+        stats = esfr.SplitStats()
+        esfr.split_repo(stats=stats, root=self.root)
+        self.assertTrue(stats.changed)
 
         self.assertFalse(
             os.path.samefile(self.os_repo_path, self.flatpak_repo_path)
@@ -371,9 +372,10 @@ class TestSplitRepo(BaseTestCase):
         self.assertEqual(repo_mode, 'bare-user-only')
 
         # Running again should do nothing
+        stats = esfr.SplitStats()
         with self.assertLogs(esfr.logger, logging.INFO) as logs:
-            split = esfr.split_repo(root=self.root)
-        self.assertFalse(split)
+            esfr.split_repo(stats=stats, root=self.root)
+        self.assertFalse(stats.changed)
         self.assertEqual(logs.output, [
             ('INFO:eos-split-flatpak-repo:OSTree repo and '
              'Flatpak repo have already been split'),
@@ -384,8 +386,9 @@ class TestSplitRepo(BaseTestCase):
     def test_split_other(self):
         """Test that other refs stay in both repos"""
         refs = self.random_commit(self.os_repo, ('foo/bar/baz',))
-        split = esfr.split_repo(root=self.root)
-        self.assertTrue(split)
+        stats = esfr.SplitStats()
+        esfr.split_repo(stats=stats, root=self.root)
+        self.assertTrue(stats.changed)
 
         os_repo = OSTree.Repo.new(Gio.File.new_for_path(self.os_repo_path))
         os_repo.open()
@@ -406,8 +409,9 @@ class TestSplitRepo(BaseTestCase):
         # Delete an OS and flatpak remote
         self.os_repo.remote_delete('eos')
         self.os_repo.remote_delete('eos-sdk')
-        split = esfr.split_repo(root=self.root)
-        self.assertTrue(split)
+        stats = esfr.SplitStats()
+        esfr.split_repo(stats=stats, root=self.root)
+        self.assertTrue(stats.changed)
 
         # The OS repo should have the original OS refs + the deleted
         # flatpak repo's ostree-metadata ref.
@@ -481,9 +485,10 @@ class TestSplitRepo(BaseTestCase):
 
         os_remotes = ['eos']
         flatpak_remotes = ['eos-sdk', 'flathub']
+        stats = esfr.SplitStats()
         with self.assertLogs(esfr.logger, logging.WARNING) as logs:
             os_refs, flatpak_refs, other_refs = esfr.gather_refs(
-                self.os_repo, os_remotes, flatpak_remotes)
+                self.os_repo, stats, os_remotes, flatpak_remotes)
         self.assertEqual(logs.output, [
             ('WARNING:eos-split-flatpak-repo:'
              'Refspec deleted:app/com.example.Foo/x86_64/stable remote '
@@ -530,9 +535,10 @@ class TestSplitRepo(BaseTestCase):
         # Make sure an exception is raised if a remote is in both lists.
         os_remotes = ['eos']
         flatpak_remotes = ['eos', 'eos-sdk', 'flathub']
+        stats = esfr.SplitStats()
         with self.assertRaisesRegex(esfr.SplitError,
                                     'eos in both OS and Flatpak remotes'):
-            esfr.gather_refs(self.os_repo, os_remotes, flatpak_remotes)
+            esfr.gather_refs(self.os_repo, stats, os_remotes, flatpak_remotes)
 
     def assertDircmpNoDiffs(self, dircmp):
         """Recursively assert that a dircmp object has no differences"""
@@ -568,3 +574,40 @@ class TestSplitRepo(BaseTestCase):
                 logger.debug('Getting number of links for %s', path)
                 stat = os.lstat(path)
                 test(stat.st_nlink, 1)
+
+    def test_stats(self):
+        """Test repo splitting statistics"""
+        self.create_os_commits()
+        self.create_flatpak_commits()
+        with esfr.SplitStats() as stats:
+            esfr.split_repo(stats=stats, root=self.root)
+
+        self.assertTrue(stats.changed)
+        self.assertGreater(stats.elapsed, 0)
+        self.assertEqual(stats.num_os_refs, 3)
+        self.assertEqual(stats.num_flatpak_refs, 12)
+        self.assertEqual(stats.num_other_refs, 0)
+        self.assertEqual(stats.num_objects, 66)
+        self.assertEqual(stats.num_deltas, 0)
+        self.assertEqual(stats.num_apps, 1)
+        self.assertEqual(stats.size_apps, 1536)
+        self.assertEqual(stats.num_runtimes, 3)
+        self.assertEqual(stats.size_runtimes, 4608)
+
+        with self.assertLogs(esfr.logger, logging.INFO) as logs:
+            stats.log_results()
+        self.assertRegex(
+            logs.output.pop(0),
+            r'^INFO:eos-split-flatpak-repo:Time elapsed: \d+.\d seconds$'
+        )
+        self.assertEqual(logs.output, [
+            'INFO:eos-split-flatpak-repo:Number of OS refs: 3',
+            'INFO:eos-split-flatpak-repo:Number of Flatpak refs: 12',
+            'INFO:eos-split-flatpak-repo:Number of other refs: 0',
+            'INFO:eos-split-flatpak-repo:Number of objects: 66',
+            'INFO:eos-split-flatpak-repo:Number of deltas: 0',
+            'INFO:eos-split-flatpak-repo:Number of Flatpak apps: 1',
+            'INFO:eos-split-flatpak-repo:Size of Flatpak apps: 1536',
+            'INFO:eos-split-flatpak-repo:Number of Flatpak runtimes: 3',
+            'INFO:eos-split-flatpak-repo:Size of Flatpak runtimes: 4608'
+        ])
