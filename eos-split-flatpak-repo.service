@@ -1,20 +1,23 @@
 [Unit]
 Description=Split Flatpak repo from system OSTree repo
-DefaultDependencies=no
-Conflicts=shutdown.target
-Wants=local-fs.target
-After=local-fs.target
 
 # This is only needed when the flatpak dir or repo is a symlink
 ConditionPathIsSymbolicLink=|/var/lib/flatpak
 ConditionPathIsSymbolicLink=|/var/lib/flatpak/repo
 
-# Try to run before any ostree and flatpak clients so that the repo can
-# be exclusively locked.
+# We want the best chance that the OSTree sysroot and repo can be
+# exclusively locked. Ideally we'd run before all of these services, but
+# some of them block boot and run before the DBus system socket is up,
+# which means metrics can't be used.
+After=eos-update-flatpak-repos.service
+After=eos-updater-flatpak-installer.service
 Before=eos-autoupdater.service eos-updater.service
-Before=eos-update-flatpak-repos.service
 Before=eos-updater-avahi.service eos-update-server.service
-Before=eos-updater-flatpak-installer.service
+Before=eos-updater-flatpak-installer-fallback.service
+
+# Run before the flatpak system helper so it doesn't open the
+# installation before it's swapped.
+Before=flatpak-system-helper.service
 
 [Service]
 Type=oneshot
