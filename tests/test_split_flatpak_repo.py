@@ -30,13 +30,15 @@ import os
 import random
 import shutil
 import tempfile
+from textwrap import dedent
 
 from .util import (
     BaseTestCase, system_script, import_script_as_module, relative_link
 )
 
+gi.require_version("Flatpak", "1.0")
 gi.require_version("OSTree", "1.0")
-from gi.repository import GLib, Gio, OSTree  # noqa: E402
+from gi.repository import Flatpak, GLib, Gio, OSTree  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -108,6 +110,14 @@ class TestSplitRepo(BaseTestCase):
         relative_link(self.root_os_repo_path, self.sys_flatpak_repo_path)
         relative_link(self.sys_flatpak_dir_path, self.flatpak_dir_path)
 
+        # Open the Flatpak installation to allow installing flatpaks.
+        # This is treated as a user installation to avoid the system
+        # helper during testing.
+        self.sys_flatpak_inst = Flatpak.Installation.new_for_path(
+            Gio.File.new_for_path(self.sys_flatpak_dir_path),
+            user=True
+        )
+
         # Test that the symlinks resolve as expected.
         self.assertTrue(
             os.path.samefile(self.ostree_path, self.root_ostree_path)
@@ -159,19 +169,29 @@ class TestSplitRepo(BaseTestCase):
         else:
             logger.info('Skipping cleanup of tmp directory %s', self.tmp)
 
-    def random_commit(self, repo, refspecs, parent=None):
+    def random_commit(self, repo, refspecs, parent=None,
+                      flatpak_metadata=None):
         """Create a commit with random contents
 
         All refspecs will be set to the commit. If parent is specified
         it will be used as the commit's parent.
         """
         with tempfile.TemporaryDirectory(dir=self.tmp) as files:
-            for sub in ('a', 'b/c'):
+            for sub in ('files/a', 'files/b/c'):
                 path = os.path.join(files, sub)
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 content = random.getrandbits(16 * 8).to_bytes(16, 'little')
                 with open(path, 'wb') as f:
                     f.write(content)
+
+            commit_metadata = {}
+            if flatpak_metadata:
+                with open(os.path.join(files, 'metadata'), 'w') as f:
+                    f.write(flatpak_metadata)
+                commit_metadata['xa.metadata'] = GLib.Variant(
+                    's', flatpak_metadata
+                )
+            commit_metadata_var = GLib.Variant('a{sv}', commit_metadata)
 
             repo.prepare_transaction()
             try:
@@ -180,7 +200,7 @@ class TestSplitRepo(BaseTestCase):
                                               mtree, None)
                 _, root = repo.write_mtree(mtree)
                 _, checksum = repo.write_commit(parent, 'Test commit', None,
-                                                None, root)
+                                                commit_metadata_var, root)
                 logger.debug('Created commit %s', checksum)
                 for refspec in refspecs:
                     logger.debug('Setting refspec %s to %s', refspec, checksum)
@@ -211,6 +231,8 @@ class TestSplitRepo(BaseTestCase):
     def create_flatpak_commits(self):
         """Create some flatpak commits and return the refs"""
         flatpak_refs = {}
+        trans = Flatpak.Transaction.new_for_installation(self.sys_flatpak_inst)
+        trans.set_no_pull(True)
 
         flatpak_refs.update(self.random_commit(
             self.os_repo, ('flathub:ostree-metadata',)
@@ -221,18 +243,52 @@ class TestSplitRepo(BaseTestCase):
         flatpak_refs.update(self.random_commit(
             self.os_repo,
             ('flathub:app/org.gnome.Totem/x86_64/stable',
-             'deploy/app/org.gnome.Totem/x86_64/stable')
+             'deploy/app/org.gnome.Totem/x86_64/stable'),
+            flatpak_metadata=dedent("""\
+            [Application]
+            name=org.gnome.Totem
+            runtime=org.freedesktop.Platform/x86_64/20.08
+            sdk=org.freedesktop.Sdk/x86_64/20.08
+            """),
         ))
+        trans.add_install(
+            'flathub',
+            'app/org.gnome.Totem/x86_64/stable',
+            None,
+        )
         flatpak_refs.update(self.random_commit(
             self.os_repo,
             ('flathub:runtime/org.gnome.Totem.Locale/x86_64/stable',
-             'deploy/runtime/org.gnome.Totem.Locale/x86_64/stable')
+             'deploy/runtime/org.gnome.Totem.Locale/x86_64/stable'),
+            flatpak_metadata=dedent("""\
+            [Runtime]
+            name=org.gnome.Totem.Locale
+
+            [ExtensionOf]
+            ref=app/org.gnome.Totem/x86_64/stable
+            """),
         ))
+        trans.add_install(
+            'flathub',
+            'runtime/org.gnome.Totem.Locale/x86_64/stable',
+            None,
+        )
         flatpak_refs.update(self.random_commit(
             self.os_repo,
             ('flathub:runtime/org.freedesktop.Platform/x86_64/20.08',
-             'deploy/runtime/org.freedesktop.Platform/x86_64/20.08')
+             'deploy/runtime/org.freedesktop.Platform/x86_64/20.08'),
+            flatpak_metadata=dedent("""\
+            [Runtime]
+            name=org.freedesktop.Platform
+            runtime=org.freedesktop.Platform/x86_64/20.08
+            sdk=org.freedesktop.Sdk/x86_64/20.08
+            """),
         ))
+        trans.add_install(
+            'flathub',
+            'runtime/org.freedesktop.Platform/x86_64/20.08',
+            None,
+        )
 
         flatpak_refs.update(self.random_commit(
             self.os_repo, ('eos-sdk:ostree-metadata',)
@@ -243,8 +299,21 @@ class TestSplitRepo(BaseTestCase):
         flatpak_refs.update(self.random_commit(
             self.os_repo,
             ('eos-sdk:runtime/com.endlessm.apps.Platform/x86_64/6',
-             'deploy/runtime/com.endlessm.apps.Platform/x86_64/6')
+             'deploy/runtime/com.endlessm.apps.Platform/x86_64/6'),
+            flatpak_metadata=dedent("""\
+            [Runtime]
+            name=com.endlessm.apps.Platform
+            runtime=com.endlessm.apps.Platform/x86_64/6
+            sdk=com.endlessm.apps.Sdk/x86_64/6
+            """),
         ))
+        trans.add_install(
+            'eos-sdk',
+            'runtime/com.endlessm.apps.Platform/x86_64/6',
+            None,
+        )
+
+        trans.run()
 
         return flatpak_refs
 
@@ -252,6 +321,10 @@ class TestSplitRepo(BaseTestCase):
         """Full test of repo splitting"""
         orig_os_refs = self.create_os_commits()
         orig_flatpak_refs = self.create_flatpak_commits()
+        orig_flatpaks = {
+            (ref.get_origin(), ref.format_ref())
+            for ref in self.sys_flatpak_inst.list_installed_refs()
+        }
 
         split = esfr.split_repo(root=self.root)
         self.assertTrue(split)
@@ -275,6 +348,22 @@ class TestSplitRepo(BaseTestCase):
         self.assertEqual(flatpak_refs, orig_flatpak_refs)
         flatpak_remotes = set(flatpak_repo.remote_list())
         self.assertEqual(flatpak_remotes, {'flathub', 'eos-sdk'})
+
+        flatpak_inst = Flatpak.Installation.new_for_path(
+            Gio.File.new_for_path(self.flatpak_dir_path),
+            user=False
+        )
+        flatpaks = {
+            (ref.get_origin(), ref.format_ref())
+            for ref in flatpak_inst.list_installed_refs()
+        }
+        self.assertEqual(flatpaks, orig_flatpaks)
+        self.assertEqual(flatpaks, {
+            ('flathub', 'app/org.gnome.Totem/x86_64/stable'),
+            ('flathub', 'runtime/org.gnome.Totem.Locale/x86_64/stable'),
+            ('flathub', 'runtime/org.freedesktop.Platform/x86_64/20.08'),
+            ('eos-sdk', 'runtime/com.endlessm.apps.Platform/x86_64/6'),
+        })
 
         # Check that the flatpak repo has been converted to bare-user-only
         flatpak_repo_config = flatpak_repo.get_config()
@@ -471,11 +560,11 @@ class TestSplitRepo(BaseTestCase):
         for root, dirs, files in os.walk(dup_path):
             repo_dir = os.path.relpath(root, dup_path).split(os.sep)[0]
             if repo_dir in ('objects', 'deltas'):
-                expected_links = 2
+                test = self.assertGreater
             else:
-                expected_links = 1
+                test = self.assertEqual
             for f in files:
                 path = os.path.join(root, f)
                 logger.debug('Getting number of links for %s', path)
                 stat = os.lstat(path)
-                self.assertEqual(stat.st_nlink, expected_links)
+                test(stat.st_nlink, 1)
