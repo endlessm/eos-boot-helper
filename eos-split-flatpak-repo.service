@@ -23,6 +23,7 @@ Before=flatpak-system-helper.service
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/usr/sbin/eos-split-flatpak-repo
+IOSchedulingClass=idle
 
 [Install]
 WantedBy=multi-user.target
