@@ -116,11 +116,6 @@ dist_tmpfiles_DATA = \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
 
-extratmpfilesdir = $(pkgdatadir)/tmpfiles.d
-dist_extratmpfiles_DATA = \
-	tmpfiles.d/flatpak-extension-kiwix-usb-content.conf \
-	$(NULL)
-
 ldconfdir = $(sysconfdir)/ld.so.conf.d
 dist_ldconf_DATA = \
 	ld.so.conf.d/flatpak-extension-runtime-fdo-openh264.conf
