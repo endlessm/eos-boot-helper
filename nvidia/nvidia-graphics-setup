@@ -195,6 +195,10 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
   load_module "${MODULE_DIR}"/nvidia-drm.ko modeset=1
   first_boot_cleanup_modules
   if [[ -e "/sys/module/nvidia_drm" ]]; then
+    # Use PRIME render offloading to NVIDIA device by setting the environment
+    # vairable __NV_PRIME_RENDER_OFFLOAD for egl-wayland, T33814
+    systemctl set-environment __NV_PRIME_RENDER_OFFLOAD=1
+
     echo "nvidia loaded successfully"
     exit 0
   fi
