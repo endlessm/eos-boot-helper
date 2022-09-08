@@ -1,0 +1,25 @@
+[Unit]
+Description=Set OSTree sysroot bootloader configuration
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+RequiresMountsFor=/sysroot /boot
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+# Try to run before any ostree applications so that they all see the
+# updated repo configuration.
+Before=eos-autoupdater.service eos-updater.service
+Before=eos-updater-avahi.service eos-update-server.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/eos-ostree-bootloader-setup
+
+[Install]
+WantedBy=multi-user.target
