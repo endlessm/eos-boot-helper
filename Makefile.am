@@ -24,6 +24,7 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-ostree-bootloader-setup.service \
 	eos-prune-printers.service \
 	eos-split-flatpak-repo.service \
 	eos-transient-setup.service \
@@ -93,6 +94,7 @@ dist_sbin_SCRIPTS = \
 	eos-firstboot \
 	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
+	eos-ostree-bootloader-setup \
 	eos-prune-printers \
 	eos-repartition-mbr \
 	eos-split-flatpak-repo \

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# eos-ostree-bootloader-setup: Set OSTree sysroot bootloader configuration
+#
+# Copyright © 2022 Endless OS Foundation LLC
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+set -e
+
+# If the option is already set, leave it alone.
+if ostree config get sysroot.bootloader >/dev/null 2>&1; then
+    exit 0
+fi
+
+# If uEnv.txt exists, assume uboot. Otherwise use none and assume the
+# bootloader (likely grub) is fully bootloader spec capable.
+if [ -f /boot/uEnv.txt ]; then
+    bootloader=uboot
+else
+    bootloader=none
+fi
+
+echo "Setting sysroot.bootloader to $bootloader"
+ostree config set sysroot.bootloader "$bootloader"
