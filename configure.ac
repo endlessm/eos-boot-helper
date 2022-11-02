@@ -121,7 +121,6 @@ AC_CONFIG_FILES([
 	fallback-fb-setup/Makefile
 	flatpak-repos/Makefile
 	nvidia/Makefile
-	psi-monitor/Makefile
 	record-boot-success/Makefile
 	tests/Makefile
 	tmpfiles.d/chromium-system-services.conf
