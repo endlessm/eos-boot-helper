@@ -29,9 +29,6 @@ dist_systemdunit_DATA = \
 	eos-split-flatpak-repo.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
-	flatpak-extension-runtime-fdo-openh264-ldconfig.service \
-	flatpak-extension-runtime-fdo-openh264-watcher.path \
-	flatpak-extension-runtime-fdo-openh264-watcher.service \
 	hack-remove-global-override.service \
 	$(NULL)
 
@@ -114,13 +111,8 @@ dist_tmpfiles_DATA = \
 	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/chromium-system-services.conf \
 	tmpfiles.d/eos-boot-helper.conf \
-	tmpfiles.d/flatpak-extension-runtime-fdo-openh264.conf \
 	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
-
-ldconfdir = $(sysconfdir)/ld.so.conf.d
-dist_ldconf_DATA = \
-	ld.so.conf.d/flatpak-extension-runtime-fdo-openh264.conf
 
 com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in
 	$(AM_V_GEN) $(SED) -e 's|[@]sbindir@|$(sbindir)|g' < "$<" > "$@"
