@@ -16,11 +16,9 @@ config.sub
 configure
 depcomp
 fallback-fb-setup/fallback-fb-setup
-flatpak-extension-runtime-fdo-openh264-watcher.path
 install-sh
 missing
 tmpfiles.d/chromium-system-services.conf
-tmpfiles.d/flatpak-extension-runtime-fdo-openh264.conf
 test-driver
 tests/*.log
 tests/*.trs

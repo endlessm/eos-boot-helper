@@ -1,9 +1,0 @@
-[Unit]
-After=systemd-tmpfiles-setup.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/systemctl restart flatpak-extension-runtime-fdo-openh264-ldconfig.service
-
-[Install]
-WantedBy=multi-user.target

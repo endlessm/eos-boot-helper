@@ -116,7 +116,6 @@ AC_CONFIG_FILES([
 	dracut/image-boot/Makefile
 	dracut/repartition/Makefile
 	dracut/customization/Makefile
-	flatpak-extension-runtime-fdo-openh264-watcher.path
 	factory-reset/Makefile
 	fallback-fb-setup/Makefile
 	flatpak-repos/Makefile
@@ -124,6 +123,5 @@ AC_CONFIG_FILES([
 	record-boot-success/Makefile
 	tests/Makefile
 	tmpfiles.d/chromium-system-services.conf
-	tmpfiles.d/flatpak-extension-runtime-fdo-openh264.conf
 ])
 AC_OUTPUT
