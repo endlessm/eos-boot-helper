@@ -1,5 +1,15 @@
 # Systemd user presets for EOS.
 
-# Disable pipewire service by default - the service can still be activated
-# via socket activation or manually
+# Start this SSH agent on-demand via socket activation. (It is believed that
+# this socket is never actually used because gnome-keyring provides its own
+# SSH_AUTH_SOCK.)
+disable gcr-ssh-agent.service
+
+# Start Pipewire (and its PulseAudio emulation) on-demand via socket activation.
+disable pipewire-pulse.service
 disable pipewire.service
+
+# Start Tracker components on-demand via D-Bus activation. In particular, this
+# avoids running Tracker in the GDM greeter or Initial Setup session.
+disable tracker-extract-3.service
+disable tracker-miner-fs-3.service
