@@ -1,5 +1,0 @@
-# Systemd user presets for EOS.
-
-# Disable pipewire service by default - the service can still be activated
-# via socket activation or manually
-disable pipewire.service
