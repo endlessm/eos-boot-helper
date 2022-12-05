@@ -26,7 +26,6 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-ostree-bootloader-setup.service \
 	eos-prune-printers.service \
-	eos-split-flatpak-repo.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	hack-remove-global-override.service \
@@ -94,7 +93,6 @@ dist_sbin_SCRIPTS = \
 	eos-ostree-bootloader-setup \
 	eos-prune-printers \
 	eos-repartition-mbr \
-	eos-split-flatpak-repo \
 	eos-test-mode \
 	eos-transient-setup \
 	eos-update-flatpak-repos \

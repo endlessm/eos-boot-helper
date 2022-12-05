@@ -10,7 +10,6 @@ filename =
     *.py,
     ./eos-migrate-chromium-profile,
     ./eos-migrate-firefox-profile,
-    ./eos-split-flatpak-repo,
     ./eos-update-flatpak-repos,
     ./factory-reset/eos-factory-reset,
     ./record-boot-success/record-boot-success,
