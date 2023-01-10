@@ -18,6 +18,7 @@ depcomp
 fallback-fb-setup/fallback-fb-setup
 install-sh
 missing
+psi-monitor/psi-monitor
 tmpfiles.d/chromium-system-services.conf
 test-driver
 tests/*.log
