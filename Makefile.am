@@ -28,6 +28,7 @@ dist_systemdunit_DATA = \
 	eos-prune-printers.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
+	eos-update-system-ca.service \
 	hack-remove-global-override.service \
 	$(NULL)
 

@@ -1,0 +1,18 @@
+[Unit]
+Description=Update system CA store
+
+# Only run on updates
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/sbin/update-ca-certificates
+
+[Install]
+WantedBy=multi-user.target
