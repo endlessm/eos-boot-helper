@@ -29,6 +29,7 @@ dist_systemdunit_DATA = \
 	eos-split-flatpak-repo.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
+	eos-update-system-ca.service \
 	flatpak-extension-runtime-fdo-openh264-ldconfig.service \
 	flatpak-extension-runtime-fdo-openh264-watcher.path \
 	flatpak-extension-runtime-fdo-openh264-watcher.service \
