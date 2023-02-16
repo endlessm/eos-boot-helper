@@ -130,6 +130,42 @@ def _remove_remotes():
                                    '--system', '--force', name])
 
 
+# dict of remote -> URLs and collection ID to migrate. If a collection
+# ID is not needed, None should be used.
+REMOTES_TO_MIGRATE = {
+    "eos-runtimes": {
+        "old-url": "https://ostree.endlessm.com/ostree/eos",
+        "new-url": "https://ostree.endlessm.com/ostree/eos-runtimes",
+        "new-collection-id": "com.endlessm.Runtimes",
+    },
+}
+
+
+def _migrate_remotes():
+    insts = Flatpak.get_system_installations()
+    inst = insts[0]
+
+    for name, config in REMOTES_TO_MIGRATE.items():
+        remote = _flatpak_inst_get_remote(inst, name)
+        if remote and remote.get_url() == config["old-url"]:
+            logging.info("Migrating remote {} from {} to {} ({})"
+                         .format(name, config["old-url"], config["new-url"],
+                                 config["new-collection-id"]))
+
+            remote.set_url(config["new-url"])
+            remote.set_collection_id(config["new-collection-id"])
+            inst.modify_remote(remote)
+
+            # Try to update the metadata from the remote configuration,
+            # but ignore failures in case we're offline.
+            logging.info("Updating remote metadata for {}".format(name))
+            try:
+                inst.update_remote_sync(name)
+            except GLib.Error as err:
+                logging.warning("Could not update remote metadata for {}: {}"
+                                .format(name, err))
+
+
 # dict of remote -> list of runtimes
 RUNTIMES_TO_REMOVE = {
     "eos-apps": [
@@ -1887,6 +1923,9 @@ if __name__ == '__main__':
 
     # fix incorrect remote URLs
     _fix_remote_urls()
+
+    # migrate remotes
+    _migrate_remotes()
 
     # move apps and runtimes between branches and origins as specified above
     _migrate_installed_flatpaks()
