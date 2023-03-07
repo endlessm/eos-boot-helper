@@ -1,0 +1,34 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/vda3",
+    "maj:min": "253:3",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/03b591bb31c1d4cb69df9e4a7d7097a48012354d4a3777179d90016ec1893738.0",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/boot",
+    "source": "/dev/vda3",
+    "maj:min": "253:3",
+    "fstype": "ext4",
+    "fsroot": "/boot",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/usr",
+    "source": "/dev/vda3",
+    "maj:min": "253:3",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/03b591bb31c1d4cb69df9e4a7d7097a48012354d4a3777179d90016ec1893738.0/usr",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/sysroot",
+    "source": "/dev/vda3",
+    "maj:min": "253:3",
+    "fstype": "ext4",
+    "fsroot": "/",
+    "options": "ro,relatime"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "BOOT_IMAGE": "(loop_img,gpt3)/boot/ostree/eos-05199b9a534975d167eff9621ff44b04342dff52cb692b76ab3f2cd2f5d6bb5e/vmlinuz-6.5.0-10-generic",
+  "rw": null,
+  "splash": null,
+  "plymouth.ignore-serial-consoles": null,
+  "quiet": null,
+  "loglevel": "0",
+  "ostree": "/ostree/boot.1/eos/05199b9a534975d167eff9621ff44b04342dff52cb692b76ab3f2cd2f5d6bb5e/0",
+  "endless.image.device": "UUID=107EB4247EB4048E",
+  "endless.image.path": "/endless/endless.img",
+  "nohibernate": null
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/vda2",
+    "maj:min": null,
+    "fstype": "ext4",
+    "fsroot": null,
+    "options": "errors=remount-ro"
+  }
+]

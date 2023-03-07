@@ -38,6 +38,7 @@ dist_systemduserunit_DATA = \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
+	eos-esp-generator \
 	eos-live-boot-generator \
 	eos-vm-generator \
 	$(NULL)

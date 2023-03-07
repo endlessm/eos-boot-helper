@@ -1,0 +1,11 @@
+{
+  "eospayg": null,
+  "efi_no_storage_paranoia": null,
+  "rd.shell": "0",
+  "rw": null,
+  "splash": null,
+  "plymouth.ignore-serial-consoles": null,
+  "quiet": null,
+  "loglevel": "0",
+  "ostree": "/ostree/boot.0/eos/de6ecb1835fa999f3d337c4b719b6b1259f829d4e938703a1316949622612ba6/0"
+}
