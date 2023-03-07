@@ -6,7 +6,27 @@ EXTRA_DIST = \
 	__init__.py \
 	check-syntax \
 	conftest.py \
+	data/espgen-efi-fstab-amd64-fstab.json \
+	data/espgen-efi-fstab-amd64-mounts-reload.json \
+	data/espgen-gpt-amd64-disk-root.json \
+	data/espgen-gpt-amd64-fstab.json \
+	data/espgen-gpt-amd64-mounts-init.json \
+	data/espgen-gpt-amd64-mounts-reload.json \
+	data/espgen-mbr-amd64-disk-root.json \
+	data/espgen-mbr-amd64-fstab.json \
+	data/espgen-mbr-amd64-mounts-init.json \
+	data/espgen-mbr-amd64-mounts-reload.json \
+	data/espgen-payg-amd64-disk-root.json \
+	data/espgen-payg-amd64-fstab.json \
+	data/espgen-payg-amd64-mounts-init.json \
+	data/espgen-payg-amd64-mounts-reload.json \
+	data/espgen-payg-xbootldr-amd64-disk-root.json \
+	data/espgen-payg-xbootldr-amd64-fstab.json \
+	data/espgen-payg-xbootldr-amd64-mounts-init.json \
+	data/espgen-payg-xbootldr-amd64-mounts-reload.json \
+	espgen-test-data.sh \
 	run-tests \
+	test_esp_generator.py \
 	test_image_boot.py \
 	test_live_boot_generator.py \
 	test_live_storage.py \

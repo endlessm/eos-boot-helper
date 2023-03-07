@@ -1,0 +1,6 @@
+{
+   "filesystems": [
+      {"target":"/", "source":"/dev/vda3", "fstype":"ext4", "options":"errors=remount-ro"},
+      {"target":"/efi", "source":"/dev/vda1", "fstype":"vfat", "options":"umask=0077"}
+   ]
+}
