@@ -5,6 +5,7 @@ check-local:
 EXTRA_DIST = \
 	__init__.py \
 	check-syntax \
+	conftest.py \
 	run-tests \
 	test_image_boot.py \
 	test_live_boot_generator.py \
