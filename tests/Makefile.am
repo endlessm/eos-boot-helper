@@ -1,11 +1,11 @@
-TESTS = \
-	check-syntax \
-	run-tests \
-	$(NULL)
+check-local:
+	$(srcdir)/check-syntax
+	$(srcdir)/run-tests
 
 EXTRA_DIST = \
-	$(TESTS) \
 	__init__.py \
+	check-syntax \
+	run-tests \
 	test_image_boot.py \
 	test_live_boot_generator.py \
 	test_live_storage.py \
