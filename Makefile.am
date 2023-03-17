@@ -1,5 +1,5 @@
 SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success . tests
-EXTRA_DIST = debian .flake8
+EXTRA_DIST = debian .flake8 pytest.ini
 CLEANFILES =
 
 AM_CFLAGS = -Wall -Werror
