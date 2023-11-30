@@ -32,10 +32,6 @@ from gi.repository import GLib, Gio, OSTree  # noqa: E402
 
 log = logging.getLogger(sys.argv[0])
 
-ICON_GRID_DIR = '/var/lib/eos-image-defaults/icon-grid'
-
-DESKTOP_GRID_ID = 'desktop'
-
 EOS_INSTALLER = 'com.endlessm.Installer.desktop'
 EOS_INSTALLER_PATH = os.path.join('/usr/share/applications', EOS_INSTALLER)
 LOCAL_APPS_DIR = '/usr/local/share/applications'
@@ -134,34 +130,6 @@ def install_installer_desktop_file():
     eos_installer_desktop.save_to_file(LOCAL_DESKTOP_PATH)
 
 
-def prepend_installer_to_icon_grid():
-    """Prepend installer to icon grid."""
-    pattern = os.path.join(ICON_GRID_DIR, 'icon-grid-prepend-*.json')
-    c_path = os.path.join(ICON_GRID_DIR, 'icon-grid-prepend-C.json')
-    paths = glob.glob(pattern)
-    if c_path not in paths:
-        paths.append(c_path)
-
-    for path in paths:
-        try:
-            try:
-                with open(path, 'r') as grid_file:
-                    log.info("reading existing file %s", path)
-                    grid = json.load(fp=grid_file)
-            except FileNotFoundError:
-                grid = {}
-
-            desktop = grid.setdefault(DESKTOP_GRID_ID, [])
-            if EOS_INSTALLER not in desktop:
-                desktop.insert(0, EOS_INSTALLER)
-
-                log.info("Writing %s: %s", path, json.dumps(obj=grid))
-                with open(path, 'w') as grid_file:
-                    json.dump(obj=grid, fp=grid_file)
-        except Exception:
-            log.exception("while processing %s", path)
-
-
 def reduce_ostree_min_free_space():
     '''Don't require any free space on disk when installing apps. On live
     systems, free space is at most half of physical RAM, and running out is not
@@ -200,7 +168,6 @@ def main():
 
         reduce_ostree_min_free_space()
         install_installer_desktop_file()
-        prepend_installer_to_icon_grid()
 
 
 if __name__ == '__main__':
