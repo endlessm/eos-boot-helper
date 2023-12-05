@@ -190,7 +190,7 @@ if ! modprobe -c | grep -F -x --quiet "blacklist nvidia" &&
 
   build_nvidia_if_needed
   echo "Loading nvidia modules"
-  load_module "${MODULE_DIR}"/nvidia.ko
+  load_module "${MODULE_DIR}"/nvidia.ko NVreg_PreserveVideoMemoryAllocations=1
   load_module "${MODULE_DIR}"/nvidia-modeset.ko
   load_module "${MODULE_DIR}"/nvidia-drm.ko modeset=1
   first_boot_cleanup_modules
