@@ -5,6 +5,7 @@ CLEANFILES =
 # Install systemd units, generators, preset files, and udev rules
 # under $prefix for distcheck
 AM_DISTCHECK_CONFIGURE_FLAGS = \
+	--with-systemdutildir='$${prefix}/lib/systemd' \
 	--with-systemdunitdir='$${prefix}/lib/systemd/system' \
 	--with-systemduserunitdir='$${prefix}/lib/systemd/user' \
 	--with-systemdgeneratordir='$${prefix}/lib/systemd/system-generators' \
