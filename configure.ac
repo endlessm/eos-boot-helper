@@ -10,6 +10,9 @@ AC_CANONICAL_TARGET
 
 dnl Get systemd unit and udev rules directories. Add options so that they
 dnl can be set under $prefix for distcheck.
+m4_define([no_systemdutildir_error],
+          [m4_normalize([Could not get systemdutildir setting from]
+                        [systemd pkg-config file])])
 m4_define([no_systemdunitdir_error],
           [m4_normalize([Could not get systemdsystemunitdir setting from]
                         [systemd pkg-config file])])
@@ -32,6 +35,13 @@ m4_define([no_polkitpolicydir_error],
           [m4_normalize([Could not get policydir setting from]
                         [polkit-gobject-1 pkg-config file])])
 
+AC_ARG_WITH([systemdutildir],
+            [AS_HELP_STRING([--with-systemdutildir],
+                            [Path to the system directory for systemd configuration])],
+            [systemdutildir="$withval"],
+            [PKG_CHECK_VAR([systemdutildir], [systemd],
+                           [systemdutildir], [],
+                           [AC_MSG_ERROR(no_systemdutildir_error)])])
 AC_ARG_WITH([systemdunitdir],
             [AS_HELP_STRING([--with-systemdunitdir],
                             [Path to the system directory for systemd units])],
@@ -67,6 +77,11 @@ AC_ARG_WITH([systemduserpresetdir],
             [PKG_CHECK_VAR([systemduserpresetdir], [systemd],
                            [systemduserpresetdir], [],
                            [AC_MSG_ERROR(no_systemduserpresetdir_error)])])
+AC_ARG_WITH([systemdsystemmanagerconfdir],
+            [AS_HELP_STRING([--with-systemdsystemmanagerconfdir],
+                            [Path to the system directory for systemd system service manager configuration])],
+            [systemdsystemmanagerconfdir="$withval"], [systemdsystemmanagerconfdir="$systemdutildir/system.conf.d"])
+AC_SUBST(systemdsystemmanagerconfdir)
 AC_ARG_WITH([udevdir],
             [AS_HELP_STRING([--with-udevdir],
                             [Path to the system udev directory])],
