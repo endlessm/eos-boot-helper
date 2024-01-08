@@ -56,6 +56,10 @@ dist_systemdsystemmanagerconf_DATA = \
 	10-eos-oom-policy.conf \
 	$(NULL)
 
+dist_systemdusermanagerconf_DATA = \
+	10-eos-oom-policy.conf \
+	$(NULL)
+
 # Network Manager dispatcher script for the firewall - scripts which
 # are a symlink to no-wait.d will be run without blocking/ordering.
 # install the script here and make the symlink in install-data-hook
