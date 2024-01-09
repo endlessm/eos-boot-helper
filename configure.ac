@@ -82,6 +82,11 @@ AC_ARG_WITH([systemdsystemmanagerconfdir],
                             [Path to the system directory for systemd system service manager configuration])],
             [systemdsystemmanagerconfdir="$withval"], [systemdsystemmanagerconfdir="$systemdutildir/system.conf.d"])
 AC_SUBST(systemdsystemmanagerconfdir)
+AC_ARG_WITH([systemdusermanagerconfdir],
+            [AS_HELP_STRING([--with-systemdusermanagerconfdir],
+                            [Path to the system directory for systemd user service manager configuration])],
+            [systemdusermanagerconfdir="$withval"], [systemdusermanagerconfdir="$systemdutildir/user.conf.d"])
+AC_SUBST(systemdusermanagerconfdir)
 AC_ARG_WITH([udevdir],
             [AS_HELP_STRING([--with-udevdir],
                             [Path to the system udev directory])],
