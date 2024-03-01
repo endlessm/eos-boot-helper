@@ -142,6 +142,7 @@ AC_CONFIG_FILES([
 	nvidia/Makefile
 	psi-monitor/Makefile
 	record-boot-success/Makefile
+	suspend-mode-setup/Makefile
 	tests/Makefile
 	tmpfiles.d/chromium-system-services.conf
 ])

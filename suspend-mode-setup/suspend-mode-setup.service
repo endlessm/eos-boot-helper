@@ -1,0 +1,10 @@
+[Unit]
+Description=Suspend Mode Setup According to Model List
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/suspend-mode-setup
+
+[Install]
+WantedBy=multi-user.target

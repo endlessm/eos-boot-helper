@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Here is a model list which is going to use s2idle mode for suspend. The items
+# is a composite string by System Vendor and Product Name. Here uses Mission One
+# as an example to get the information from system's DMI information:
+#
+# $ cat /sys/class/dmi/id/sys_vendor
+# GIGABYTE
+# $ cat /sys/class/dmi/id/product_name
+# Mission one
+#
+# Form them as a string "GIGABYTE Mission one" and append it into
+# s2idle_model_list.
+
+s2idle_model_list=("GIGABYTE Mission one")
+
+SYS_VENDOR=`cat /sys/class/dmi/id/sys_vendor`
+PRODUCT_NAME=`cat /sys/class/dmi/id/product_name`
+MODEL_FULLNAME="${SYS_VENDOR} ${PRODUCT_NAME}"
+
+for model in "${s2idle_model_list[@]}"; do
+	if [ "${model}" == "${MODEL_FULLNAME}" ]; then
+		echo "Force ${MODEL_FULLNAME} use s2idle mode for suspend"
+		echo s2idle > /sys/power/mem_sleep
+	fi
+done
