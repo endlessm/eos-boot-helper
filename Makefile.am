@@ -86,6 +86,7 @@ dist_udevrules_DATA = \
 	50-disk-bfq.rules \
 	50-meson-vdec.rules \
 	50-usb-mouse-wakeup.rules \
+	60-suspend-mode.rules \
 	$(NULL)
 
 polkitrulesdir = $(datadir)/polkit-1/rules.d
