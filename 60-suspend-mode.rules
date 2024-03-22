@@ -1,2 +1,2 @@
-SUBSYSTEM=="dmi", ENV{ID_VENDOR}="GIGABYTE", ENV{ID_MODEL}="Mission one", RUN{program}+="/bin/sh -c 'echo s2idle > /sys/power/mem_sleep'"
-SUBSYSTEM=="dmi", ENV{ID_MODEL}="GB-BXBT-2807", RUN{program}+="/bin/sh -c 'echo s2idle > /sys/power/mem_sleep'"
+SUBSYSTEM=="dmi", ENV{ID_VENDOR}=="GIGABYTE", ENV{ID_MODEL}=="Mission one", RUN{program}+="/bin/sh -c 'echo s2idle > /sys/power/mem_sleep'"
+SUBSYSTEM=="dmi", ENV{ID_MODEL}=="GB-BXBT-2807", RUN{program}+="/bin/sh -c 'echo s2idle > /sys/power/mem_sleep'"
