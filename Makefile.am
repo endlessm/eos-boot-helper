@@ -21,6 +21,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 dist_systemdunit_DATA = \
 	eos-config-journal.service \
 	eos-enable-zram.service \
+	eos-ensure-sd-boot.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
 	eos-image-boot-dm-setup.service \
@@ -97,6 +98,7 @@ dist_polkitrules_DATA = \
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
 	eos-enable-zram \
+	eos-ensure-sd-boot \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-image-boot-dm-setup \
