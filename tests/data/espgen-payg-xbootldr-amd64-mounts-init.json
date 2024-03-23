@@ -1,0 +1,7 @@
+{
+   "filesystems": [
+      {"target":"/sysroot", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/", "options":"rw,relatime"},
+      {"target":"/", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/ostree/deploy/eos/deploy/b3fb4e8448913270508c9f35aee01090ccb430b72a4b12d083dae6009740d90f.0", "options":"rw,relatime"},
+      {"target":"/usr", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/ostree/deploy/eos/deploy/b3fb4e8448913270508c9f35aee01090ccb430b72a4b12d083dae6009740d90f.0/usr", "options":"ro,relatime"}
+   ]
+}
