@@ -22,9 +22,6 @@ m4_define([no_systemdsystemgeneratordir_error],
 m4_define([no_systemdsystempresetdir_error],
           [m4_normalize([Could not get systemdsystempresetdir setting from]
                         [systemd pkg-config file])])
-m4_define([no_systemduserpresetdir_error],
-          [m4_normalize([Could not get systemduserpresetdir setting from]
-                        [systemd pkg-config file])])
 m4_define([no_udev_error],
           [m4_normalize([Could not get udevdir setting from udev]
                         [pkg-config file])])
@@ -70,13 +67,6 @@ AC_ARG_WITH([systemdpresetdir],
             [PKG_CHECK_VAR([systemdpresetdir], [systemd],
                            [systemdsystempresetdir], [],
                            [AC_MSG_ERROR(no_systemdsystempresetdir_error)])])
-AC_ARG_WITH([systemduserpresetdir],
-            [AS_HELP_STRING([--with-systemduserpresetdir],
-                            [Path to the system directory for systemd user presets])],
-            [systemduserpresetdir="$withval"],
-            [PKG_CHECK_VAR([systemduserpresetdir], [systemd],
-                           [systemduserpresetdir], [],
-                           [AC_MSG_ERROR(no_systemduserpresetdir_error)])])
 AC_ARG_WITH([systemdsystemmanagerconfdir],
             [AS_HELP_STRING([--with-systemdsystemmanagerconfdir],
                             [Path to the system directory for systemd system service manager configuration])],
