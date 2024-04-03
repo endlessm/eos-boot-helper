@@ -6,6 +6,8 @@
 disable systemd-networkd.service
 disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
+disable systemd-sysupdate.timer
+disable systemd-sysupdate-reboot.timer
 
 # Disable other unwanted units
 disable apt-daily.timer
@@ -16,6 +18,7 @@ disable cni-dhcp.service
 disable crio.service
 disable crio-shutdown.service
 disable cron.service
+disable dpkg-db-backup.timer
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
 disable eos-safe-defaults.service
