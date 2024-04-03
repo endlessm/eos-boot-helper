@@ -6,6 +6,8 @@
 disable systemd-networkd.service
 disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
+disable systemd-sysupdate.timer
+disable systemd-sysupdate-reboot.timer
 
 # Disable other unwanted units
 disable apt-daily.timer
