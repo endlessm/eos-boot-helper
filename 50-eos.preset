@@ -16,6 +16,7 @@ disable cni-dhcp.service
 disable crio.service
 disable crio-shutdown.service
 disable cron.service
+disable dpkg-db-backup.timer
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
 disable eos-safe-defaults.service
