@@ -6,6 +6,7 @@
 disable systemd-networkd.service
 disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
+disable systemd-sysupdate.service
 disable systemd-sysupdate.timer
 disable systemd-sysupdate-reboot.timer
 
