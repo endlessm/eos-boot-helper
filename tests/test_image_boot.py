@@ -35,7 +35,7 @@ class ImageTestCase(BaseTestCase):
         'filesystem' by running 'mkfs', to host test image files.'''
         mkfs = 'mkfs.{}'.format(filesystem)
         with tempfile.NamedTemporaryFile() as host_img:
-            host_img.truncate(2 * 1024 * 1024)
+            host_img.truncate(4 * 1024 * 1024)
             sfdisk(host_img.name, b'start=64KiB, type=0x07')
 
             with losetup(host_img.name) as host_disk:
