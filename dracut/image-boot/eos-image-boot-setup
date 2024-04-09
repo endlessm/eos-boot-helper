@@ -2,9 +2,8 @@
 # Copyright (C) 2016-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 #
-# Support booting from an image file hosted on a filesystem.
-# We identify which disk blocks correspond to the image file, and create
-# a dm-linear block device mapping them.
+# Support booting from an image file hosted on a filesystem, through the use
+# of loopback devices.
 
 if [ $# -ge 1 ]; then
   # For testing
@@ -55,19 +54,17 @@ if [ $? != 0 ]; then
   echo "image-boot: failed to detect filesystem type"
   exit 1
 fi
+if [ "${fstype}" = "ntfs" ]; then
+  fstype=ntfs3
+fi
 
-# $squashfs is used both as a suffix for the device-mapper device (if needed),
-# and as a flag indicating that we're dealing with a squashfs.
 case "$image_path" in
-*.squash)  squashfs=-squashfs ;;
-*)         squashfs=          ;;
+*.squash)  squashfs=1 ;;
+*)         squashfs=  ;;
 esac
 
 linear_map() {
   # Create a device-mapper linear device corresponding to the given loopback.
-  # If $image_path is uncompressed, and $host_device is NTFS or exFAT,
-  # eos-map-image-file will create this linear device directly and this
-  # function is unused.
   local device="${1:?}"
   local size_bytes=$(lsblk --output SIZE --nodeps --bytes --noheadings ${device})
   if ! echo "0 $((size_bytes / 512 )) linear ${device} 0" \
@@ -83,55 +80,32 @@ linear_map() {
 # within it.
 
 # First, map the outermost image file (uncompressed or squashfs)
-case "${fstype}" in
-exfat | ntfs)
-  if ! eos-map-image-file "$host_device" "$image_path" "$target_name$squashfs"
-  then
-    echo "Failed to map ${image_path} on ${host_device}" >&2
-    exit 1
-  fi
+mkdir -p /outer_image
 
-  if [ -n "$squashfs" ]; then
-    squash_device="/dev/mapper/$target_name$squashfs"
-  fi
-  ;;
-iso9660)
-  # Mount the ISO image
-  mkdir /cd
-  # /usr/bin/mount recently became busybox, and it seems to have a hard time
-  # guessing the filesystem when the isofs kernel module isn't loaded.
-  # If we specify it manually, it should be ok.
-  #
-  # Even with util-linux mount, manually specifying this saves a few
-  # pointless read operations, so it's probably a good idea anyway.
-  if ! mount -t iso9660 ${host_device} /cd; then
-    echo "Failed to mount ${host_device}"
-    exit 1
-  fi
-
-  # Create a loopback device backing the squashfs
-  image_device=$(losetup -f)
-  losetup ${image_device} /cd/${image_path}
-  if [ $? != 0 ]; then
-    echo "losetup failed for /cd/${image_path}"
-    exit 1
-  fi
-
-  if [ -n "$squashfs" ]; then
-    squash_device="$image_device"
-  else
-    linear_map "$image_device"
-  fi
-  ;;
-*)
-  echo "image-boot: unsupported filesystem ${fstype}"
+# /usr/bin/mount recently became busybox, and it seems to have a hard time
+# guessing the filesystem when the isofs kernel module isn't loaded.
+# If we specify it manually, it should be ok.
+#
+# Even with util-linux mount, manually specifying this saves a few
+# pointless read operations, so it's probably a good idea anyway.
+if ! mount -t $fstype ${host_device} /outer_image; then
+  echo "Failed to mount ${host_device}"
   exit 1
-esac
+fi
+
+# Create a loopback device backing the squashfs
+image_device=$(losetup -f)
+losetup ${image_device} /outer_image/${image_path}
+if [ $? != 0 ]; then
+  echo "losetup failed for /outer_image/${image_path}"
+  exit 1
+fi
 
 # If $image_path is a squashfs, now create a loopback device for the
 # uncompressed image within it
-if [ -n "$squash_device" ]; then
+if [ -n "$squashfs" ]; then
   # Mount the squashfs
+  squash_device="$image_device"
   mkdir /squash
   if ! mount ${squash_device} /squash; then
     echo "Failed to mount ${squash_device}"
@@ -142,6 +116,8 @@ if [ -n "$squash_device" ]; then
   host_device=$(losetup -f)
   losetup ${host_device} /squash/endless.img
   linear_map "$host_device"
+else
+  linear_map "$image_device"
 fi
 
 if ! kpartx $kpartx_roflag -a -v /dev/mapper/$target_name; then
