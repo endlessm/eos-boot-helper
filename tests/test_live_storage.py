@@ -52,6 +52,7 @@ label: dos
 label-id: 0xdeadbeef
 device: {img_device}
 unit: sectors
+sector-size: 512
 
 {img_device}p1 : start=        2048, size=     4251900, type=0, bootable
 {img_device}p2 : start=     4255996, size=       28672, type=ef
