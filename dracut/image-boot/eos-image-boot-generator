@@ -43,9 +43,6 @@ EOF
 
 if getargbool 0 endless.live_boot; then
   rwflag=ro
-  # Allow live user to read mapped image directly (in particular, when reflashing)
-  mkdir -p /run/udev/rules.d
-  echo 'SUBSYSTEM=="block", ATTR{dm/name}=="endless-image", MODE="0664"' >> /run/udev/rules.d/79-endless-image.rules
 else
   rwflag=rw
 fi
@@ -58,7 +55,7 @@ Before=initrd-root-fs.target
 Requires=systemd-fsck-root.service
 After=systemd-fsck-root.service
 [Mount]
-What=/dev/mapper/endless-image3
+What=/dev/disk/endless-image3
 Where=/sysroot
 Options=$rwflag
 EOF
@@ -66,22 +63,22 @@ EOF
 cat <<EOF >${GENERATOR_DIR}/systemd-fsck-root.service
 [Unit]
 DefaultDependencies=no
-BindsTo=dev-mapper-endless\x2dimage3.device
+BindsTo=dev-disk-endless\x2dimage3.device
 After=initrd-root-device.target local-fs-pre.target
 Before=shutdown.target
 ConditionKernelCommandLine=!endless.live_boot
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/lib/systemd/systemd-fsck /dev/mapper/endless-image3
+ExecStart=/lib/systemd/systemd-fsck /dev/disk/endless-image3
 TimeoutSec=0
 EOF
 
 mkdir -p ${GENERATOR_DIR}/initrd-root-device.target.d
 cat <<EOF >${GENERATOR_DIR}/initrd-root-device.target.d/50-device.conf
 [Unit]
-Requires=dev-mapper-endless\x2dimage3.device
-After=dev-mapper-endless\x2dimage3.device
+Requires=dev-disk-endless\x2dimage3.device
+After=dev-disk-endless\x2dimage3.device
 EOF
 
 mkdir -p ${GENERATOR_DIR}/initrd-root-fs.target.requires

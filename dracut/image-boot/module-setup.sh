@@ -10,7 +10,7 @@ depends() {
 }
 
 install() {
-  dracut_install blockdev kpartx dmsetup lsblk losetup
+  dracut_install blockdev partx lsblk losetup
   instmods overlay
   inst_rules 60-cdrom_id.rules
   inst_script "$moddir"/eos-image-boot-setup /bin/eos-image-boot-setup

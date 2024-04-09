@@ -80,10 +80,6 @@ case ${root_part} in
 esac
 
 case ${orig_root_part} in
-  /dev/mapper/endless-image?)
-    root_disk=${orig_root_part%?}
-    using_device_mapper=1
-    ;;
   /dev/loop?p?)
     using_loop=1
     ;;
@@ -203,13 +199,7 @@ udevadm settle
 
 [ "$ret" != "0" ] && exit 0
 
-# Device-mapper needs an extra prod to update the block devices
-if [ -n "$using_device_mapper" ]; then
-  kpartx -u $root_disk
-  udevadm settle
-fi
-
-# Loop devices need a different extra prod
+# Loop devices need a prod
 if [ -n "$using_loop" ]; then
   partprobe $root_disk
   udevadm settle

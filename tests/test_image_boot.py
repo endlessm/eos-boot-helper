@@ -130,16 +130,14 @@ class TestImageBootSetup(ImageTestCase):
                 '--associated', image,
             ))
             subprocess.call(('losetup', '--detach', dev.strip()))
+            subprocess.call(('blockdev', '--setrw', dev.strip()))
 
     def _go(self, host_device, image_path, readonly=False):
-        # The partition number is prefixed with 'p' iff the base device name
-        # ends in a digit
-        target_name = os.path.basename(self.tmpdir) + '0'
-        mapped_dev = '/dev/mapper/{}'.format(target_name)
-        mapped_part = '/dev/mapper/{}p1'.format(target_name)
+        mapped_dev = '/dev/disk/endless-image'
+        mapped_part = '/dev/disk/endless-image1'
 
         try:
-            args = [EOS_IMAGE_BOOT_SETUP, host_device, image_path, target_name]
+            args = [EOS_IMAGE_BOOT_SETUP, host_device, image_path]
             if readonly:
                 args.insert(1, '--readonly')
             subprocess.check_call(args)
@@ -156,16 +154,13 @@ class TestImageBootSetup(ImageTestCase):
             # details of eos-image-boot-setup, whose effects are not really
             # intended to be undone -- in normal use, the mapped OS image and
             # everything behind it must exist until the machine is shut down.
-            subprocess.call(('kpartx', '-d', '-v', mapped_dev))
-            subprocess.call(('dmsetup', 'remove', target_name))
+            subprocess.call(('blockdev', '--setrw', host_device))
+            subprocess.call(('partx', '-d', '-v', mapped_dev))
 
             self._detach_if_exists('/squash/endless.img')
             if os.path.exists('/squash'):
                 subprocess.call(('umount', '/squash'))
                 os.rmdir(('/squash'))
-
-            target_squash = target_name + '-squashfs'
-            subprocess.call(('dmsetup', 'remove', target_squash))
 
             self._detach_if_exists('/outer_image/endless.squash')
             self._detach_if_exists('/outer_image/endless.img')
