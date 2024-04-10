@@ -201,13 +201,6 @@ ret=$?
 echo "sfdisk returned $ret"
 udevadm settle
 
-# Update SPL checksum right away, minimizing the time during which it is
-# invalid
-if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
-  /usr/sbin/amlogic-fix-spl-checksum $root_disk
-  udevadm settle
-fi
-
 [ "$ret" != "0" ] && exit 0
 
 # Device-mapper needs an extra prod to update the block devices
@@ -288,12 +281,6 @@ if [ "$pt_label" = "gpt" ]; then
   sfdisk --force --part-attrs $root_disk $partno "$attrs"
 fi
 udevadm settle
-
-# Final update to SPL checksum
-if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
-  /usr/sbin/amlogic-fix-spl-checksum $root_disk
-  udevadm settle
-fi
 
 # During the above process, the rootfs block device momentarily goes away.
 # This sometimes results in systemd cancelling various important parts
