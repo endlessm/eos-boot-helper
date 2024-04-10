@@ -13,7 +13,6 @@ install() {
   dracut_install sfdisk
   dracut_install blockdev
   dracut_install readlink
-  dracut_install mkswap
   dracut_install sed
   dracut_install tune2fs
   dracut_install iconv
