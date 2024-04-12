@@ -9,6 +9,3 @@ Before=plymouth-start.service
 [Service]
 Type=oneshot
 ExecStart=/bin/eos-install-custom-boot-splash
-StandardInput=null
-StandardOutput=syslog
-StandardError=syslog+console

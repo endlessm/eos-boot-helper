@@ -18,13 +18,10 @@ from .util import (
     mount,
     needs_root,
     sfdisk,
-    system_script,
     udevadm_settle,
 )
 
-EOS_MAP_IMAGE_FILE = dracut_script('image-boot', 'eos-map-image-file')
 EOS_IMAGE_BOOT_SETUP = dracut_script('image-boot', 'eos-image-boot-setup')
-EOS_IMAGE_BOOT_DM_SETUP = system_script('eos-image-boot-dm-setup')
 
 
 class ImageTestCase(BaseTestCase):
@@ -35,7 +32,7 @@ class ImageTestCase(BaseTestCase):
         'filesystem' by running 'mkfs', to host test image files.'''
         mkfs = 'mkfs.{}'.format(filesystem)
         with tempfile.NamedTemporaryFile() as host_img:
-            host_img.truncate(2 * 1024 * 1024)
+            host_img.truncate(4 * 1024 * 1024)
             sfdisk(host_img.name, b'start=64KiB, type=0x07')
 
             with losetup(host_img.name) as host_disk:
@@ -133,25 +130,17 @@ class TestImageBootSetup(ImageTestCase):
                 '--associated', image,
             ))
             subprocess.call(('losetup', '--detach', dev.strip()))
+            subprocess.call(('blockdev', '--setrw', dev.strip()))
 
     def _go(self, host_device, image_path, readonly=False):
-        # The partition number is prefixed with 'p' iff the base device name
-        # ends in a digit
-        target_name = os.path.basename(self.tmpdir) + '0'
-        mapped_dev = '/dev/mapper/{}'.format(target_name)
-        mapped_part = '/dev/mapper/{}p1'.format(target_name)
+        mapped_dev = '/dev/disk/endless-image'
+        mapped_part = '/dev/disk/endless-image1'
 
         try:
-            # Allow eos-image-boot-setup to find eos-map-image-file
-            env = dict(os.environ)
-            env['PATH'] = ':'.join((
-                os.path.dirname(EOS_IMAGE_BOOT_SETUP),
-                env['PATH'],
-            ))
-            args = [EOS_IMAGE_BOOT_SETUP, host_device, image_path, target_name]
+            args = [EOS_IMAGE_BOOT_SETUP, host_device, image_path]
             if readonly:
                 args.insert(1, '--readonly')
-            subprocess.check_call(args, env=env)
+            subprocess.check_call(args)
             udevadm_settle()
             self.assertTrue(os.path.exists(mapped_dev))
             self.assert_readonly(mapped_dev, readonly)
@@ -165,122 +154,17 @@ class TestImageBootSetup(ImageTestCase):
             # details of eos-image-boot-setup, whose effects are not really
             # intended to be undone -- in normal use, the mapped OS image and
             # everything behind it must exist until the machine is shut down.
-            subprocess.call(('kpartx', '-d', '-v', mapped_dev))
-            subprocess.call(('dmsetup', 'remove', target_name))
+            subprocess.call(('blockdev', '--setrw', host_device))
+            subprocess.call(('partx', '-d', '-v', mapped_dev))
 
             self._detach_if_exists('/squash/endless.img')
             if os.path.exists('/squash'):
                 subprocess.call(('umount', '/squash'))
                 os.rmdir(('/squash'))
 
-            target_squash = target_name + '-squashfs'
-            subprocess.call(('dmsetup', 'remove', target_squash))
+            self._detach_if_exists('/outer_image/endless.squash')
+            self._detach_if_exists('/outer_image/endless.img')
 
-            self._detach_if_exists('/cd/endless.squash')
-            self._detach_if_exists('/cd/endless.img')
-
-            if os.path.exists('/cd'):
-                subprocess.call(('umount', '/cd'))
-                os.rmdir('/cd')
-
-
-class TestMapImageFile(ImageTestCase):
-    '''Tests eos-map-image-file can correctly map a file within an unmounted
-    filesystem via device-mapper.'''
-
-    @needs_root
-    def test_map_exfat_readwrite(self):
-        '''Tests mapping a file on an exFAT filesystem.'''
-        self._go('exfat', readonly=False)
-
-    @needs_root
-    def test_map_ntfs_readwrite(self):
-        '''Tests mapping a file on an NTFS filesystem.'''
-        self._go('ntfs', readonly=False)
-
-    @needs_root
-    def test_map_exfat_readonly(self):
-        '''Tests mapping a file on an exFAT filesystem, readonly.'''
-        self._go('exfat', readonly=True)
-
-    @needs_root
-    def test_map_ntfs_readonly(self):
-        '''Tests mapping a file on an NTFS filesystem, readonly.'''
-        self._go('ntfs', readonly=True)
-
-    # TODO: would be nice to verify that eos-map-image-file fails if the file
-    # has holes or is not fully initialized on NTFS
-
-    def _go(self, filesystem, readonly=False):
-        image_path = 'foo'
-        image_data = b'0123456789abcdef' * 256
-
-        with self.make_host_device(filesystem) as host_device:
-            with mount(host_device) as host_mount:
-                full_path = os.path.join(host_mount, image_path)
-                with open(full_path, 'wb') as image:
-                    image.write(image_data)
-
-            # Assumes that the temp file's basename is not in use in
-            # device-mapper -- quite a safe assumption but not guaranteed.
-            dm_name = os.path.basename(host_device)
-            dm_path = os.path.join('/dev/mapper', dm_name)
-
-            args = [EOS_MAP_IMAGE_FILE, host_device, image_path, dm_name]
-            if readonly:
-                args.insert(1, "--readonly")
-            subprocess.check_call(args)
-
-            try:
-                with open(dm_path, 'rb') as mapped_image:
-                    mapped_data = mapped_image.read(len(image_data))
-                    self.assertEqual(mapped_data, image_data)
-
-                self.assert_readonly(dm_path, readonly)
-            finally:
-                subprocess.check_call(['dmsetup', 'remove', dm_name])
-
-
-class TestImageBootDMSetup(ImageTestCase):
-    '''Tests eos-image-boot-dm-setup can correctly map the image host device,
-    with holes punched out for the image file.'''
-
-    @needs_root
-    def test_map_exfat(self):
-        '''Tests mapping an exFAT filesystem, with holes punched for the image
-        file.'''
-        self._go('exfat')
-
-    @needs_root
-    def test_map_ntfs(self):
-        '''Tests mapping an NTFS filesystem, with holes punched for the image
-        file.'''
-        self._go('ntfs')
-
-    def _go(self, filesystem):
-        image_path = 'foo'
-        image_data = b'0123456789abcdef' * 256
-        image_size = len(image_data)
-
-        with self.make_host_device(filesystem) as host_device:
-            with mount(host_device) as host_mount:
-                full_path = os.path.join(host_mount, image_path)
-                with open(full_path, 'wb') as image:
-                    image.write(image_data)
-
-            # Assumes that the temp file's basename is not in use in
-            # device-mapper -- quite a safe assumption but not guaranteed.
-            dm_name = os.path.basename(host_device)
-            dm_path = os.path.join('/dev/mapper', dm_name)
-
-            args = [EOS_IMAGE_BOOT_DM_SETUP, host_device, image_path, dm_name]
-            subprocess.check_call(args)
-
-            try:
-                with mount(dm_path) as host_mount:
-                    full_path = os.path.join(host_mount, image_path)
-                    with open(full_path, 'rb') as mapped_image:
-                        mapped_data = mapped_image.read()
-                        self.assertEqual(mapped_data, b'\x00' * image_size)
-            finally:
-                subprocess.check_call(['dmsetup', 'remove', dm_name])
+            if os.path.exists('/outer_image'):
+                subprocess.call(('umount', '/outer_image'))
+                os.rmdir('/outer_image')

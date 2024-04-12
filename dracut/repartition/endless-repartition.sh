@@ -80,10 +80,6 @@ case ${root_part} in
 esac
 
 case ${orig_root_part} in
-  /dev/mapper/endless-image?)
-    root_disk=${orig_root_part%?}
-    using_device_mapper=1
-    ;;
   /dev/loop?p?)
     using_loop=1
     ;;
@@ -201,22 +197,9 @@ ret=$?
 echo "sfdisk returned $ret"
 udevadm settle
 
-# Update SPL checksum right away, minimizing the time during which it is
-# invalid
-if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
-  /usr/sbin/amlogic-fix-spl-checksum $root_disk
-  udevadm settle
-fi
-
 [ "$ret" != "0" ] && exit 0
 
-# Device-mapper needs an extra prod to update the block devices
-if [ -n "$using_device_mapper" ]; then
-  kpartx -u $root_disk
-  udevadm settle
-fi
-
-# Loop devices need a different extra prod
+# Loop devices need a prod
 if [ -n "$using_loop" ]; then
   partprobe $root_disk
   udevadm settle
@@ -288,12 +271,6 @@ if [ "$pt_label" = "gpt" ]; then
   sfdisk --force --part-attrs $root_disk $partno "$attrs"
 fi
 udevadm settle
-
-# Final update to SPL checksum
-if [ -x /usr/sbin/amlogic-fix-spl-checksum ]; then
-  /usr/sbin/amlogic-fix-spl-checksum $root_disk
-  udevadm settle
-fi
 
 # During the above process, the rootfs block device momentarily goes away.
 # This sometimes results in systemd cancelling various important parts

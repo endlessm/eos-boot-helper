@@ -3,6 +3,30 @@
 
 EXTRA_PATHS=("$@")
 
+# Create a loopback mount corresponding to persistent.img on the given device
+map_persistent_img_file() {
+	local root_partition=$1
+
+	mkdir -p /run/media/eosboot
+	if ! mount "${root_partition}" /run/media/eosboot; then
+		echo "Could not mount ${root_partition} for persistent.img" >&2
+		return 1
+	fi
+
+	local pfpath="/run/media/eosboot/endless/persistent.img"
+	local persistent_loop
+	persistent_loop=$(losetup -f --show "${pfpath}")
+	if [ $? != 0 ]; then
+		echo "${pfpath} not found in ${root_partition}" >&2
+		umount /run/media/eosboot
+		return 1
+	fi
+
+	echo "Found persistent.img in ${root_partition}, using it for persistent storage" >&2
+	echo ${persistent_loop}
+	return 0
+}
+
 # Attempt to find a target to act as backing storage for the overlayfses
 find_storage_partition() {
 	local bootdev
@@ -20,28 +44,18 @@ find_storage_partition() {
 		return 1
 	fi
 
-	# dumpexfat here is really only checking if the device passed in
-	# endless.image.device has an exfat file system that contains a
-	# persistent storage file at the expected path; eos-map-image-file will
-	# run dumpexfat again to find the file extents.
-	local pfpath="/endless/persistent.img"
-	if dumpexfat -f ${pfpath} "${root_partition}" &> /dev/null; then
-		echo "Found ${pfpath} in ${root_partition} (exfat), using it for persistent storage" >&2
-		udevadm settle
-		if /usr/lib/eos-boot-helper/eos-map-image-file "${root_partition}" ${pfpath} endless-live_storage; then
-			echo /dev/mapper/endless-live_storage
-			return 0
-		fi
-		echo "Failed to map ${pfpath} in ${root_partition} as a dm-device for persistent storage" >&2
-	else
-		echo "Could not find ${pfpath} in ${root_partition}, looking for a persistent storage partition" >&2
+	local storage_partition
+	storage_partition=$(map_persistent_img_file "${root_partition}")
+	if [ $? == 0 ]; then
+		echo "${storage_partition}"
+		return 0
 	fi
 
 	# Check for ISO layout - root partition is partition 1, storage partition
 	# exists at partition 3.
 	[ "${root_partition: -1}" == "1" ] || return 1
 
-	local storage_partition=${root_partition:0:-1}3
+	storage_partition=${root_partition:0:-1}3
 	[ -b "${storage_partition}" ] || return 1
 
 	echo "${storage_partition}"

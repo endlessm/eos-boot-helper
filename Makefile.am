@@ -22,7 +22,6 @@ dist_systemdunit_DATA = \
 	eos-enable-zram.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
-	eos-image-boot-dm-setup.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-ostree-bootloader-setup.service \
 	eos-prune-printers.service \
@@ -84,17 +83,11 @@ dist_udevrules_DATA = \
 	60-suspend-mode.rules \
 	$(NULL)
 
-polkitrulesdir = $(datadir)/polkit-1/rules.d
-dist_polkitrules_DATA = \
-	10-allow-mounting-endless-image-device.rules \
-	$(NULL)
-
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
 	eos-enable-zram \
 	eos-firewall-localonly \
 	eos-firstboot \
-	eos-image-boot-dm-setup \
 	eos-live-boot-overlayfs-setup \
 	eos-ostree-bootloader-setup \
 	eos-prune-printers \
@@ -105,7 +98,6 @@ dist_sbin_SCRIPTS = \
 	$(NULL)
 
 dist_libexec_SCRIPTS = \
-	dracut/image-boot/eos-map-image-file \
 	eos-migrate-chromium-profile \
 	eos-migrate-firefox-profile \
 	$(NULL)
