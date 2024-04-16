@@ -1,3 +1,5 @@
+AM_CFLAGS = -Wall -Werror
+
 sbin_PROGRAMS = psi-monitor
 psi_monitor_SOURCES = psi-monitor.c
 
