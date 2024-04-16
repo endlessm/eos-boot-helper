@@ -9,7 +9,7 @@ if [ $# -ge 1 ]; then
   # For testing
   if [ "$1" = "--readonly" ]; then
     shift
-    disk_ro=1
+    roflag="-r"
   fi
 
   host_device="$1"
@@ -38,10 +38,8 @@ else
   # If possible, create partition for persistent data storage
   eos-live-storage-setup "${host_device}"
 
-  getargbool 0 endless.live_boot && disk_ro=1
+  getargbool 0 endless.live_boot && roflag="-r"
 fi
-
-[ -n "${disk_ro}" ] && blockdev --setro ${host_device}
 
 fstype=$(lsblk --noheadings -o FSTYPE "${host_device}")
 if [ $? != 0 ]; then
@@ -78,7 +76,7 @@ fi
 
 # Create a loopback device backing the image
 image_device=$(losetup -f)
-losetup ${image_device} /outer_image/${image_path}
+losetup ${roflag} ${image_device} /outer_image/${image_path}
 if [ $? != 0 ]; then
   echo "losetup failed for /outer_image/${image_path}"
   exit 1
