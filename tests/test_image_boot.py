@@ -130,7 +130,6 @@ class TestImageBootSetup(ImageTestCase):
                 '--associated', image,
             ))
             subprocess.call(('losetup', '--detach', dev.strip()))
-            subprocess.call(('blockdev', '--setrw', dev.strip()))
 
     def _go(self, host_device, image_path, readonly=False):
         mapped_dev = '/dev/disk/endless-image'
@@ -154,7 +153,6 @@ class TestImageBootSetup(ImageTestCase):
             # details of eos-image-boot-setup, whose effects are not really
             # intended to be undone -- in normal use, the mapped OS image and
             # everything behind it must exist until the machine is shut down.
-            subprocess.call(('blockdev', '--setrw', host_device))
             subprocess.call(('partx', '-d', '-v', mapped_dev))
 
             self._detach_if_exists('/squash/endless.img')
