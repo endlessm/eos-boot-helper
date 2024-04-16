@@ -62,7 +62,6 @@ static ssize_t fstr(const char *path, char *rbuf, const char *wbuf) {
 }
 
 static void sysrq_trigger_oom() {
-    printf("Above threshold limit, killing task and pausing for recovery\n");
     fstr(SYSRQ_TRIGGER_FILE, NULL, "f");
     sleep(RECOVERY_INTERVAL);
 }
@@ -103,10 +102,14 @@ int main(int argc, char **argv) {
         sscanf(buf+i, "%f", &full_avg10);
         if (opt_debug) printf("full_avg10=%f\n", full_avg10);
 
-        if (full_avg10 > MEM_THRESHOLD)
+        if (full_avg10 > MEM_THRESHOLD) {
+            printf("Memory pressure %.1f%% above threshold limit %d%%, "
+                   "killing task and pausing %d seconds for recovery\n",
+                   full_avg10, MEM_THRESHOLD, RECOVERY_INTERVAL);
             sysrq_trigger_oom();
-        else
+        } else {
             sleep(POLL_INTERVAL);
+        }
     }
 
     return 0;
