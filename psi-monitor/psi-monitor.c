@@ -9,8 +9,6 @@
 #include <string.h>
 #include <getopt.h>
 
-#define DEBUG false
-
 /* Daemon parameters */
 #define POLL_INTERVAL       5
 #define RECOVERY_INTERVAL  15
@@ -20,8 +18,10 @@
 #define PSI_MEMORY_FILE     "/proc/pressure/memory"
 #define BUFSIZE             256
 
-static const char *short_options = "h";
+static bool opt_debug = false;
+static const char *short_options = "dh";
 static struct option long_options[] = {
+    {"debug", 0, 0, 'd'},
     {"help", 0, 0, 'h'},
     {0, 0, 0, 0}
 };
@@ -30,6 +30,7 @@ static void usage(const char *progname) {
     printf("Usage: %s [OPTION]...\n"
            "Invoke out of memory killer on excessive memory pressure.\n"
            "\n"
+           "  -d, --debug\tprint debugging messages\n"
            "  -h, --help\tdisplay this help and exit\n",
            progname);
 }
@@ -73,6 +74,9 @@ int main(int argc, char **argv) {
             break;
 
         switch (c) {
+        case 'd':
+            opt_debug = true;
+            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -97,7 +101,7 @@ int main(int argc, char **argv) {
         i+=11; /* skip "full avg10=" */
 
         sscanf(buf+i, "%f", &full_avg10);
-        if (DEBUG) printf("full_avg10=%f\n", full_avg10);
+        if (opt_debug) printf("full_avg10=%f\n", full_avg10);
 
         if (full_avg10 > MEM_THRESHOLD)
             sysrq_trigger_oom();
