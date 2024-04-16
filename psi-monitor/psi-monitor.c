@@ -4,23 +4,29 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <err.h>
+#include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
 
 /* Daemon parameters */
-#define POLL_INTERVAL       5
-#define RECOVERY_INTERVAL  15
-#define MEM_THRESHOLD      10
+static unsigned int poll_interval = 5;
+static unsigned int recovery_interval = 15;
+static unsigned int mem_threshold = 10;
 
 #define SYSRQ_TRIGGER_FILE  "/proc/sysrq-trigger"
 #define PSI_MEMORY_FILE     "/proc/pressure/memory"
 #define BUFSIZE             256
 
 static bool opt_debug = false;
-static const char *short_options = "dh";
+static const char *short_options = "m:p:r:dh";
 static struct option long_options[] = {
+    {"mem-threshold", 1, 0, 'm'},
+    {"poll-interval", 1, 0, 'p'},
+    {"recovery-interval", 1, 0, 'r'},
     {"debug", 0, 0, 'd'},
     {"help", 0, 0, 'h'},
     {0, 0, 0, 0}
@@ -30,9 +36,48 @@ static void usage(const char *progname) {
     printf("Usage: %s [OPTION]...\n"
            "Invoke out of memory killer on excessive memory pressure.\n"
            "\n"
-           "  -d, --debug\tprint debugging messages\n"
-           "  -h, --help\tdisplay this help and exit\n",
-           progname);
+           "  -m, --mem-threshold PCT\tmemory threshold percentage (default: %u)\n"
+           "  -p, --poll-interval SEC\tpoll interval seconds (default: %u)\n"
+           "  -r, --recovery-interval SEC\trecovery interval seconds (default: %u)\n"
+           "  -d, --debug\t\t\tprint debugging messages\n"
+           "  -h, --help\t\t\tdisplay this help and exit\n",
+           progname, mem_threshold, poll_interval, recovery_interval);
+}
+
+static void set_mem_threshold(const char *arg) {
+    long val;
+    char *endptr = NULL;
+
+    errno = 0;
+    val = strtol(arg, &endptr, 10);
+    if (errno != 0)
+        err(1, "Invalid memory threshold value \"%s\"", arg);
+    if (endptr == arg)
+        errx(1, "No memory threshold value provided");
+    if (val < 0)
+        errx(1, "Memory threshold value cannot be negative");
+    if (val > 100)
+        errx(1, "Memory threshold value cannot exceed 100");
+    mem_threshold = (unsigned int) val;
+}
+
+static void set_interval(unsigned int *var, const char *arg) {
+    long val;
+    char *endptr = NULL;
+
+    assert(var != NULL);
+
+    errno = 0;
+    val = strtol(arg, &endptr, 10);
+    if (errno != 0)
+        err(1, "Invalid interval value \"%s\"", arg);
+    if (endptr == arg)
+        errx(1, "No interval value provided");
+    if (val < 0)
+        errx(1, "Interval value cannot be negative");
+    if (val > UINT_MAX)
+        errx(1, "Interval value cannot exceed %u", UINT_MAX);
+    *var = (unsigned int) val;
 }
 
 static ssize_t fstr(const char *path, char *rbuf, const char *wbuf) {
@@ -63,7 +108,7 @@ static ssize_t fstr(const char *path, char *rbuf, const char *wbuf) {
 
 static void sysrq_trigger_oom() {
     fstr(SYSRQ_TRIGGER_FILE, NULL, "f");
-    sleep(RECOVERY_INTERVAL);
+    sleep(recovery_interval);
 }
 
 int main(int argc, char **argv) {
@@ -73,6 +118,15 @@ int main(int argc, char **argv) {
             break;
 
         switch (c) {
+        case 'm':
+            set_mem_threshold(optarg);
+            break;
+        case 'p':
+            set_interval(&poll_interval, optarg);
+            break;
+        case 'r':
+            set_interval(&recovery_interval, optarg);
+            break;
         case 'd':
             opt_debug = true;
             break;
@@ -85,8 +139,8 @@ int main(int argc, char **argv) {
     }
 
     setvbuf(stdout, NULL, _IOLBF, 0);
-    printf("poll_interval=%ds, recovery_interval=%ds, stall_threshold=%d%%\n",
-           POLL_INTERVAL, RECOVERY_INTERVAL, MEM_THRESHOLD);
+    printf("poll_interval=%us, recovery_interval=%us, mem_threshold=%u%%\n",
+           poll_interval, recovery_interval, mem_threshold);
 
     while (true) {
         int i;
@@ -102,13 +156,13 @@ int main(int argc, char **argv) {
         sscanf(buf+i, "%f", &full_avg10);
         if (opt_debug) printf("full_avg10=%f\n", full_avg10);
 
-        if (full_avg10 > MEM_THRESHOLD) {
-            printf("Memory pressure %.1f%% above threshold limit %d%%, "
-                   "killing task and pausing %d seconds for recovery\n",
-                   full_avg10, MEM_THRESHOLD, RECOVERY_INTERVAL);
+        if (full_avg10 > mem_threshold) {
+            printf("Memory pressure %.1f%% above threshold limit %u%%, "
+                   "killing task and pausing %u seconds for recovery\n",
+                   full_avg10, mem_threshold, recovery_interval);
             sysrq_trigger_oom();
         } else {
-            sleep(POLL_INTERVAL);
+            sleep(poll_interval);
         }
     }
 
