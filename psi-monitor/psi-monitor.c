@@ -15,9 +15,14 @@
 /* Daemon parameters */
 static unsigned int poll_interval = 5;
 static unsigned int recovery_interval = 15;
-static unsigned int mem_threshold = 10;
+static unsigned int mem_threshold = 30;
 
 #define SYSRQ_TRIGGER_FILE  "/proc/sysrq-trigger"
+/*
+ * "/proc/pressure/memory" is memory pressure interface provided by kernel.
+ * Please refer to PSI - Pressure Stall Information for more detail:
+ * https://docs.kernel.org/accounting/psi.html
+ */
 #define PSI_MEMORY_FILE     "/proc/pressure/memory"
 #define BUFSIZE             256
 
