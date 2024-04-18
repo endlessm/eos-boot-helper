@@ -2,8 +2,29 @@
 Description=Endless live boot overlayfs setup
 DefaultDependencies=no
 After=ostree-remount.service var.mount
-Before=local-fs.target systemd-random-seed.service
+Before=local-fs.target
 ConditionKernelCommandLine=endless.live_boot
+
+# Systemd ships several units that require access to /var but are not ordered
+# after local-fs.target. It would be better if they did, but that's not the
+# case today. Systemd doesn't expect the kind of mount post-processing that's
+# done here.
+#
+# You can find these with the following command:
+#
+# grep -rl -e StateDirectory -e CacheDirectory -e LogsDirectory -e var.mount \
+#   -e 'RequiresMountsFor=.*/var' /usr/lib/systemd/system \
+#   | xargs grep -l -e DefaultDependencies | sort
+Before=systemd-backlight@.service
+Before=systemd-coredump@.service
+Before=systemd-journal-flush.service
+Before=systemd-pstore.service
+Before=systemd-random-seed.service
+Before=systemd-rfkill.service
+Before=systemd-rfkill.socket
+Before=systemd-timesyncd.service
+Before=systemd-update-utmp-runlevel.service
+Before=systemd-update-utmp.service
 
 [Service]
 Type=oneshot
