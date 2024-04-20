@@ -15,7 +15,7 @@
 /* Daemon parameters */
 static unsigned int poll_interval = 5;
 static unsigned int recovery_interval = 15;
-static unsigned int mem_threshold = 30;
+static unsigned int mem_threshold = 40;
 
 #define SYSRQ_TRIGGER_FILE  "/proc/sysrq-trigger"
 /*
