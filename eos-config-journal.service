@@ -1,6 +1,18 @@
 [Unit]
 Description=configure persistent journal on durable storage
-Before=multi-user.target
+
+# Setup /var/log/journal early after /var is mounted but before
+# systemd-journal-flush.service. Make sure journald is started like
+# systemd-journal-flush.service does.
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+After=systemd-remount-fs.service ostree-remount.service
+Before=systemd-journal-flush.service
+Wants=systemd-journald.service
+After=systemd-journald.service
+RequiresMountsFor=/var/log /var/log/journal
+
 ConditionPathExists=!/var/log/journal
 ConditionPathExists=!/var/log/.no_journal_on_fragile_storage
 ConditionKernelCommandLine=!endless.live_boot
@@ -11,4 +23,4 @@ RemainAfterExit=true
 ExecStart=/usr/sbin/eos-config-journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target
