@@ -106,19 +106,6 @@ setup_overlay() {
         "eos-live-$dir" "/$dir"
 }
 
-# This service is ordered before var.mount so that any units that only
-# depend on /var without being ordered after local-fs.target will not be
-# started until the /var overlay is in place. As such, this service
-# needs to take over the var.mount created by ostree-system-generator.
-echo "Bind mounting /sysroot/ostree/deploy/eos/var to /var"
-mount --bind /sysroot/ostree/deploy/eos/var /var
-
-# Mark the /sysroot mount as private so that the /var overlay mount
-# isn't mirrored into it. Normally this is done by ostree-remount, but
-# we're ordered before it.
-echo "Marking /sysroot mount as private"
-mount --make-rprivate /sysroot
-
 # Prior to EOS 4 the system flatpak repo was a symlink to the system
 # ostree repo to allow flatpak and OS commits to share objects. The
 # repos have been split now, but an updated system may not have been
