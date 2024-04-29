@@ -1,22 +1,30 @@
 [Unit]
 Description=Endless live boot overlayfs setup
 DefaultDependencies=no
+After=ostree-remount.service var.mount
+Before=local-fs.target
 ConditionKernelCommandLine=endless.live_boot
 
-# systemd-remount-fs.service is masked by the live boot generator, but
-# make sure to run after it.
-After=systemd-remount-fs.service
-
-# ostree-remount.service is ordered after var.mount, so this service
-# expects to run before it. Order it explicitly to make sure.
-Before=ostree-remount.service
-
-# Make sure the overlay setup is complete before services that need real
-# filesystems are started. Normally local-fs.target would be good
-# enough, but systemd optimizes some units to only wait for /var rather
-# than all local filesystems. Note that ordering before var.mount means
-# this service has to handle the /var mount itself.
-Before=local-fs.target var.mount
+# Systemd ships several units that require access to /var but are not ordered
+# after local-fs.target. It would be better if they did, but that's not the
+# case today. Systemd doesn't expect the kind of mount post-processing that's
+# done here.
+#
+# You can find these with the following command:
+#
+# grep -rl -e StateDirectory -e CacheDirectory -e LogsDirectory -e var.mount \
+#   -e 'RequiresMountsFor=.*/var' /usr/lib/systemd/system \
+#   | xargs grep -l -e DefaultDependencies | sort
+Before=systemd-backlight@.service
+Before=systemd-coredump@.service
+Before=systemd-journal-flush.service
+Before=systemd-pstore.service
+Before=systemd-random-seed.service
+Before=systemd-rfkill.service
+Before=systemd-rfkill.socket
+Before=systemd-timesyncd.service
+Before=systemd-update-utmp-runlevel.service
+Before=systemd-update-utmp.service
 
 [Service]
 Type=oneshot
@@ -24,4 +32,4 @@ ExecStart=/usr/sbin/eos-live-boot-overlayfs-setup
 RemainAfterExit=yes
 
 [Install]
-WantedBy=local-fs.target var.mount
+WantedBy=local-fs.target
