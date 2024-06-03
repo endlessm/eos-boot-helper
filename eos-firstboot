@@ -6,5 +6,5 @@ root_part=$(findmnt -rvnf -o SOURCE /)
 
 resize2fs "${root_part}"
 
-> /var/eos-booted
+> /var/lib/eos-firstboot
 exit 0

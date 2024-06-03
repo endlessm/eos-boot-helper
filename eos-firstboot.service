@@ -5,11 +5,12 @@ Description=Endless Boot Helper
 DefaultDependencies=no
 After=sysinit.target local-fs.target
 Before=basic.target
-ConditionPathExists=!/var/eos-booted
+ConditionPathExists=!/var/lib/%N
 ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
 ExecStart=/usr/sbin/eos-firstboot
+ExecStartPost=-rm -f /var/eos-booted
 StandardOutput=journal+console
 
 [Install]
