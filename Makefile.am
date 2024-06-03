@@ -25,6 +25,7 @@ dist_systemdunit_DATA = \
 	eos-live-boot-overlayfs-setup.service \
 	eos-ostree-bootloader-setup.service \
 	eos-prune-printers.service \
+	eos-retrigger-firstboot.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \

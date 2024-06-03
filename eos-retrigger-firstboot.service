@@ -1,0 +1,19 @@
+# On dual-boot systems, (re)run eos-firstboot to grow the root filesystem, which
+# was not grown correctly on first boot into Endless OS 6.0.0.
+[Unit]
+Description=Fix dual-boot filesystem size
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+Before=basic.target eos-firstboot.service
+ConditionPathExists=!/var/%N
+ConditionKernelCommandLine=endless.image.device
+ConditionKernelCommandLine=!endless.live_boot
+
+[Service]
+Type=oneshot
+ExecStart=rm -f /var/eos-booted
+ExecStartPost=touch /var/%N
+StandardOutput=journal+console
+
+[Install]
+WantedBy=basic.target
