@@ -79,7 +79,7 @@ case ${root_part} in
     ;;
 esac
 
-case ${orig_root_part} in
+case ${root_part} in
   /dev/loop?p?)
     using_loop=1
     ;;
