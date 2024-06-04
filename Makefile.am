@@ -28,7 +28,6 @@ dist_systemdunit_DATA = \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
-	hack-remove-global-override.service \
 	$(NULL)
 
 dist_systemduserunit_DATA = \
