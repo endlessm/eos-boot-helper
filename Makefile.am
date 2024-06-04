@@ -23,7 +23,6 @@ dist_systemdunit_DATA = \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-prune-printers.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
@@ -87,7 +86,6 @@ dist_sbin_SCRIPTS = \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-live-boot-overlayfs-setup \
-	eos-prune-printers \
 	eos-repartition-mbr \
 	eos-test-mode \
 	eos-transient-setup \
