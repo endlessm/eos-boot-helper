@@ -22,6 +22,7 @@ dist_systemdunit_DATA = \
 	eos-enable-zram.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
+	eos-fix-flatpak-overrides.service \
 	eos-live-boot-overlayfs-setup.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
@@ -101,7 +102,6 @@ tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
 	tmpfiles.d/chromium-system-services.conf \
 	tmpfiles.d/eos-boot-helper.conf \
-	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
 
 com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in
