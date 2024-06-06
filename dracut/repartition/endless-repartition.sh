@@ -201,7 +201,7 @@ udevadm settle
 
 # Loop devices need a prod
 if [ -n "$using_loop" ]; then
-  partprobe $root_disk
+  partx --update --verbose $root_disk
   udevadm settle
 fi
 
