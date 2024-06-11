@@ -22,13 +22,11 @@ dist_systemdunit_DATA = \
 	eos-enable-zram.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
+	eos-fix-flatpak-overrides.service \
 	eos-live-boot-overlayfs-setup.service \
-	eos-ostree-bootloader-setup.service \
-	eos-prune-printers.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
-	hack-remove-global-override.service \
 	$(NULL)
 
 dist_systemduserunit_DATA = \
@@ -78,7 +76,6 @@ uninstall-hook:
 udevrulesdir = $(udevdir)/rules.d
 dist_udevrules_DATA = \
 	50-disk-bfq.rules \
-	50-meson-vdec.rules \
 	50-usb-mouse-wakeup.rules \
 	60-suspend-mode.rules \
 	$(NULL)
@@ -89,8 +86,6 @@ dist_sbin_SCRIPTS = \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-live-boot-overlayfs-setup \
-	eos-ostree-bootloader-setup \
-	eos-prune-printers \
 	eos-repartition-mbr \
 	eos-test-mode \
 	eos-transient-setup \
@@ -104,10 +99,8 @@ dist_libexec_SCRIPTS = \
 
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_tmpfiles_DATA = \
-	tmpfiles.d/avahi-service-writers.conf \
 	tmpfiles.d/chromium-system-services.conf \
 	tmpfiles.d/eos-boot-helper.conf \
-	tmpfiles.d/flatpak-overrides.conf \
 	$(NULL)
 
 com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in

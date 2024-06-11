@@ -1,0 +1,22 @@
+[Unit]
+Description=Fix incorrect Flatpak override symlink
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+
+# Only run on updates
+Before=multi-user.target systemd-update-done.service
+ConditionNeedsUpdate=|/etc
+ConditionNeedsUpdate=|/var
+
+# Run only if this path is a dangling symbolic link
+ConditionPathIsSymbolicLink=/var/lib/flatpak/overrides
+ConditionPathExists=!/var/lib/flatpak/overrides
+
+[Service]
+Type=oneshot
+ExecStart=rm -f /var/lib/flatpak/overrides
+
+[Install]
+WantedBy=multi-user.target
