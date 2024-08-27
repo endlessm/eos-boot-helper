@@ -28,3 +28,15 @@ systemctl mask --runtime --now eos-autoupdater.timer eos-autoupdater.service
 
 # Disable phoning home for this boot, too
 systemctl mask --runtime --now eos-phone-home.{service,timer,path}
+
+# Restart systemd services which mount real storage blocks to the paths under
+# /sysroot/ directly. This helps them remount the eos-live overlays in their
+# namespace. This is caused by ostree making the /sysroot mount private.
+# https://phabricator.endlessm.com/T35625
+pattern='$1 ~ "^/dev/" && $2 ~ "^/sysroot/"'
+action='{split(FILENAME, p, "/"); print p[3]; nextfile}'
+awk "$pattern $action" /proc/*/mounts | uniq | while read -r pid;
+do
+	service=$(systemctl whoami $pid)
+	systemctl restart $service
+done
