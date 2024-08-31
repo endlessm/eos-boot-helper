@@ -120,6 +120,8 @@ case $target_cpu in
 esac
 AC_SUBST(FLATPAK_ARCH)
 
+PKG_CHECK_MODULES([EFIBOOT], [efiboot efivar])
+
 AC_CONFIG_FILES([
 	Makefile
 	dracut/Makefile

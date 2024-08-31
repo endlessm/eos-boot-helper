@@ -2,6 +2,8 @@ SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monito
 EXTRA_DIST = debian .flake8
 CLEANFILES =
 
+AM_CFLAGS = -Wall -Werror
+
 # Install systemd units, generators, preset files, and udev rules
 # under $prefix for distcheck
 AM_DISTCHECK_CONFIGURE_FLAGS = \
@@ -91,6 +93,14 @@ dist_sbin_SCRIPTS = \
 	eos-transient-setup \
 	eos-update-flatpak-repos \
 	$(NULL)
+
+sbin_PROGRAMS = \
+	eos-update-efi-uuid \
+	$(NULL)
+
+eos_update_efi_uuid_SOURCES = eos-update-efi-uuid.c
+eos_update_efi_uuid_CFLAGS = $(AM_CFLAGS) $(EFIBOOT_CFLAGS)
+eos_update_efi_uuid_LDADD = $(EFIBOOT_LIBS)
 
 dist_libexec_SCRIPTS = \
 	eos-migrate-chromium-profile \
