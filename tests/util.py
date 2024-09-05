@@ -2,10 +2,13 @@ import contextlib
 import importlib.machinery
 import importlib.util
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 
+TESTS_PATH = Path(__file__).parent.resolve()
+EFIVARFS_PATH = TESTS_PATH / 'efivars'
 
 run_needs_root_tests = bool(os.environ.get('EBH_ROOT_TESTS'))
 needs_root = unittest.skipIf(not run_needs_root_tests,

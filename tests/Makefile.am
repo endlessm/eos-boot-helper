@@ -17,6 +17,8 @@ TESTS = \
 EXTRA_DIST = \
 	$(TESTS) \
 	__init__.py \
+	conftest.py \
+	efivars \
 	test_image_boot.py \
 	test_live_storage.py \
 	test_migrate_chromium_profile.py \
