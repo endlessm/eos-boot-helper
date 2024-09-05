@@ -10,6 +10,7 @@ depends() {
 }
 
 install() {
+  dracut_install eos-update-efi-uuid
   dracut_install sfdisk
   dracut_install blockdev
   dracut_install readlink

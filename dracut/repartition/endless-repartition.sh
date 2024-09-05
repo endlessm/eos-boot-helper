@@ -103,6 +103,12 @@ else
   marker=$(sfdisk --force --part-attrs $root_disk $partno)
 fi
 
+# Read the ESP's current UUID so we can update load options below.
+orig_esp_uuid=
+if [ "$pt_label" = "gpt" ]; then
+  orig_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
+fi
+
 case "$marker" in
   *GUID:55* | dd)
     ;;
@@ -199,6 +205,15 @@ udevadm settle
 
 [ "$ret" != "0" ] && exit 0
 
+# Read the ESP's new UUID and update any invalidated load options.
+new_esp_uuid=
+if [ "$pt_label" = "gpt" ]; then
+  new_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
+fi
+if [ -d /sys/firmware/efi ] && [ -n "$orig_esp_uuid" ] && [ -n "$new_esp_uuid" ]; then
+  eos-update-efi-uuid -v "$orig_esp_uuid" "$new_esp_uuid"
+fi
+
 # Loop devices need a prod
 if [ -n "$using_loop" ]; then
   partx --update --verbose $root_disk
@@ -214,8 +229,7 @@ udevadm settle
 # If we're an sd-booting image we need to fix-up the copy of the
 # ESP UUID that sd-boot gave us so systemd mounts the ESP
 esp_var=$(echo /sys/firmware/efi/efivars/LoaderDevicePartUUID*)
-if [ -f "${esp_var}" ]; then
-  new_esp_uuid=$(sfdisk $root_disk --part-uuid 1)
+if [ -f "${esp_var}" ] && [ -n "${new_esp_uuid}" ]; then
   #We need to start with 0x06 0x00 0x00 0x00 and end with 0x00 0x00
   #iconv will add the extra 0s
   # Shell gotcha - \06\00 works... until ${new_esp_uuid} starts with a decimal digit.
