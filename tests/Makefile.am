@@ -1,3 +1,14 @@
+AM_TESTS_ENVIRONMENT = \
+	BUILDDIR='$(builddir)' \
+	TOP_BUILDDIR='$(top_builddir)' \
+	ABS_BUILDDIR='$(abs_builddir)' \
+	ABS_TOP_BUILDDIR='$(abs_top_builddir)' \
+	SRCDIR='$(srcdir)' \
+	TOP_SRCDIR='$(top_srcdir)' \
+	ABS_SRCDIR='$(abs_srcdir)' \
+	ABS_TOP_SRCDIR='$(abs_top_srcdir)' \
+	$(NULL)
+
 TESTS = \
 	check-syntax \
 	run-tests \

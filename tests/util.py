@@ -12,6 +12,20 @@ needs_root = unittest.skipIf(not run_needs_root_tests,
                              "needs root; set EBH_ROOT_TESTS=1 to enable")
 
 
+def built_program(program):
+    '''Gets the absolute path to a built program in the top level of this
+    repository.
+
+    This uses the ABS_TOP_BUILDDIR environment variable to find the top build
+    directory. Otherwise it falls back to system_script, which uses the top
+    source directory.
+    '''
+    abs_top_builddir = os.environ.get('ABS_TOP_BUILDDIR')
+    if abs_top_builddir:
+        return os.path.join(abs_top_builddir, program)
+    return system_script(program)
+
+
 def system_script(script):
     '''Gets the absolute path to a script in the top level of this
     repository.'''
