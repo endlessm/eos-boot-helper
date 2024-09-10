@@ -1,0 +1,5 @@
+{
+   "filesystems": [
+      {"target":"/", "source":"/dev/vda4", "fstype":"ext4", "options":"errors=remount-ro"}
+   ]
+}

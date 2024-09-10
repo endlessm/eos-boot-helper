@@ -1,0 +1,10 @@
+{
+   "filesystems": [
+      {"target":"/sysroot", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/", "options":"rw,relatime,errors=remount-ro"},
+      {"target":"/", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/ostree/deploy/eos/deploy/b3fb4e8448913270508c9f35aee01090ccb430b72a4b12d083dae6009740d90f.0", "options":"rw,relatime,errors=remount-ro"},
+      {"target":"/usr", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/ostree/deploy/eos/deploy/b3fb4e8448913270508c9f35aee01090ccb430b72a4b12d083dae6009740d90f.0/usr", "options":"ro,relatime,errors=remount-ro"},
+      {"target":"/var", "source":"/dev/vda4", "maj:min":"252:4", "fstype":"ext4", "fsroot":"/ostree/deploy/eos/var", "options":"rw,relatime,errors=remount-ro"},
+      {"target":"/efi", "source":"/dev/vda1", "maj:min":"252:1", "fstype":"vfat", "fsroot":"/", "options":"rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro"},
+      {"target":"/boot", "source":"/dev/vda3", "maj:min":"252:3", "fstype":"ext4", "fsroot":"/", "options":"rw,relatime,errors=remount-ro"}
+   ]
+}

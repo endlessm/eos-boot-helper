@@ -1,0 +1,13 @@
+{
+   "partitiontable": {
+      "label":"dos",
+      "id":"0x265411de",
+      "device":"/dev/vda",
+      "unit":"sectors",
+      "sectorsize":512,
+      "partitions": [
+         {"node":"/dev/vda1", "start":2048, "size":126976, "type":"ef"},
+         {"node":"/dev/vda2", "start":131072, "size":62783455, "type":"83", "bootable":true}
+      ]
+   }
+}

@@ -1,0 +1,16 @@
+{
+   "partitiontable": {
+      "label":"gpt",
+      "id":"265411DE-4D52-7A4E-AC09-20C0807725A0",
+      "device":"/dev/vda",
+      "unit":"sectors",
+      "firstlba":2048,
+      "lastlba":62914526,
+      "sectorsize":512,
+      "partitions": [
+         {"node":"/dev/vda1", "start":2048, "size":126976, "type":"C12A7328-F81F-11D2-BA4B-00A0C93EC93B", "uuid":"F24CBC5A-C030-7E4F-8F7F-6B735FE9B0DE"},
+         {"node":"/dev/vda2", "start":129024, "size":2048, "type":"21686148-6449-6E6F-744E-656564454649", "uuid":"896BE2AC-8255-B145-8282-C94675860B6C"},
+         {"node":"/dev/vda3", "start":131072, "size":62783455, "type":"4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709", "uuid":"B9C23C3C-32C2-4344-95B8-B90A819D1CA6"}
+      ]
+   }
+}
