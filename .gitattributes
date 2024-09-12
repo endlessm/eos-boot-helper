@@ -1,0 +1,2 @@
+# Define hexdump textconv with "git config diff.efivars.textconv hd"
+tests/efivars/* diff=efivars

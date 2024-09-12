@@ -15,6 +15,7 @@ config.status
 config.sub
 configure
 depcomp
+eos-update-efi-uuid
 fallback-fb-setup/fallback-fb-setup
 install-sh
 missing
