@@ -104,19 +104,6 @@ setup_overlay() {
         "eos-live-$dir" "/$dir"
 }
 
-# Prior to EOS 4 the system flatpak repo was a symlink to the system
-# ostree repo to allow flatpak and OS commits to share objects. The
-# repos have been split now, but an updated system may not have been
-# successfully migrated. In that case refuse to setup the overlays since
-# it requires a complicated configuration that's no longer supported
-# here.
-flatpak_repo_path=$(readlink -f /var/lib/flatpak/repo)
-if [ "${flatpak_repo_path}" = /ostree/repo ]; then
-    echo "Flatpak repo /var/lib/flatpak/repo has not been split from" \
-	"OS repo /ostree/repo" >&2
-    exit 1
-fi
-
 # Use persistent storage to back overlayfses, if available
 storage_partition=$(find_storage_partition)
 if [ -b "${storage_partition}" ]; then
