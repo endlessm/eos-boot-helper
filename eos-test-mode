@@ -21,7 +21,7 @@
 [ -d /run/eos-live ] && exit 0
 
 # Mount overlays over any directory that might be written to
-eos-live-boot-overlayfs-setup etc
+eos-live-boot-overlayfs-setup
 
 # Disable the updater for this boot
 systemctl mask --runtime --now eos-autoupdater.timer eos-autoupdater.service

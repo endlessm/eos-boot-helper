@@ -1,8 +1,6 @@
 #!/bin/bash
 # Mount overlays over any directory that might be written to
 
-EXTRA_PATHS=("$@")
-
 # Create a loopback mount corresponding to persistent.img on the given device
 map_persistent_img_file() {
 	local root_partition=$1
@@ -145,6 +143,6 @@ fi
 # (which it always does at the root of the mount!) then overlayfs
 # returns xattrs from that.
 overlay_dirs="boot etc srv sysroot/home sysroot/ostree var"
-for dir in $overlay_dirs "${EXTRA_PATHS[@]}"; do
+for dir in $overlay_dirs; do
     setup_overlay "$dir"
 done
