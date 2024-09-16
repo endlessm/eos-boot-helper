@@ -1,8 +1,6 @@
 #!/bin/bash
 # Mount overlays over any directory that might be written to
 
-EXTRA_PATHS=("$@")
-
 # Create a loopback mount corresponding to persistent.img on the given device
 map_persistent_img_file() {
 	local root_partition=$1
@@ -106,19 +104,6 @@ setup_overlay() {
         "eos-live-$dir" "/$dir"
 }
 
-# Prior to EOS 4 the system flatpak repo was a symlink to the system
-# ostree repo to allow flatpak and OS commits to share objects. The
-# repos have been split now, but an updated system may not have been
-# successfully migrated. In that case refuse to setup the overlays since
-# it requires a complicated configuration that's no longer supported
-# here.
-flatpak_repo_path=$(readlink -f /var/lib/flatpak/repo)
-if [ "${flatpak_repo_path}" = /ostree/repo ]; then
-    echo "Flatpak repo /var/lib/flatpak/repo has not been split from" \
-	"OS repo /ostree/repo" >&2
-    exit 1
-fi
-
 # Use persistent storage to back overlayfses, if available
 storage_partition=$(find_storage_partition)
 if [ -b "${storage_partition}" ]; then
@@ -145,6 +130,6 @@ fi
 # (which it always does at the root of the mount!) then overlayfs
 # returns xattrs from that.
 overlay_dirs="boot etc srv sysroot/home sysroot/ostree var"
-for dir in $overlay_dirs "${EXTRA_PATHS[@]}"; do
+for dir in $overlay_dirs; do
     setup_overlay "$dir"
 done
