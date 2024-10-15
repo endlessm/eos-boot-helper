@@ -88,6 +88,58 @@ setup_and_mount_storage() {
 	mount "${device}" /run/eos-live
 }
 
+setup_ro_mount() {
+    local path=$1
+
+    # If the directory isn't a mount point, make a read only bind mount
+    # on top of the directory and be done.
+    if ! findmnt "$path" >/dev/null; then
+        mount -o bind,ro "$path" "$path"
+        return 0
+    fi
+
+    # In case of an automount, trigger the real mount so its options can
+    # be inspected.
+    ls "$path" >/dev/null
+
+    # If it's already mounted read only, assume we're done.
+    local mounted_options
+    mounted_options=$(findmnt -n -f -d backward -o OPTIONS "$path")
+    [[ $mounted_options =~ (,|^)ro(,|$) ]] && return 0
+
+    # If there's an automount, adjust the mount options in the mount
+    # unit so the read only option persists across mountings.
+    local escaped_path automount_unit
+    escaped_path=$(systemd-escape -p "$path")
+    automount_unit="${escaped_path}.automount"
+    if systemctl -q is-active "$automount_unit"; then
+        # Add a drop-in to append ro to the mount unit's Options.
+        # mount(8) will use the last rw or ro found in the options.
+        local mount_unit mount_options new_mount_options
+        mount_unit="${escaped_path}.mount"
+        mount_options=$(systemctl show -P Options "$mount_unit")
+        new_mount_options="${mount_options:+${mount_options},}ro"
+
+        local dropin_dir="/run/systemd/system/${mount_unit}.d"
+        local dropin_conf="${dropin_dir}/readonly.conf"
+        mkdir -p "$dropin_dir"
+        echo "Changing ${mount_unit} Options from \"${mount_options}\"" \
+            "to \"${new_mount_options}\"" >&2
+        cat > "$dropin_conf" <<EOF
+[Mount]
+Options=${new_mount_options}
+EOF
+        systemctl daemon-reload
+
+        # Make sure the mount unit is started so the subsequent remount
+        # isn't applied to the automount.
+        systemctl start "$mount_unit"
+    fi
+
+    # Remount the current mount read only.
+    mount -o remount,ro "$path"
+}
+
 setup_overlay() {
     local dir=$1
     [ -d "/$dir" ] || return
@@ -99,9 +151,16 @@ setup_overlay() {
     # multiple times.
     findmnt -t overlay "/$dir" >/dev/null && return 0
     mkdir -p "/run/eos-live/$dir" "/run/eos-live/$dir-workdir"
-    mount -t overlay -o \
+    if ! mount -t overlay -o \
         "rw,upperdir=/run/eos-live/$dir,lowerdir=/$dir,workdir=/run/eos-live/$dir-workdir" \
         "eos-live-$dir" "/$dir"
+    then
+        # Overlayfs doesn't support using case insensitive filesystems
+        # such as vfat and exfat as a lower directory. Change the mount
+        # to read only so changes can't be made there.
+        echo "Could not mount overlayfs on /$dir, trying to mount read only" >&2
+        setup_ro_mount "/$dir"
+    fi
 }
 
 # Use persistent storage to back overlayfses, if available
