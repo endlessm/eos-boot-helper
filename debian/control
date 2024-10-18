@@ -19,6 +19,7 @@ Build-Depends: automake,
                python3-parted <!nocheck>,
                python3-pytest <!nocheck>,
                python3-systemd <!nocheck>,
+               shellcheck <!nocheck>,
                systemd,
                udev,
 Standards-Version: 3.9.1

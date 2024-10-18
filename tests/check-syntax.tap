@@ -1,0 +1,89 @@
+#!/usr/bin/python3
+import os
+import subprocess
+import glob
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+IGNORE_SHELLCHECK_ERRORS = [
+    "eos-firewall-localonly",
+    "eos-firewall-localonly-nm",
+    "factory-reset/eos-factory-reset-users",
+    "nvidia/nvidia-graphics-setup",
+]
+
+
+def find_files(pattern):
+    """Find files matching 'pattern' on the first line."""
+    output = subprocess.check_output(
+        [
+            "grep",
+            "-r",
+            "--files-with-match",
+            "--null",
+            # Only first line
+            "--max-count",
+            "1",
+            # Skip .git and friends
+            "--exclude-dir=.*",
+            # Skip temporary files
+            "--exclude=.*",
+            "--exclude=*~",
+            pattern,
+            ROOT,
+        ]
+    )
+    return [x.decode("utf-8") for x in output.split(b"\x00") if x]
+
+
+def main():
+    """Checks shell scripts' syntax, printing results in TAP format and
+    exiting non-zero if any script has syntax errors."""
+    checks = []
+
+    for bash_script in find_files("^#!/bin/bash"):
+        checks.append((["bash", "-n", bash_script], False))
+        checks.append(
+            (
+                ["shellcheck", bash_script],
+                any(bash_script.endswith(x) for x in IGNORE_SHELLCHECK_ERRORS),
+            )
+        )
+
+    for dash_script in find_files("^#!/bin/sh"):
+        checks.append((["dash", "-n", dash_script], False))
+        checks.append(
+            (
+                ["shellcheck", bash_script],
+                any(dash_script.endswith(x) for x in IGNORE_SHELLCHECK_ERRORS),
+            )
+        )
+
+    # All files with a shebang, regardless of their extension (if any)
+    python_scripts = set(find_files("^#!/usr/bin/python"))
+    # .py files in the tests/ directory, which may or may not have a hashtag yell
+    python_scripts.update(glob.glob(os.path.join(ROOT, "tests", "*.py")))
+    checks.append((["flake8"] + sorted(python_scripts), False))
+
+    print("1..{}".format(len(checks)))
+    failed = False
+    for i, (check, xfail) in enumerate(checks, 1):
+        label = " ".join(check)
+        cp = subprocess.run(
+            check, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        for line in cp.stdout.splitlines():
+            print("#", line)
+        if cp.returncode == 0:
+            result = "ok"
+        else:
+            result = "not ok"
+            failed &= not xfail
+
+        directive = " # TODO" if xfail else ""
+        print(f"{result} {i} - {label}{directive}")
+
+    exit(failed)
+
+
+if __name__ == "__main__":
+    main()
