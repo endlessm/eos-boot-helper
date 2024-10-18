@@ -20,7 +20,7 @@ map_persistent_img_file() {
 	fi
 
 	echo "Found persistent.img in ${root_partition}, using it for persistent storage" >&2
-	echo ${persistent_loop}
+	echo "${persistent_loop}"
 	return 0
 }
 
