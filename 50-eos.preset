@@ -29,6 +29,8 @@ disable eos-update-server.service
 disable eos-update-server.socket
 disable eos-updater-avahi.path
 disable eos-updater-avahi.service
+disable fwupd-refresh.service
+disable fwupd-refresh.timer
 disable ifupdown-wait-online.service
 disable networking.service
 disable NetworkManager-wait-online.service
