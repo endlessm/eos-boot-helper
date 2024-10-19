@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# eos-ensure-sd-boot: Ensure systemd-boot is installed
+#
+# Copyright © 2023 Endless OS Foundation LLC
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# Ensure systemd-boot is considered installed by bootctl (when
+# appropriate) so that bootctl update works.
+
+set -e
+set -o pipefail
+
+LOADER_INFO_VAR=LoaderInfo-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+LOADER_INFO_PATH="/sys/firmware/efi/efivars/$LOADER_INFO_VAR"
+
+# Read the LoaderInfo EFI variable.
+get_loader_info() {
+    [ -f "$LOADER_INFO_PATH" ] || return 0
+
+    # The LoaderInfo variable is a NUL terminated UTF-16 string. The
+    # first 4 bytes of any EFI variable are attributes.
+    dd if="$LOADER_INFO_PATH" ibs=1 skip=4 status=none \
+        | iconv -f UTF16LE | tr -d '\0'
+}
+
+# We only use systemd-boot on x86_64. If we add any other architectures
+# later, they'll install it correctly out of the box.
+arch=$(uname -m)
+if [ "$arch" != x86_64 ]; then
+    exit 0
+fi
+
+# If it's already considered installed, there's nothing to do.
+if bootctl --quiet is-installed; then
+    exit 0
+fi
+
+# Only make changes when the boot loader is systemd-boot.
+echo "Reading $LOADER_INFO_VAR EFI variable"
+loader_info=$(get_loader_info)
+if ! [[ $loader_info =~ ^systemd-boot ]]; then
+    echo "Boot loader is not systemd-boot"
+    exit 0
+fi
+
+# Install systemd-boot but don't touch the EFI Boot* variables since we
+# assume those are already working.
+echo "Installing systemd-boot"
+bootctl --no-variables install
+
+# Validate that systemd-boot is now considered installed.
+if ! bootctl --quiet is-installed; then
+    echo "bootctl does not consider systemd-boot installed" >&2
+    exit 1
+fi
