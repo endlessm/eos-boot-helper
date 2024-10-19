@@ -197,6 +197,9 @@ if [ -n "$preserve_partition" ]; then
 $preserve_partition"
 fi
 
+# sfdisk does not seem to like to redefinition of sector-size
+parts=$(echo "$parts" | sed -e '/^sector-size:/d')
+
 echo "$parts"
 echo "$parts" | sfdisk --force --no-reread $root_disk
 ret=$?
