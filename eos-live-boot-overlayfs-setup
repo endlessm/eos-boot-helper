@@ -13,15 +13,14 @@ map_persistent_img_file() {
 
 	local pfpath="/run/media/eosboot/endless/persistent.img"
 	local persistent_loop
-	persistent_loop=$(losetup -f --show "${pfpath}")
-	if [ $? != 0 ]; then
+	if ! persistent_loop=$(losetup -f --show "${pfpath}"); then
 		echo "${pfpath} not found in ${root_partition}" >&2
 		umount /run/media/eosboot
 		return 1
 	fi
 
 	echo "Found persistent.img in ${root_partition}, using it for persistent storage" >&2
-	echo ${persistent_loop}
+	echo "${persistent_loop}"
 	return 0
 }
 
@@ -43,8 +42,7 @@ find_storage_partition() {
 	fi
 
 	local storage_partition
-	storage_partition=$(map_persistent_img_file "${root_partition}")
-	if [ $? == 0 ]; then
+	if storage_partition=$(map_persistent_img_file "${root_partition}"); then
 		echo "${storage_partition}"
 		return 0
 	fi
