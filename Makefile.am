@@ -1,4 +1,4 @@
-SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success tests
+SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success . tests
 EXTRA_DIST = debian .flake8
 CLEANFILES =
 
