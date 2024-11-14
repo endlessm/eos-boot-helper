@@ -1,0 +1,34 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/2b89dbb29d8a02e2fcc96b9812dcb996222f7b38d064e303c899bc04f845cbc3.0",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/boot",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/boot",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/usr",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/2b89dbb29d8a02e2fcc96b9812dcb996222f7b38d064e303c899bc04f845cbc3.0/usr",
+    "options": "ro,relatime"
+  },
+  {
+    "target": "/sysroot",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/",
+    "options": "ro,relatime"
+  }
+]

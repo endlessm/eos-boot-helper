@@ -98,11 +98,6 @@ def losetup(path):
 
 
 class BaseTestCase(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-
-        os.environ["LANG"] = "C.UTF-8"
-
     def assert_fstype(self, partition, type_):
         '''Asserts that 'partition' contains a 'type_' filesystem.'''
         msg = 'expected {} to have type {!r}'.format(partition, type_)

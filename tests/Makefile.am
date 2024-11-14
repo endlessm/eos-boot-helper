@@ -19,6 +19,8 @@ EXTRA_DIST = \
 	__init__.py \
 	conftest.py \
 	efivars \
+	espgen \
+	test_esp_generator.py \
 	test_image_boot.py \
 	test_live_storage.py \
 	test_migrate_chromium_profile.py \

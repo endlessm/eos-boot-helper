@@ -1,5 +1,5 @@
-SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success tests
-EXTRA_DIST = debian .flake8
+SUBDIRS = dracut factory-reset fallback-fb-setup flatpak-repos nvidia psi-monitor record-boot-success . tests
+EXTRA_DIST = debian .flake8 pytest.ini
 CLEANFILES =
 
 AM_CFLAGS = -Wall -Werror
@@ -38,6 +38,7 @@ dist_systemduserunit_DATA = \
 	$(NULL)
 
 dist_systemdgenerator_SCRIPTS = \
+	eos-esp-generator \
 	eos-live-boot-generator \
 	eos-vm-generator \
 	$(NULL)

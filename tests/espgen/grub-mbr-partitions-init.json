@@ -1,0 +1,35 @@
+[
+  {
+    "DEVNAME": "/dev/vda2",
+    "LABEL": "ostree",
+    "UUID": "dde5e094-c22d-4b11-86de-e6c880085f93",
+    "VERSION": "1.0",
+    "BLOCK_SIZE": "4096",
+    "TYPE": "ext4",
+    "USAGE": "filesystem",
+    "PART_ENTRY_SCHEME": "dos",
+    "PART_ENTRY_UUID": "680dae45-02",
+    "PART_ENTRY_TYPE": "0x83",
+    "PART_ENTRY_FLAGS": "0x80",
+    "PART_ENTRY_NUMBER": "2",
+    "PART_ENTRY_OFFSET": "131072",
+    "PART_ENTRY_SIZE": "88487695",
+    "PART_ENTRY_DISK": "253:0"
+  },
+  {
+    "DEVNAME": "/dev/vda1",
+    "SEC_TYPE": "msdos",
+    "UUID": "6D78-30F7",
+    "VERSION": "FAT16",
+    "BLOCK_SIZE": "512",
+    "TYPE": "vfat",
+    "USAGE": "filesystem",
+    "PART_ENTRY_SCHEME": "dos",
+    "PART_ENTRY_UUID": "680dae45-01",
+    "PART_ENTRY_TYPE": "0xef",
+    "PART_ENTRY_NUMBER": "1",
+    "PART_ENTRY_OFFSET": "2048",
+    "PART_ENTRY_SIZE": "126976",
+    "PART_ENTRY_DISK": "253:0"
+  }
+]

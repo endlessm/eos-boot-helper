@@ -8,6 +8,7 @@ max-line-length = 88
 # Include scripts to check in addition to the default *.py.
 filename =
     *.py,
+    ./eos-esp-generator,
     ./eos-migrate-chromium-profile,
     ./eos-migrate-firefox-profile,
     ./eos-update-flatpak-repos,

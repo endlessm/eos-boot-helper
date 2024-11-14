@@ -1,0 +1,10 @@
+{
+  "BOOT_IMAGE": "(hd0,gpt3)/boot/ostree/eos-078584ee3e2b33ee29896c7ebd1533b40f7f7a6d551dcc39cfecd4d8e8f75d51/vmlinuz-6.5.0-10-generic",
+  "root": "UUID=cecb0576-cf95-48bf-8b72-aced790e83e9",
+  "rw": null,
+  "splash": null,
+  "plymouth.ignore-serial-consoles": null,
+  "quiet": null,
+  "loglevel": "0",
+  "ostree": "/ostree/boot.1/eos/078584ee3e2b33ee29896c7ebd1533b40f7f7a6d551dcc39cfecd4d8e8f75d51/0"
+}

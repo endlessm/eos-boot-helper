@@ -1,0 +1,60 @@
+[
+  {
+    "DEVNAME": "/dev/vda1",
+    "SEC_TYPE": "msdos",
+    "UUID": "B5E9-EA49",
+    "VERSION": "FAT16",
+    "BLOCK_SIZE": "512",
+    "TYPE": "vfat",
+    "USAGE": "filesystem",
+    "PART_ENTRY_SCHEME": "gpt",
+    "PART_ENTRY_UUID": "0189f938-7e9e-194d-8757-e85edaaca5b3",
+    "PART_ENTRY_TYPE": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+    "PART_ENTRY_NUMBER": "1",
+    "PART_ENTRY_OFFSET": "2048",
+    "PART_ENTRY_SIZE": "1024000",
+    "PART_ENTRY_DISK": "253:0"
+  },
+  {
+    "DEVNAME": "/dev/vda2",
+    "PART_ENTRY_SCHEME": "gpt",
+    "PART_ENTRY_UUID": "4c4f3323-e487-f145-9a01-2afa67956dc6",
+    "PART_ENTRY_TYPE": "21686148-6449-6e6f-744e-656564454649",
+    "part_ENTRY_NUMBER": "2",
+    "PART_ENTRY_OFFSET": "1026048",
+    "PART_ENTRY_SIZE": "2048",
+    "PART_ENTRY_DISK": "253:0"
+  },
+  {
+    "DEVNAME": "/dev/vda3",
+    "SEC_TYPE": "msdos",
+    "UUID": "3C18-31F6",
+    "VERSION": "FAT16",
+    "BLOCK_SIZE": "512",
+    "TYPE": "vfat",
+    "USAGE": "filesystem",
+    "PART_ENTRY_SCHEME": "gpt",
+    "PART_ENTRY_UUID": "c3c8d283-ec36-534c-be18-1b41377f3d40",
+    "PART_ENTRY_TYPE": "bc13c2ff-59e6-4262-a352-b275fd6f7172",
+    "PART_ENTRY_NUMBER": "3",
+    "PART_ENTRY_OFFSET": "1028096",
+    "PART_ENTRY_SIZE": "409600",
+    "PART_ENTRY_DISK": "253:0"
+  },
+  {
+    "DEVNAME": "/dev/vda4",
+    "LABEL": "ostree",
+    "UUID": "2bad2e5e-d97c-4c87-ae37-aa8ed2279c9a",
+    "VERSION": "1.0",
+    "BLOCK_SIZE": "4096",
+    "TYPE": "ext4",
+    "USAGE": "filesystem",
+    "PART_ENTRY_SCHEME": "gpt",
+    "PART_ENTRY_UUID": "b47e35b3-8d0d-7347-b2e1-6303cc628984",
+    "PART_ENTRY_TYPE": "4f68bce3-e8cd-4db1-96e7-fbcaf984b709",
+    "PART_ENTRY_NUMBER": "4",
+    "PART_ENTRY_OFFSET": "1028096",
+    "PART_ENTRY_SIZE": "499090063",
+    "PART_ENTRY_DISK": "253:0"
+  }
+]

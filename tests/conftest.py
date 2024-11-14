@@ -9,6 +9,11 @@ from shutil import copyfile, copytree
 from .util import EFIVARFS_PATH
 
 
+@pytest.fixture(autouse=True)
+def default_env_vars(monkeypatch):
+    monkeypatch.setenv('LANG', 'C.UTF-8')
+
+
 @pytest.fixture
 def efivarfs(tmp_path, monkeypatch):
     """Temporary efivarfs data

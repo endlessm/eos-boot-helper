@@ -1,0 +1,10 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/loop0p3",
+    "maj:min": null,
+    "fstype": "ext4",
+    "fsroot": null,
+    "options": "errors=remount-ro"
+  }
+]

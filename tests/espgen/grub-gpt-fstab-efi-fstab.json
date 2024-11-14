@@ -1,0 +1,18 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/vda3",
+    "maj:min": null,
+    "fstype": "ext4",
+    "fsroot": null,
+    "options": "errors=remount-ro"
+  },
+  {
+    "target": "/efi",
+    "source": "/dev/vda1",
+    "maj:min": null,
+    "fstype": "vfat",
+    "fsroot": null,
+    "options": "umask=0077"
+  }
+]

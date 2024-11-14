@@ -1,0 +1,50 @@
+[
+  {
+    "target": "/",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/2b89dbb29d8a02e2fcc96b9812dcb996222f7b38d064e303c899bc04f845cbc3.0",
+    "options": "ro,relatime,errors=remount-ro"
+  },
+  {
+    "target": "/boot",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/boot",
+    "options": "ro,relatime,errors=remount-ro"
+  },
+  {
+    "target": "/usr",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/deploy/2b89dbb29d8a02e2fcc96b9812dcb996222f7b38d064e303c899bc04f845cbc3.0/usr",
+    "options": "ro,relatime,errors=remount-ro"
+  },
+  {
+    "target": "/sysroot",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/",
+    "options": "ro,relatime,errors=remount-ro"
+  },
+  {
+    "target": "/var",
+    "source": "/dev/loop0p3",
+    "maj:min": "259:2",
+    "fstype": "ext4",
+    "fsroot": "/ostree/deploy/eos/var",
+    "options": "ro,relatime,errors=remount-ro"
+  },
+  {
+    "target": "/efi",
+    "source": "/dev/sda1",
+    "maj:min": "8:1",
+    "fstype": "vfat",
+    "fsroot": "/",
+    "options": "rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro"
+  }
+]
