@@ -19,7 +19,7 @@ if [ "$1" -ne 0 ]; then
     # For now, disable the swap partition if in use
     swapoff -a
     mkswap /dev/zram0
-    swapon /dev/zram0
+    swapon -d /dev/zram0
 else
     swapoff /dev/zram0
     echo 1 > /sys/block/zram0/reset
