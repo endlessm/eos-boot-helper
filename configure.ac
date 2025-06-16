@@ -132,6 +132,7 @@ AC_CONFIG_FILES([
 	fallback-fb-setup/Makefile
 	flatpak-repos/Makefile
 	journald/Makefile
+	locale/Makefile
 	nvidia/Makefile
 	psi-monitor/Makefile
 	record-boot-success/Makefile
