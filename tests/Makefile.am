@@ -21,6 +21,7 @@ EXTRA_DIST = \
 	efivars \
 	test_image_boot.py \
 	test_live_storage.py \
+	test_migrate_chrome_profile.py \
 	test_migrate_chromium_profile.py \
 	test_migrate_firefox_profile.py \
 	test_repartition.py \
