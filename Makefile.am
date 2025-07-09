@@ -26,12 +26,14 @@ dist_systemdunit_DATA = \
 	eos-firstboot.service \
 	eos-fix-flatpak-overrides.service \
 	eos-live-boot-overlayfs-setup.service \
+	eos-migrate-chrome.service \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
 	$(NULL)
 
 dist_systemduserunit_DATA = \
+	eos-migrate-chrome-profile.service \
 	eos-migrate-chromium-profile.service \
 	eos-migrate-firefox-profile.service \
 	eos-migrate-shotwell.service \
@@ -68,7 +70,10 @@ install-data-hook:
 	ln -s 'no-wait.d/eos-firewall-localonly-nm' \
 	  '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
 	chmod +x '$(DESTDIR)$(networkscriptdir)/eos-firewall-localonly-nm'
+	$(MKDIR_P) '$(DESTDIR)$(systemdunitdir)/multi-user.target.wants'
+	ln -s ../eos-migrate-chrome.service '$(DESTDIR)$(systemdunitdir)/multi-user.target.wants'
 	$(MKDIR_P) '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
+	ln -s ../eos-migrate-chrome-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-chromium-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-firefox-profile.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
 	ln -s ../eos-migrate-shotwell.service '$(DESTDIR)$(systemduserunitdir)/gnome-session.target.wants'
@@ -104,6 +109,8 @@ eos_update_efi_uuid_CFLAGS = $(AM_CFLAGS) $(EFIBOOT_CFLAGS)
 eos_update_efi_uuid_LDADD = $(EFIBOOT_LIBS)
 
 dist_libexec_SCRIPTS = \
+	eos-migrate-chrome \
+	eos-migrate-chrome-profile \
 	eos-migrate-chromium-profile \
 	eos-migrate-firefox-profile \
 	$(NULL)
