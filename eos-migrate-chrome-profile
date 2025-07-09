@@ -1,0 +1,125 @@
+#!/usr/bin/python3
+#
+# eos-migrate-chrome-profile: update default web browser and move user's Chrome
+# config profile to its new home
+#
+# This script is based on eos-migrate-chromium-profile.
+#
+# Copyright © 2025 Endless OS Foundation LLC
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+import fileinput
+import os
+import subprocess
+import sys
+from gi.repository import GLib
+
+
+USER_HOME_DIR = os.path.expanduser("~/")
+OLD_CHROME_CONFIG_DIR = os.path.join(USER_HOME_DIR, ".config", "google-chrome")
+NEW_CHROME_DATA_DIR = os.path.join(USER_HOME_DIR, ".var", "app", "com.google.Chrome")
+NEW_CHROME_CONFIG_DIR = os.path.join(NEW_CHROME_DATA_DIR, "config", "google-chrome")
+
+OLD_WIDEVINE_SYSTEM_DIR = os.path.join(os.path.sep, "usr", "lib",
+                                       "google-chrome", "WidevineCdm")
+
+MIMEAPPS_LIST = os.path.join(GLib.get_user_config_dir(), "mimeapps.list")
+MIMEAPPS_GROUPS = [
+    "Default Applications",
+    "Added Associations",
+    "Removed Associations",
+]
+OLD_DESKTOP_FILE = "google-chrome.desktop"
+NEW_DESKTOP_FILE = "com.google.Chrome.desktop"
+
+
+def update_mimeapps_list(path):
+    """Update file associations, which in particular includes x-scheme-handler/http and
+    friends to specify the default web browser.
+
+    We cannot use GLib's own API to query what mime types the old Chrome desktop file
+    is a handler for, because we can't construct a GDesktopAppInfo for it, because it
+    tries to execute the old Chrome which no longer exists. Update to the new installed
+    Flathub Chrome's desktop.
+    """
+
+    keyfile = GLib.KeyFile()
+    try:
+        keyfile.load_from_file(
+            path, GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS,
+        )
+    except GLib.GError as gerror:
+        if gerror.matches(GLib.file_error_quark(), GLib.FileError.NOENT):
+            return
+
+        raise
+
+    changed = False
+
+    for group in MIMEAPPS_GROUPS:
+        if not keyfile.has_group(group):
+            continue
+
+        keys, _length = keyfile.get_keys(group)
+        for key in keys:
+            values = keyfile.get_string_list(group, key)
+            try:
+                i = values.index(OLD_DESKTOP_FILE)
+            except ValueError:
+                pass
+            else:
+                values[i] = NEW_DESKTOP_FILE
+                keyfile.set_string_list(group, key, values)
+                changed = True
+
+    if changed:
+        keyfile.save_to_file(path)
+
+
+def update_old_config_references(path):
+    if not os.path.isfile(path):
+        return
+
+    for line in fileinput.input(path, inplace=True):
+        line = line.replace(OLD_CHROME_CONFIG_DIR, NEW_CHROME_CONFIG_DIR)
+        line = line.replace(OLD_WIDEVINE_SYSTEM_DIR, "")
+        print(line, end='')
+
+
+def main():
+    res = subprocess.run(["flatpak", "info", "-o", "com.google.Chrome//stable"],
+                         capture_output=True)
+    if res.stdout != b"flathub\n":
+        print("Flathub Chrome has not been installed", file=sys.stderr)
+        sys.exit(1)
+
+    update_mimeapps_list(MIMEAPPS_LIST)
+
+    if (
+        os.path.isdir(OLD_CHROME_CONFIG_DIR) and
+        not os.path.isdir(NEW_CHROME_CONFIG_DIR)
+    ):
+        update_old_config_references(
+            os.path.join(OLD_CHROME_CONFIG_DIR,
+                         "WidevineCdm", "latest-component-updated-widevine-cdm"))
+        os.makedirs(os.path.dirname(NEW_CHROME_CONFIG_DIR), exist_ok=True)
+        os.rename(OLD_CHROME_CONFIG_DIR, NEW_CHROME_CONFIG_DIR)
+        # Create the symlink to serve both eos-apps & Flathub's Chrome
+        os.symlink(NEW_CHROME_CONFIG_DIR, OLD_CHROME_CONFIG_DIR)
+
+
+if __name__ == "__main__":
+    main()

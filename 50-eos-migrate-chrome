@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+ACTION=${2}
+
+if [ "${ACTION}" != "connectivity-change" ] || \
+   [ "${CONNECTIVITY_STATE}" != "FULL" ] || \
+   [ "$(flatpak info -o com.google.Chrome//eos3)" != "eos-apps" ]; then
+    exit 0
+fi
+
+/usr/bin/systemctl start eos-migrate-chrome.service
