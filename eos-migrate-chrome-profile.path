@@ -1,0 +1,9 @@
+[Unit]
+Description=Monitor eos3 Chrome replacement and trigger profile migration
+
+[Path]
+PathChanged=/var/lib/flatpak/app/com.google.Chrome/x86_64/stable
+Unit=eos-migrate-chrome-profile.service
+
+[Install]
+WantedBy=gnome-session.target

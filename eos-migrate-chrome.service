@@ -1,0 +1,8 @@
+[Unit]
+Description=Replace eos-apps Chrome with Flathub Chrome
+ConditionPathExists=/var/lib/flatpak/app/com.google.Chrome/x86_64/eos3
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-boot-helper/eos-migrate-chrome
+Restart=no
