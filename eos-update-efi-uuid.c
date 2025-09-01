@@ -214,7 +214,7 @@ dump_load_option (const char      *name,
     }
 
   size_t path_len = len + 1;
-  cleanup_free char *path = calloc (path_len, sizeof (char));
+  cleanup_free unsigned char *path = calloc (path_len, sizeof (char));
   if (path == NULL)
     return false;
 
