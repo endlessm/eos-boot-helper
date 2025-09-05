@@ -5,7 +5,6 @@
 # Reverse systemd defaults
 disable systemd-networkd.service
 disable systemd-networkd.socket
-disable systemd-resolved.service
 disable systemd-networkd-wait-online.service
 disable systemd-sysupdate.service
 disable systemd-sysupdate.timer
@@ -13,15 +12,6 @@ disable systemd-sysupdate-reboot.service
 disable systemd-sysupdate-reboot.timer
 
 # Disable other unwanted units
-disable apt-daily.timer
-disable apt-daily-upgrade.timer
-disable bluetooth-init.service
-disable checkbox-ng.service
-disable cni-dhcp.service
-disable crio.service
-disable crio-shutdown.service
-disable cron.service
-disable dpkg-db-backup.timer
 disable eos-factory-reset-users.service
 disable eos-firewall-localonly.service
 disable eos-safe-defaults.service
@@ -29,23 +19,16 @@ disable eos-update-server.service
 disable eos-update-server.socket
 disable eos-updater-avahi.path
 disable eos-updater-avahi.service
-disable ifupdown-wait-online.service
-disable networking.service
 disable NetworkManager-wait-online.service
-disable logrotate.timer
 disable openvpn-client@.service
 disable openvpn-server@.service
 disable openvpn.service
 disable openvpn@.service
-disable podman-auto-update.service
-disable podman-auto-update.timer
 disable pppd-dns.service
 disable rtkit-daemon.service
-disable rsyslog.service
 disable serial-getty@.service
 disable smartmontools.service
 disable speech-dispatcherd.service
-disable strongswan-starter.service
 disable ssh*.service
 disable ssh.socket
 disable systemd-nspawn@.service
@@ -61,47 +44,3 @@ disable xl2tpd.service
 # prevent conflicted units (systemd-timesyncd.service) from starting.
 # https://phabricator.endlessm.com/T32330#906081
 disable virtualbox-guest-utils.service
-
-# Disable units masked by Debian, as systemctl preset-all fails to
-# handle them. Without this, `systemctl preset-all` will fail with:
-#
-# Operation failed: Cannot send after transport endpoint shutdown
-#
-# Units masked in systemd. See debian/systemd.links.
-disable x11-common.service
-disable hostname.service
-disable rmnologin.service
-disable bootmisc.service
-disable fuse.service
-disable bootlogd.service
-disable stop-bootlogd-single.service
-disable stop-bootlogd.service
-disable hwclock.service
-disable mountkernfs.service
-disable mountdevsubfs.service
-disable mountall.service
-disable mountall-bootclean.service
-disable mountnfs.service
-disable mountnfs-bootclean.service
-disable umountfs.service
-disable umountnfs.service
-disable umountroot.service
-disable checkfs.service
-disable checkroot.service
-disable checkroot-bootclean.service
-disable cryptdisks.service
-disable cryptdisks-early.service
-disable single.service
-disable killprocs.service
-disable sendsigs.service
-disable halt.service
-disable reboot.service
-disable rc.service
-disable rcS.service
-disable motd.service
-disable bootlogs.service
-#
-# Units masked by other packages. Run the following to find them:
-#
-# find /usr/lib/systemd/system -lname /dev/null -printf 'disable %f\n' | sort
-disable screen-cleanup.service
