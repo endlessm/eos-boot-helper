@@ -1,0 +1,16 @@
+[Unit]
+Description=Replace eos-apps Chrome with Flathub Chrome
+
+ConditionPathExists=/var/lib/flatpak/app/com.google.Chrome/x86_64/eos3
+After=network-online.target
+Wants=network-online.target
+Before=gdm.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-boot-helper/eos-migrate-chrome
+Restart=no
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
