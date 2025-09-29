@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e -x
+
+if ! [[ $(flatpak info -o com.google.Chrome//eos3) == "eos-apps" ]]; then
+  echo "eos-apps Chrome is not installed"
+  exit
+fi
+
+if ! [[ $(flatpak info -o com.google.Chrome//stable) == "flathub" ]]; then
+  echo "Install Flathub Chrome"
+  flatpak install flathub com.google.Chrome -y
+fi
+
+echo "Uninstall eos-apps Flathub"
+flatpak uninstall com.google.Chrome//eos3 -y

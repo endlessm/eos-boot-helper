@@ -1,0 +1,15 @@
+[Unit]
+Description=Migrate Chrome config profile to new path
+
+ConditionPathExists=%h/.config/google-chrome
+ConditionPathExists=!%h/.var/app/com.google.Chrome/config/google-chrome
+ConditionPathExists=/var/lib/flatpak/app/com.google.Chrome/x86_64/stable
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/eos-boot-helper/eos-migrate-chrome-profile
+Restart=no
+RemainAfterExit=yes
+
+[Install]
+WantedBy=gnome-session.target
