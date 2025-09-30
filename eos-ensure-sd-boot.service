@@ -1,0 +1,24 @@
+[Unit]
+Description=Ensure systemd-boot is installed
+DefaultDependencies=no
+Conflicts=shutdown.target
+Wants=local-fs.target
+After=local-fs.target
+Before=sysinit.target
+
+# Run before systemd-boot-update so that it doesn't run concurrently.
+Before=systemd-boot-update.service
+
+# Only run on x86_64 UEFI as that's the only platform where systemd-boot
+# is used. Any other platforms added later will install systemd-boot
+# correctly out of the box.
+ConditionArchitecture=x86-64
+ConditionFirmware=uefi
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/eos-ensure-sd-boot
+
+[Install]
+WantedBy=sysinit.target
