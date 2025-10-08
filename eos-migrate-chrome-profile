@@ -29,6 +29,7 @@ from gi.repository import GLib
 
 
 USER_HOME_DIR = os.path.expanduser("~/")
+DESKTOP_SHORTCUTS_DIR = os.path.join(USER_HOME_DIR, ".local", "share", "applications")
 OLD_CHROME_CONFIG_DIR = os.path.join(USER_HOME_DIR, ".config", "google-chrome")
 NEW_CHROME_DATA_DIR = os.path.join(USER_HOME_DIR, ".var", "app", "com.google.Chrome")
 NEW_CHROME_CONFIG_DIR = os.path.join(NEW_CHROME_DATA_DIR, "config", "google-chrome")
@@ -89,6 +90,43 @@ def update_mimeapps_list(path):
         keyfile.save_to_file(path)
 
 
+def update_desktop_shortcut(path):
+    keyfile = GLib.KeyFile()
+    keyfile.load_from_file(path,
+                           GLib.KeyFileFlags.KEEP_COMMENTS |
+                           GLib.KeyFileFlags.KEEP_TRANSLATIONS)
+
+    groups, _ = keyfile.get_groups()
+    for group in groups:
+        try:
+            exec_cmd = keyfile.get_string(group, "Exec")
+        except GLib.GError as error:
+            if not error.matches(GLib.key_file_error_quark(),
+                                 GLib.KeyFileError.KEY_NOT_FOUND):
+                raise error
+            continue
+
+        if not exec_cmd.startswith("/usr/bin/eos-google-chrome"):
+            continue
+
+        keyfile.set_string(group, "Exec",
+                           "/usr/bin/flatpak run com.google.Chrome" +
+                           exec_cmd[len("/usr/bin/eos-google-chrome"):])
+
+    keyfile.save_to_file(path)
+
+
+def update_desktop_shortcuts(path=DESKTOP_SHORTCUTS_DIR):
+    try:
+        shortcuts = os.listdir(path)
+    except FileNotFoundError:
+        return
+
+    for filename in shortcuts:
+        if filename.endswith(".desktop"):
+            update_desktop_shortcut(os.path.join(path, filename))
+
+
 def update_old_config_references(path):
     if not os.path.isfile(path):
         return
@@ -107,6 +145,7 @@ def main():
         sys.exit(1)
 
     update_mimeapps_list(MIMEAPPS_LIST)
+    update_desktop_shortcuts()
 
     if (
         os.path.isdir(OLD_CHROME_CONFIG_DIR) and

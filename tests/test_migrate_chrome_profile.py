@@ -91,6 +91,126 @@ class TestUpdateMimeappsList(BaseTestCase):
         self.assertEqual(expected_data, new_data)
 
 
+class TestUpdateDesktopShortcuts(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_no_shortcuts_dir(self):
+        emfp.update_desktop_shortcuts(os.path.join(self.tmp.name, "no-such-directory"))
+
+    def test_empty_shortcuts_dir(self):
+        emfp.update_desktop_shortcuts(self.tmp.name)
+
+    def test_not_there(self):
+        orig_data = textwrap.dedent(
+            """
+            [Desktop Entry]
+            Exec=/usr/bin/chromium-browser --profile-directory=Default
+            """
+        ).lstrip()
+        expected_data = orig_data
+
+        self._test(orig_data, expected_data)
+
+    def test_there(self):
+        orig_data = textwrap.dedent(
+            """
+            #!/usr/bin/env xdg-open
+            [Desktop Entry]
+            Version=1.0
+            Terminal=false
+            Type=Application
+            Name=YouTube
+            Exec=/usr/bin/eos-google-chrome "--profile-directory=Profile 1"
+            Icon=chrome-agimnkijcaahngcdmfeangaknmldooml-Profile_1
+            StartupWMClass=crx_agimnkijcaahngcdmfeangaknmldooml
+            Actions=Explore;Subscriptions
+
+            [Desktop Action Explore]
+            Name=Explore
+            Exec=/usr/bin/eos-google-chrome "--profile-directory=Profile 1"
+
+            [Desktop Action Subscriptions]
+            Name=Subscriptions
+            Exec=/usr/bin/eos-google-chrome "--profile-directory=Profile 1"
+            """
+        ).lstrip()
+        expected_data = textwrap.dedent(
+            """
+            #!/usr/bin/env xdg-open
+            [Desktop Entry]
+            Version=1.0
+            Terminal=false
+            Type=Application
+            Name=YouTube
+            Exec=/usr/bin/flatpak run com.google.Chrome "--profile-directory=Profile 1"
+            Icon=chrome-agimnkijcaahngcdmfeangaknmldooml-Profile_1
+            StartupWMClass=crx_agimnkijcaahngcdmfeangaknmldooml
+            Actions=Explore;Subscriptions
+
+            [Desktop Action Explore]
+            Name=Explore
+            Exec=/usr/bin/flatpak run com.google.Chrome "--profile-directory=Profile 1"
+
+            [Desktop Action Subscriptions]
+            Name=Subscriptions
+            Exec=/usr/bin/flatpak run com.google.Chrome "--profile-directory=Profile 1"
+            """
+        ).lstrip()
+
+        self._test(orig_data, expected_data)
+
+    def test_multi_languages(self):
+        orig_data = textwrap.dedent(
+            """
+            # Comment
+            [Desktop Entry]
+            Name=Chrome
+            Name[en_GB]=Chrome, milord
+            Exec=/usr/bin/eos-google-chrome --profile-directory=Default
+            """
+        ).lstrip()
+        expected_data = textwrap.dedent(
+            """
+            # Comment
+            [Desktop Entry]
+            Name=Chrome
+            Name[en_GB]=Chrome, milord
+            Exec=/usr/bin/flatpak run com.google.Chrome --profile-directory=Default
+            """
+        ).lstrip()
+
+        self._test(orig_data, expected_data)
+
+    def test_no_exec_in_group(self):
+        orig_data = textwrap.dedent(
+            """
+            [Dummy Group]
+            foo=bar
+            """
+        ).lstrip()
+        expected_data = orig_data
+
+        self._test(orig_data, expected_data)
+
+    def _test(self, orig_data, expected_data):
+        test_desktop = os.path.join(self.tmp.name,
+                                    "test.desktop")
+        with open(test_desktop, "w") as f:
+            f.write(orig_data)
+
+        emfp.update_desktop_shortcuts(self.tmp.name)
+        with open(test_desktop, "r") as f:
+            new_data = f.read()
+
+        self.assertEqual(expected_data, new_data)
+
+
 class TestUpdateOldConfigReferences(BaseTestCase):
     def setUp(self):
         super().setUp()
