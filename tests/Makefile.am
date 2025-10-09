@@ -10,9 +10,12 @@ AM_TESTS_ENVIRONMENT = \
 	$(NULL)
 
 TESTS = \
-	check-syntax \
+	check-syntax.tap \
 	run-tests \
 	$(NULL)
+
+TEST_EXTENSIONS = .tap
+TAP_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) $(top_srcdir)/build-aux/tap-driver.sh
 
 EXTRA_DIST = \
 	$(TESTS) \

@@ -1,5 +1,6 @@
 AC_INIT([eos-boot-helper], [0.0])
 
+AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([eos-firstboot])
 PKG_PROG_PKG_CONFIG
@@ -139,4 +140,5 @@ AC_CONFIG_FILES([
 	tests/Makefile
 	tmpfiles.d/chromium-system-services.conf
 ])
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_OUTPUT
