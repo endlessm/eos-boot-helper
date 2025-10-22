@@ -21,7 +21,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 
 dist_systemdunit_DATA = \
 	eos-config-journal.service \
-	eos-enable-zram.service \
 	eos-firewall-localonly.service \
 	eos-firstboot.service \
 	eos-fix-flatpak-overrides.service \
@@ -85,7 +84,6 @@ dist_udevrules_DATA = \
 
 dist_sbin_SCRIPTS = \
 	eos-config-journal \
-	eos-enable-zram \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-live-boot-overlayfs-setup \
