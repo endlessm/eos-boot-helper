@@ -12,7 +12,7 @@ ConditionNeedsUpdate=|/etc
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/sbin/update-ca-certificates
+ExecStart=/usr/bin/update-ca-trust
 
 [Install]
 WantedBy=multi-user.target
