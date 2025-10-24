@@ -18,11 +18,15 @@ ConditionKernelCommandLine=endless.live_boot
 Before=systemd-backlight@.service
 Before=systemd-coredump@.service
 Before=systemd-journal-flush.service
+Before=systemd-networkd-persistent-storage.service
+Before=systemd-oomd.service
 Before=systemd-pstore.service
 Before=systemd-random-seed.service
+Before=systemd-resolved.service
 Before=systemd-rfkill.service
 Before=systemd-rfkill.socket
 Before=systemd-timesyncd.service
+Before=systemd-tpm2-setup.service
 Before=systemd-update-utmp-runlevel.service
 Before=systemd-update-utmp.service
 
