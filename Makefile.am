@@ -30,7 +30,6 @@ dist_systemdunit_DATA = \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
-	set-regdom/set-regdom.service \
 	set-regdom/watch-regdom.path \
 	set-regdom/watch-regdom.service \
 	$(NULL)
@@ -90,6 +89,7 @@ dist_udevrules_DATA = \
 	50-disk-bfq.rules \
 	50-usb-mouse-wakeup.rules \
 	60-suspend-mode.rules \
+	set-regdom/85-regulatory.rules \
 	$(NULL)
 
 dist_sbin_SCRIPTS = \
@@ -102,7 +102,7 @@ dist_sbin_SCRIPTS = \
 	eos-test-mode \
 	eos-transient-setup \
 	eos-update-flatpak-repos \
-	set-regdom/set-regdom \
+	set-regdom/setregdomain \
 	$(NULL)
 
 sbin_PROGRAMS = \
