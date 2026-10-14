@@ -6,4 +6,4 @@ After=systemd-timedated.service
 Type=oneshot
 # Only set WiFi regulatory domain when /etc/localtime is changed in 10s.
 ExecCondition=/usr/bin/find /etc/localtime -mmin -0.16
-ExecStart=/usr/sbin/set-regdom
+ExecStart=/usr/sbin/setregdomain
