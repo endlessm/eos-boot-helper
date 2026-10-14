@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# set-regdom - set WiFi regulatory domain according to timezone
+#
+# Copyright (C) 2026 Endless Access LLC.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# Timezone -> Country Code
+tz=$(timedatectl show -p Timezone --value)
+tab=$(printf '\t')
+cc=$(grep "${tab}${tz}\$" /usr/share/zoneinfo/zone.tab 2>/dev/null | cut -f1 | head -n1)
+
+if expr "$cc" : '^[A-Z][A-Z]$' >/dev/null; then
+    echo "set-regdom: Set regulation domain to $cc"
+    iw reg set "$cc"
+fi

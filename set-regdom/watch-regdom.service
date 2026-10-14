@@ -1,0 +1,9 @@
+[Unit]
+Description=Set WiFi regulatory domain from watching timezone change
+After=systemd-timedated.service
+
+[Service]
+Type=oneshot
+# Only set WiFi regulatory domain when /etc/localtime is changed in 10s.
+ExecCondition=/usr/bin/find /etc/localtime -mmin -0.16
+ExecStart=/usr/sbin/set-regdom
