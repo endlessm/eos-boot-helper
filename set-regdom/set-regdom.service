@@ -1,0 +1,10 @@
+[Unit]
+Description=Set WiFi regulatory domain from timezone
+After=systemd-timedated.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/set-regdom
+
+[Install]
+WantedBy=multi-user.target

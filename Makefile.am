@@ -29,6 +29,9 @@ dist_systemdunit_DATA = \
 	eos-transient-setup.service \
 	eos-update-flatpak-repos.service \
 	eos-update-system-ca.service \
+	set-regdom/set-regdom.service \
+	set-regdom/watch-regdom.path \
+	set-regdom/watch-regdom.service \
 	$(NULL)
 
 dist_systemduserunit_DATA = \
@@ -98,6 +101,7 @@ dist_sbin_SCRIPTS = \
 	eos-test-mode \
 	eos-transient-setup \
 	eos-update-flatpak-repos \
+	set-regdom/set-regdom \
 	$(NULL)
 
 sbin_PROGRAMS = \
