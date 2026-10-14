@@ -1,0 +1,18 @@
+[Unit]
+Description=Watch timezone changes for WiFi regulatory domain
+
+[Path]
+# Why watch '/etc' instead of '/etc/localtime'?
+# -----------------------------------------------------------------------------
+# 1. 'timedatectl set-timezone' changes the timezone by atomicaly replacing the
+#    '/etc/localtime' symbolic link (deleting and recreating it).
+# 2. systemd.path uses 'inotify' underneath. When a symlink is deleted, the
+#    inotify watch on its specific inode is lost and won't trigger on the new
+#    link.
+# 3. By watching the parent directory '/etc', systemd can reliably catch file
+#    creation, deletion, and replacement events occurring inside it.
+PathChanged=/etc
+Unit=watch-regdom.service
+
+[Install]
+WantedBy=multi-user.target
