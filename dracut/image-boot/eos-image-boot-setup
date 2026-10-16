@@ -105,16 +105,18 @@ fi
 # Setup a stable /dev/disk/endless-image symlink for our image device and
 # partitions.
 #
-# This is used by eos-installer, which doesn't have the knowledge how
-# to find the image inside a squashfs, so it uses this path. This also
-# requires the device node to have appropriate permissions.
-# This path is also used by the rest of the initramfs which is hardcoded
+# This path is used by the rest of the initramfs which is hardcoded
 # to find the rootfs at /dev/disk/endless-image3.
+#
+# On live systems, this is also used by eos-installer, which doesn't know how
+# to find the image inside a squashfs, so it uses this path. In this case the
+# device node must be world-readable, since eos-installer runs as an
+# unprivileged user.
 image_device_name="${image_device##*/}"
 mkdir -p /run/udev/rules.d
 cat <<EOF > /run/udev/rules.d/70-endless-image.rules
-SUBSYSTEM=="block", KERNEL=="${image_device_name}", MODE="0664", SYMLINK+="disk/endless-image"
-SUBSYSTEM=="block", KERNEL=="${image_device_name}p?", MODE="0664", SYMLINK+="disk/endless-image%n"
+SUBSYSTEM=="block", KERNEL=="${image_device_name}",   ${roflag:+MODE="0664",} SYMLINK+="disk/endless-image"
+SUBSYSTEM=="block", KERNEL=="${image_device_name}p?", ${roflag:+MODE="0664",} SYMLINK+="disk/endless-image%n"
 EOF
 
 udevadm control --reload-rules
