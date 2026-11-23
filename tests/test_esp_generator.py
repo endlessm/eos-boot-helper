@@ -276,6 +276,41 @@ def test_get_esp_mount(system, root_dir, mock_system_data, monkeypatch):
     assert esp_mount == expected_mount
 
 
+def test_get_esp_mount_ostree_boot(root_dir, mock_system_data):
+    """EspGenerator.get_esp_mount with ostree providing /boot
+
+    Newer ostree bind mounts /sysroot/boot at /boot from
+    ostree-system-generator, so there's no /boot mount yet when the
+    generator runs. A /sysroot/boot/loader symlink indicates that /boot is
+    on the root filesystem and the ESP must not be mounted there.
+    """
+    mock_system_data('sdboot')
+
+    # Without the symlink the ESP is mounted at /boot.
+    generator = espgen.EspGenerator()
+    esp_mount = generator.get_esp_mount()
+    assert esp_mount.target == '/boot'
+
+    loader = root_dir / 'sysroot/boot/loader'
+    loader.parent.mkdir(parents=True)
+    loader.symlink_to('loader.1')
+    generator = espgen.EspGenerator()
+    esp_mount = generator.get_esp_mount()
+    assert esp_mount == espgen.EspMount(
+        source='/dev/vda1',
+        target='/efi',
+        type='vfat',
+        umask='0077',
+    )
+
+    # A regular directory (e.g. a separate boot partition) doesn't count.
+    loader.unlink()
+    loader.mkdir()
+    generator = espgen.EspGenerator()
+    esp_mount = generator.get_esp_mount()
+    assert esp_mount.target == '/boot'
+
+
 def test_write_units(unit_dir):
     """EspMount.write_units tests"""
     esp_mount = espgen.EspMount(

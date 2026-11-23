@@ -704,6 +704,17 @@ class EspGenerator:
                     )
                     path = '/efi'
 
+            elif self._ostree_provides_boot():
+                # Newer ostree creates the /boot bind mount from /sysroot/boot
+                # in ostree-system-generator rather than in the initramfs, so it
+                # isn't visible as a mount yet. Don't claim /boot or the two
+                # generators will fight over boot.mount.
+                logger.debug(
+                    '/boot will be bind mounted from /sysroot/boot by ostree, '
+                    'prefer /efi as mount path'
+                )
+                path = '/efi'
+
             if path == '/boot':
                 return _use_if_dir_exists(path)
 
@@ -736,6 +747,17 @@ class EspGenerator:
                 return None
 
         return _use_if_dir_exists(path)
+
+    def _ostree_provides_boot(self):
+        """Whether ostree will bind mount /sysroot/boot at /boot
+
+        This is the same check ostree uses (otcore_boot_is_on_physical_root):
+        when /boot is on the root filesystem, /sysroot/boot/loader is a
+        symlink. When /boot is a separate partition, such as an ESP using
+        vfat, it can't be.
+        """
+        loader = self.root / 'sysroot/boot/loader'
+        return loader.is_symlink()
 
     def _get_root_partition(self):
         root_mount = self._get_mount(target='/')
