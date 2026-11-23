@@ -97,7 +97,6 @@ dist_sbin_SCRIPTS = \
 	eos-firewall-localonly \
 	eos-firstboot \
 	eos-live-boot-overlayfs-setup \
-	eos-repartition-mbr \
 	eos-test-mode \
 	eos-transient-setup \
 	eos-update-flatpak-repos \

@@ -33,7 +33,8 @@ class ImageTestCase(BaseTestCase):
         mkfs = 'mkfs.{}'.format(filesystem)
         with tempfile.NamedTemporaryFile() as host_img:
             host_img.truncate(4 * 1024 * 1024)
-            sfdisk(host_img.name, b'start=64KiB, type=0x07')
+            sfdisk(host_img.name,
+                   b'start=64KiB, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7')
 
             with losetup(host_img.name) as host_disk:
                 host_device = host_disk + 'p1'
@@ -62,8 +63,7 @@ class TestImageBootSetup(ImageTestCase):
         with open(self.endless_img, 'wb') as f:
             f.truncate(1 * 1024 * 1024)
             sfdisk(f.name,
-                   b'start=64KiB, type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709',
-                   label='gpt')
+                   b'start=64KiB, type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709')
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)

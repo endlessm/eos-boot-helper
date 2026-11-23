@@ -24,7 +24,7 @@ This program is responsible for mounting the EFI System Partition (ESP) on EOS
 systems. It's heavily inspired by systemd-gpt-auto-generator with a few policy
 changes that are not easily expressed there:
 
-* Both GPT and MBR partition tables are supported.
+* Only GPT partition tables are supported.
 
 * The EFI LoaderDevicePartUUID variable is preferred but not required. This
   allows for usage with bootloaders such as GRUB that do not implement the boot
@@ -65,7 +65,6 @@ progname = os.path.basename(__file__)
 logger = logging.getLogger(progname)
 
 ESP_GPT_PARTTYPE = 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
-ESP_MBR_PARTTYPE = '0xef'
 XBOOTLDR_GPT_PARTTYPE = 'bc13c2ff-59e6-4262-a352-b275fd6f7172'
 LOADER_EFI_VENDOR = '4a67b082-0a4c-41cf-b6c7-440b29bb8c4f'
 LOADER_DEVICE_PART_UUID_NAME = 'LoaderDevicePartUUID'
@@ -511,20 +510,13 @@ class EspGenerator:
             if not self._loader_device_part:
                 return None
 
-            # Make sure it points to an ESP. I'm fairly certain this will only
-            # be set on GPT disks, but validate MBR, too.
+            # Make sure it points to an ESP. This should only be set on GPT
+            # disks.
             loader_device_dev = self._loader_device_part['DEVNAME']
             loader_device_scheme = self._loader_device_part['PART_ENTRY_SCHEME']
             loader_device_parttype = self._loader_device_part['PART_ENTRY_TYPE']
             if loader_device_scheme == 'gpt':
                 if loader_device_parttype != ESP_GPT_PARTTYPE:
-                    logger.info(
-                        f'Ignoring LoaderDevicePartUUID device {loader_device_dev} '
-                        'since it is not an EFI system partition'
-                    )
-                    return None
-            elif loader_device_scheme == 'dos':
-                if loader_device_parttype != ESP_MBR_PARTTYPE:
                     logger.info(
                         f'Ignoring LoaderDevicePartUUID device {loader_device_dev} '
                         'since it is not an EFI system partition'
@@ -605,18 +597,6 @@ class EspGenerator:
             if not esp_part:
                 logger.info(
                     f'No GPT partition with ESP type {ESP_GPT_PARTTYPE} found '
-                    f'on {esp_disk_part_dev} disk'
-                )
-                return None
-        elif esp_disk_scheme == 'dos':
-            esp_part = self._get_partition(
-                PART_ENTRY_SCHEME=esp_disk_scheme,
-                PART_ENTRY_DISK=esp_disk_part['PART_ENTRY_DISK'],
-                PART_ENTRY_TYPE=ESP_MBR_PARTTYPE,
-            )
-            if not esp_part:
-                logger.info(
-                    f'No MBR partition with ESP type {ESP_MBR_PARTTYPE} found '
                     f'on {esp_disk_part_dev} disk'
                 )
                 return None

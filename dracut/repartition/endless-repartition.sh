@@ -9,19 +9,14 @@
 # It is important to identify that this system is an Endless-flashed device
 # that desires such treatment.
 
-# For platforms using a GPT partition table, we do this by detecting that GPT
-# flag #55 is set on the root partition, which is deliberately set in EOS
-# images. If you need to avoid such repartitioning, just remove that flag
-# before first boot.
+# Only GPT partition tables are supported. We identify an Endless-flashed
+# device by detecting that GPT flag #55 is set on the root partition, which is
+# deliberately set in EOS images. If you need to avoid such repartitioning, just
+# remove that flag before first boot.
 #
-# When dealing with a DOS partition table we do this by detecting that the type
-# code for unused partition entry 4 has magic number 'dd', which is
-# deliberately set in EOS images. If you need to avoid such repartitioning,
-# just remove that 4th partition before first boot.
-#
-# The 55 flag (or the "dd" marker) is also removed after this script is run,
-# providing a quick/cheap way of knowing that our work is done, avoiding going
-# through all this logic on each boot.
+# The 55 flag is also removed after this script is run, providing a quick/cheap
+# way of knowing that our work is done, avoiding going through all this logic
+# on each boot.
 #
 # This script is written carefully so that it can be interrupted after each
 # operation, on next boot it should effectively continue where it left off.
@@ -65,7 +60,7 @@ get_last_char() {
 # We have to work with a variety of setups here:
 # - SCSI/MMC/NVMe block devices with different naming conventions
 # - A different partition numbering scheme as not all configurations have
-#   a ESP and a BIOS boot partition.
+#   an ESP.
 # - Virtual block devices for OpenQA
 partno=$(get_last_char ${root_part})
 swap_partno=$((partno + 1))
@@ -95,22 +90,19 @@ if [ -z "$pt_label" ]; then
   echo "repartition: blkid -o value -s PTTYPE '$root_disk' failed"
   exit 0
 fi
+if [ "$pt_label" != "gpt" ]; then
+  echo "repartition: unsupported partition table type '$pt_label'"
+  exit 0
+fi
 
 # Check for our magic "this is Endless" marker
-if [ "$pt_label" = "dos" ]; then
-  marker=$(sfdisk --force --part-type $root_disk 4)
-else
-  marker=$(sfdisk --force --part-attrs $root_disk $partno)
-fi
+marker=$(sfdisk --force --part-attrs $root_disk $partno)
 
 # Read the ESP's current UUID so we can update load options below.
-orig_esp_uuid=
-if [ "$pt_label" = "gpt" ]; then
-  orig_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
-fi
+orig_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
 
 case "$marker" in
-  *GUID:55* | dd)
+  *GUID:55*)
     ;;
   *)
     echo "repartition: marker not found"
@@ -123,11 +115,6 @@ udevadm settle
 
 # take current partition table
 parts=$(sfdisk -d $root_disk)
-
-# if MBR avoid considering the magic marker partition (the last one)
-if [ "$pt_label" = "dos" ]; then
-  parts=$(echo "$parts" | sed -e '$d')
-fi
 
 # If we detect a recovery partition at the end of the disk, we'll be careful
 # not to destroy it.
@@ -176,8 +163,7 @@ else
   # Fill the remainder of the disk
   new_size=$(( disk_size - part_start ))
 
-  # Subtract the size of the secondary GPT header at the end of the disk. We do
-  # this also for MBR in case we want to convert MBR->GPT later
+  # Subtract the size of the secondary GPT header at the end of the disk.
   new_size=$(( new_size - 33 ))
 fi
 
@@ -206,10 +192,7 @@ udevadm settle
 [ "$ret" != "0" ] && exit 0
 
 # Read the ESP's new UUID and update any invalidated load options.
-new_esp_uuid=
-if [ "$pt_label" = "gpt" ]; then
-  new_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
-fi
+new_esp_uuid=$(sfdisk --force --part-uuid $root_disk 1)
 if [ -d /sys/firmware/efi ] && [ -n "$orig_esp_uuid" ] && [ -n "$new_esp_uuid" ]; then
   eos-update-efi-uuid -v "$orig_esp_uuid" "$new_esp_uuid"
 fi
@@ -277,13 +260,9 @@ sed -e "s:$orig_root_part:$root_part:" \
 /bin/systemctl daemon-reload
 
 # Remove marker - must be done last, prevents this script from running again
-# In the MBR case the marker partition is removed as part of sfdisk rewriting
-# the partition table above
-if [ "$pt_label" = "gpt" ]; then
-  attrs=$(sfdisk --part-attrs $root_disk $partno)
-  attrs=$(echo "$attrs" | sed -e 's/GUID:55//g')
-  sfdisk --force --part-attrs $root_disk $partno "$attrs"
-fi
+attrs=$(sfdisk --part-attrs $root_disk $partno)
+attrs=$(echo "$attrs" | sed -e 's/GUID:55//g')
+sfdisk --force --part-attrs $root_disk $partno "$attrs"
 udevadm settle
 
 # During the above process, the rootfs block device momentarily goes away.

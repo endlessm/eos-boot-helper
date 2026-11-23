@@ -72,8 +72,8 @@ if [ $residue -gt 0 ]; then
   storage_partition_size=$(( host_disk_size - storage_partition_start ))
 fi
 
-# Just in case we ever want to convert to GPT, reserve 33 sectors at the
-# end of the disk, big enough for the secondary GPT header
+# Reserve 33 sectors at the end of the disk, big enough for the secondary GPT
+# header
 storage_partition_size=$(( storage_partition_size - 33 ))
 
 # udev might still be busy probing the disk, meaning that it will be in use.
