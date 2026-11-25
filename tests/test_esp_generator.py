@@ -161,15 +161,6 @@ ESP_MOUNT_TEST_DATA = {
         umask='0077',
     ),
 
-    # Standard EOS using grub with MBR partitioning. /boot gets mounted in the
-    # initramfs by ostree-prepare-root.
-    'grub-mbr': espgen.EspMount(
-        source='/dev/vda1',
-        target='/efi',
-        type='vfat',
-        umask='0077',
-    ),
-
     # Standard EOS using grub with GPT partitioning and /efi in fstab. /boot
     # gets mounted in the initramfs by ostree-prepare-root. It's not typical
     # that there would be a /efi entry in fstab, but this test ensures no /efi

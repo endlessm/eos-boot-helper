@@ -60,7 +60,7 @@ def fstype(device):
     return get_lsblk_field(device, 'fstype')
 
 
-def sfdisk(device, partition_table, label='dos'):
+def sfdisk(device, partition_table, label='gpt'):
     args = ("sfdisk", "--label", label, device)
     sfdisk_proc = subprocess.Popen(args, stdin=subprocess.PIPE)
     sfdisk_proc.communicate(partition_table)
