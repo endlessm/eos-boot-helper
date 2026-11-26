@@ -117,6 +117,15 @@ dist_tmpfiles_DATA = \
 	tmpfiles.d/eos-boot-helper.conf \
 	$(NULL)
 
+# systemd-repart definitions, used by the systemd-repart dracut module to
+# assign UUIDs to the all-zero-UUID ESP and root partitions of a freshly
+# flashed image and to grow the root partition to fill the disk.
+repartdir = $(prefix)/lib/repart.d
+dist_repart_DATA = \
+	repart.d/10-esp.conf \
+	repart.d/50-root.conf \
+	$(NULL)
+
 com.endlessm.TestMode.policy: com.endlessm.TestMode.policy.in
 	$(AM_V_GEN) $(SED) -e 's|[@]sbindir@|$(sbindir)|g' < "$<" > "$@"
 
