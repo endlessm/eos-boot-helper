@@ -18,7 +18,6 @@ EXTRA_DIST = \
 	$(TESTS) \
 	__init__.py \
 	conftest.py \
-	efivars \
 	espgen \
 	test_esp_generator.py \
 	test_image_boot.py \
@@ -26,8 +25,6 @@ EXTRA_DIST = \
 	test_migrate_chrome_profile.py \
 	test_migrate_chromium_profile.py \
 	test_migrate_firefox_profile.py \
-	test_repartition.py \
-	test_update_efi_uuid.py \
 	test_update_flatpak_repos.py \
 	util.py \
 	$(NULL)
