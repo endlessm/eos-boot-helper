@@ -103,14 +103,6 @@ dist_sbin_SCRIPTS = \
 	set-regdom/setregdomain \
 	$(NULL)
 
-sbin_PROGRAMS = \
-	eos-update-efi-uuid \
-	$(NULL)
-
-eos_update_efi_uuid_SOURCES = eos-update-efi-uuid.c
-eos_update_efi_uuid_CFLAGS = $(AM_CFLAGS) $(EFIBOOT_CFLAGS)
-eos_update_efi_uuid_LDADD = $(EFIBOOT_LIBS)
-
 dist_libexec_SCRIPTS = \
 	50-eos-migrate-chrome \
 	eos-migrate-chrome \
