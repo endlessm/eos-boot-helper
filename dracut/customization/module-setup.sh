@@ -18,4 +18,6 @@ install() {
   mkdir -p "${initdir}/$systemdsystemunitdir/plymouth-start.service.wants"
   ln_r "$systemdsystemunitdir/eos-install-custom-boot-splash.service" \
     "$systemdsystemunitdir/plymouth-start.service.wants/eos-install-custom-boot-splash.service"
+  inst_simple "$moddir/10-eos-ostree.conf" \
+    "$systemdsystemunitdir/systemd-repart.service.d/10-eos-ostree.conf"
 }
